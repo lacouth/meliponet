@@ -18,16 +18,18 @@ editais.
 
 ## Estado atual
 
-**Fases 0 e 1 concluídas.**
+**Fases 0, 1 e 2 concluídas.**
 
-A Fase 0 fechou o contrato, verificado nos dois lados: o codec C++ e o ingestor Python
-são implementações independentes checadas contra os mesmos vetores dourados.
+A **Fase 0** fechou o contrato, verificado nos dois lados: o codec C++ e o ingestor
+Python são implementações independentes checadas contra os mesmos vetores dourados.
 
-A Fase 1 entregou a fatia vertical — simulador → broker → ingestor → banco → dashboard
-com gráfico ao vivo —, provando a arquitetura inteira sem nenhum hardware ligado.
+A **Fase 1** entregou a fatia vertical — simulador → broker → ingestor → banco →
+dashboard com gráfico ao vivo —, provando a arquitetura inteira sem hardware ligado.
 
-Próximo passo: Fase 2 (organizações, usuários e perfis) e Fase 3 (firmware do
-protótipo).
+A **Fase 2** trouxe autenticação, os três perfis, o isolamento por organização e o
+vínculo histórico nó↔colmeia, com migrações Alembic.
+
+Próximo passo: Fase 3, o firmware do protótipo (SHT30 + HX711 + WiFi/MQTT).
 
 ## Recorte do primeiro protótipo
 
@@ -42,7 +44,7 @@ complexidade de rádio e energia.
 ```
 contracts/   contrato de telemetria: schema, regras canônicas, vetores dourados
 firmware/    C++ / PlatformIO — ESP32-C6, SHT30 ×2, HX711, WiFi + MQTT
-platform/    Flask + TimescaleDB — ingestão, dashboard, alertas, relatórios
+platform/    Flask + TimescaleDB — autenticação, ingestão, dashboard, cadastros
 simulator/   gerador de dados sintéticos conforme o contrato
 curation/    qualidade e curadoria das séries (Edital 17)
 gateway/     (Fase 5) bridge LoRa → MQTT no Raspberry Pi 5
@@ -62,8 +64,17 @@ cd platform
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 export DATABASE_URL="sqlite:///$PWD/../meliponet-dev.sqlite3"
 
+# esquema do banco
+.venv/bin/python -m alembic upgrade head
+
+# primeiro usuário (a interface exige login, e criar conta exige estar logado —
+# a conta inicial só pode nascer do terminal do servidor)
+.venv/bin/python -m flask --app "meliponet:create_app" criar-usuario \
+  --email voce@exemplo.br --nome "Seu Nome" --organizacao "Seu Meliponário" --perfil admin
+
 # 48 h de histórico sintético, com lacunas e falhas de sensor injetadas
-cd .. && platform/.venv/bin/python -m simulator --transporte direto --historico 48
+cd .. && platform/.venv/bin/python -m simulator --transporte direto --historico 48 \
+  --organizacao "Seu Meliponário"
 
 # servidor em http://127.0.0.1:5000
 cd platform && .venv/bin/python -m flask --app "meliponet:create_app" run
@@ -98,6 +109,18 @@ Pilha completa:
 cp deploy/.env.example deploy/.env   # preencha as senhas
 docker compose -f deploy/docker-compose.yml up -d
 ```
+
+## Perfis de acesso
+
+| Perfil | Vê | Edita cadastros |
+|---|---|---|
+| `meliponicultor` | apenas a própria organização | sim |
+| `pesquisador` | todas as organizações | não |
+| `admin` | todas as organizações | sim |
+
+O isolamento vive num helper único, `meliponet/services/scope.py`. A razão é o modo de
+falha: uma consulta que esquece o filtro não quebra nem levanta erro — ela apenas
+mostra a um meliponicultor as colmeias de outro.
 
 ## Contrato
 

@@ -10,23 +10,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from meliponet.db import create_all, init_engine, session_scope
-from meliponet.models import Apiary, Hive, Measurement
+from meliponet.db import session_scope
+from meliponet.models import Measurement
 from meliponet.services import series as series_service
 
 
 @pytest.fixture
-def hive_id(tmp_path) -> int:
-    engine = init_engine(f"sqlite:///{tmp_path / 'series.sqlite3'}")
-    create_all(engine)
-    with session_scope() as session:
-        apiary = Apiary(name="Meliponário de teste")
-        session.add(apiary)
-        session.flush()
-        hive = Hive(apiary_id=apiary.id, name="Colmeia 01")
-        session.add(hive)
-        session.flush()
-        return hive.id
+def hive_id(scenario) -> int:
+    return scenario.hive_id
 
 
 def fill(hive_id: int, *, count: int, skip: frozenset[int] = frozenset()) -> None:

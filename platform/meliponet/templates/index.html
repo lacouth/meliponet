@@ -32,21 +32,9 @@
 </div>
 {% else %}
 <div class="card empty">
-  Nenhuma colmeia cadastrada ainda. Rode o simulador para popular a plataforma:<br>
-  <code>python -m simulator --hives 4</code>
-</div>
-{% endif %}
-
-{% if orphan_nodes %}
-<h2>Nós sem colmeia</h2>
-<p class="sub">
-  Nós que publicaram telemetria válida mas ainda não foram vinculados a uma colmeia.
-  As leituras já estão guardadas e passam a aparecer nos gráficos assim que o vínculo existir.
-</p>
-<div class="card">
-  {% for node in orphan_nodes %}
-    <code>{{ node.node_id }}</code>{% if not loop.last %} · {% endif %}
-  {% endfor %}
+  Nenhuma colmeia visível ainda.<br>
+  Cadastre um meliponário e uma colmeia em <a href="{{ url_for('manage.index') }}">Cadastros</a>,
+  e vincule um nó a ela.
 </div>
 {% endif %}
 

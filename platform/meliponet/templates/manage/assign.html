@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Vincular {{ node_label }} — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>Vincular nó <code>{{ node_label }}</code></h1>
+<p class="sub">
+  {% if current_hive %}
+    Atualmente em <strong>{{ current_hive }}</strong>. Ao confirmar, o vínculo atual é
+    encerrado na data informada e um novo é aberto — as leituras já gravadas continuam
+    atribuídas à colmeia em que o nó estava quando mediu.
+  {% else %}
+    Este nó ainda não está em nenhuma colmeia.
+  {% endif %}
+</p>
+
+<form method="post" class="card" style="max-width:620px;">
+  <label class="field">
+    <span>Colmeia</span>
+    <select name="colmeia_id" required>
+      {% for hive in hives %}
+      <option value="{{ hive.id }}">{{ hive.name }} — {{ hive.apiary.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label class="field">
+    <span>Instalado em (horário local; em branco = agora)</span>
+    <input type="datetime-local" name="instalado_em">
+  </label>
+
+  <label class="field">
+    <span>Posicionamento dos sensores</span>
+    <textarea name="posicionamento"
+      placeholder="SHT30 interno a 2 cm acima do invólucro de cerume, na parede lateral; SHT30 externo à sombra sob a tampa; célula de carga sob o ninho."></textarea>
+  </label>
+
+  <label class="field">
+    <span>Observações de instalação</span>
+    <textarea name="observacoes"
+      placeholder="Condições encontradas, desvios do protocolo padrão, estado da colônia."></textarea>
+  </label>
+
+  <p class="sub" style="font-size:13px;">
+    Estes metadados são o entregável do protocolo de instrumentação: uma série de
+    temperatura sem saber onde o sensor estava dentro da caixa não é reutilizável por
+    outro grupo. O momento de registrá-los é agora, não meses depois, de memória.
+  </p>
+
+  <button type="submit">Confirmar vínculo</button>
+  <a class="btn ghost" href="{{ url_for('manage.index') }}">Cancelar</a>
+</form>
+
+{% endblock %}

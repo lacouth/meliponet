@@ -7,6 +7,10 @@
 line-length = 100
 target-version = "py311"
 
+# Arquivos gerados pelo Alembic. Uma migracao ja aplicada em producao nao deve ser
+# reescrita por um formatador: ela e o registro do que foi de fato executado no banco.
+exclude = ["platform/migrations/versions"]
+
 [lint]
 select = ["E", "E402", "F", "I", "UP", "B", "RUF"]
 
@@ -15,3 +19,5 @@ select = ["E", "E402", "F", "I", "UP", "B", "RUF"]
 # o import a vir depois de codigo executavel.
 "contracts/tools/gen_testdata.py" = ["E402"]
 "simulator/__main__.py" = ["E402"]
+# O env.py do Alembic precisa ajustar sys.path antes de importar o modelo.
+"platform/migrations/env.py" = ["E402"]

@@ -77,14 +77,57 @@
     content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
     background: var(--mel-weight); margin-right: 6px; vertical-align: middle;
   }
+  header.top nav { margin-left: auto; display: flex; align-items: baseline; gap: 16px; }
+  header.top nav a { color: var(--mel-muted); font-size: 14px; }
+  header.top nav a:hover { color: var(--mel-ink); }
+  header.top nav .who { color: var(--mel-ink); font-size: 14px; }
+  header.top nav .who small { color: var(--mel-muted); }
+  .flash { padding: 11px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+  .flash.ok { background: #eef4e7; border: 1px solid #d3e2c2; color: #3f5a2b; }
+  .flash.erro { background: #f9ece6; border: 1px solid #eed4c6; color: var(--mel-warn); }
+  .field { display: block; margin-bottom: 14px; }
+  .field span { display: block; font-size: 13px; color: var(--mel-muted); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--mel-border); border-radius: 7px;
+    font: inherit; background: #fff; color: inherit;
+  }
+  .field textarea { min-height: 74px; resize: vertical; }
+  button, .btn {
+    padding: 9px 18px; border: 0; border-radius: 7px; background: var(--mel-accent);
+    color: #fff; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none;
+    display: inline-block;
+  }
+  button:hover, .btn:hover { filter: brightness(1.07); }
+  .btn.ghost { background: transparent; color: var(--mel-muted); border: 1px solid var(--mel-border); }
+  .pill {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px; background: #f1ece1;
+    color: var(--mel-muted); border: 1px solid var(--mel-border);
+  }
+  .form-row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 </style>
 </head>
 <body>
 <header class="top">
   <a href="/" class="brand">MelipoNet</a>
   <span class="tag">Monitoramento de colmeias de abelhas nativas sem ferrão</span>
+  {% if current_user.is_authenticated %}
+  <nav>
+    <a href="{{ url_for('dashboard.index') }}">Colmeias</a>
+    <a href="{{ url_for('manage.index') }}">Cadastros</a>
+    <span class="who">
+      {{ current_user.name }}
+      <small>· {{ current_user.role.label }} · {{ current_user.organization.name }}</small>
+    </span>
+    <a href="{{ url_for('auth.logout') }}">Sair</a>
+  </nav>
+  {% endif %}
 </header>
 <main>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
 {% block content %}{% endblock %}
 </main>
 </body>

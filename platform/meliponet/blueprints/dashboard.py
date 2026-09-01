@@ -6,11 +6,13 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, abort, current_app, render_template, request
-from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from flask_login import current_user, login_required
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from meliponet.db import session_scope
-from meliponet.models import Apiary, Hive, IngestReject, Measurement, Node
+from meliponet.models import Apiary, Hive, IngestReject, Measurement
+from meliponet.services import scope
 from meliponet.services import series as series_service
 
 bp = Blueprint("dashboard", __name__)
@@ -41,50 +43,69 @@ def num(value: float | None, digits: int = 1, suffix: str = "") -> str:
 
 
 @bp.route("/")
+@login_required
 def index():
     with session_scope() as session:
-        apiaries = list(session.scalars(select(Apiary).order_by(Apiary.name)))
-        overview = []
-        for apiary in apiaries:
-            for hive in apiary.hives:
-                overview.append(
-                    {
-                        "apiary": apiary,
-                        "hive": hive,
-                        "latest": series_service.latest(session, hive.id),
-                    }
-                )
-
-        orphan_nodes = list(
-            session.scalars(select(Node).where(Node.hive_id.is_(None)).order_by(Node.node_id))
-        )
-        total_measurements = session.scalar(
-            select(Measurement.id).order_by(Measurement.id.desc()).limit(1)
-        )
-        rejects = list(
+        apiaries = list(
             session.scalars(
-                select(IngestReject).order_by(IngestReject.received_at.desc()).limit(5)
+                scope.apiaries_for(current_user)
+                .options(selectinload(Apiary.hives))
+                .order_by(Apiary.name)
             )
+        )
+        overview = [
+            {
+                "apiary": apiary,
+                "hive": hive,
+                "latest": series_service.latest(session, hive.id),
+            }
+            for apiary in apiaries
+            for hive in apiary.hives
+        ]
+
+        hive_ids = [row["hive"].id for row in overview]
+        total_measurements = (
+            session.scalar(
+                select(func.count())
+                .select_from(Measurement)
+                .where(Measurement.hive_id.in_(hive_ids))
+            )
+            or 0
+        )
+        # Recusas nao pertencem a colmeia nenhuma (a mensagem sequer foi decodificada),
+        # entao so quem tem visao ampla as ve.
+        rejects = (
+            list(
+                session.scalars(
+                    select(IngestReject).order_by(IngestReject.received_at.desc()).limit(5)
+                )
+            )
+            if current_user.role.sees_everything
+            else []
         )
 
     return render_template(
         "index.html",
         overview=overview,
-        orphan_nodes=orphan_nodes,
-        total_measurements=total_measurements or 0,
+        total_measurements=total_measurements,
         rejects=rejects,
     )
 
 
 def _load_hive(session: Session, hive_id: int) -> Hive:
-    """Carrega a colmeia com o meliponario junto.
+    """Carrega a colmeia visivel ao usuario, com o meliponario junto.
 
-    O eager load nao e otimizacao: os templates renderizam depois que a sessao fechou,
-    e um lazy load nesse ponto levanta DetachedInstanceError. Toda relacao que a view
-    entrega ao template precisa vir carregada da consulta.
+    Duas coisas ao mesmo tempo, de proposito. O escopo por usuario vem de
+    ``scope.hives_for``, e nao de um ``select(Hive)`` cru: sem isso, trocar o numero na
+    URL leria a colmeia de outra organizacao. E o eager load do meliponario nao e
+    otimizacao -- os templates renderizam depois que a sessao fechou, e um lazy load
+    nesse ponto levanta DetachedInstanceError.
+
+    Colmeia inexistente e colmeia de outra organizacao devolvem o mesmo 404: distinguir
+    as duas revelaria quais ids existem na plataforma.
     """
     hive = session.scalar(
-        select(Hive).options(joinedload(Hive.apiary)).where(Hive.id == hive_id)
+        scope.hives_for(current_user).options(joinedload(Hive.apiary)).where(Hive.id == hive_id)
     )
     if hive is None:
         abort(404)
@@ -92,6 +113,7 @@ def _load_hive(session: Session, hive_id: int) -> Hive:
 
 
 @bp.route("/colmeia/<int:hive_id>")
+@login_required
 def hive_detail(hive_id: int):
     window = request.args.get("janela", series_service.DEFAULT_WINDOW)
     if window not in series_service.WINDOWS:
@@ -104,6 +126,7 @@ def hive_detail(hive_id: int):
 
 
 @bp.route("/colmeia/<int:hive_id>/painel")
+@login_required
 def hive_panel(hive_id: int):
     """Fragmento recarregado pelo HTMX.
 

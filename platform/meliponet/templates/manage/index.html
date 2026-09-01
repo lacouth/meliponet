@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Cadastros — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>Cadastros</h1>
+<p class="sub">Meliponários, colmeias e vínculo dos nós sensores.</p>
+
+{% if pending %}
+<h2>Nós aguardando vínculo</h2>
+<p class="sub">
+  Estes nós enviaram telemetria válida mas ainda não pertencem a nenhuma colmeia. As
+  leituras já estão guardadas e passam a aparecer nos gráficos assim que o vínculo
+  existir — nenhum dado foi perdido.
+</p>
+<div class="card">
+  {% for node in pending %}
+    <div style="display:flex; align-items:center; gap:12px; padding:6px 0;">
+      <code>{{ node.node_id }}</code>
+      <span class="pill">visto {{ node.last_seen_at | localtime }}</span>
+      <a class="btn ghost" style="margin-left:auto"
+         href="{{ url_for('manage.assign_node', node_id=node.id) }}">Vincular a uma colmeia</a>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2>Meliponários e colmeias</h2>
+{% for apiary in apiaries %}
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex; align-items:baseline; gap:10px;">
+    <strong>{{ apiary.name }}</strong>
+    <span class="pill">{{ apiary.municipality or 'sem município' }}</span>
+  </div>
+  {% if apiary.hives %}
+  <table style="margin-top:10px;">
+    <thead><tr><th>Colmeia</th><th>Espécie</th><th>Caixa</th></tr></thead>
+    <tbody>
+      {% for hive in apiary.hives %}
+      <tr>
+        <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=hive.id) }}">{{ hive.name }}</a></td>
+        <td><em>{{ hive.species or '—' }}</em></td>
+        <td>{{ hive.box_type or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="sub" style="margin:10px 0 0;">Nenhuma colmeia neste meliponário ainda.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('manage.create_hive') }}" style="margin-top:14px;">
+    <input type="hidden" name="meliponario_id" value="{{ apiary.id }}">
+    <div class="form-row">
+      <label class="field"><span>Nova colmeia</span>
+        <input name="nome" required placeholder="Colmeia 05"></label>
+      <label class="field"><span>Espécie</span>
+        <select name="especie">
+          <option value="">—</option>
+          <option>Melipona scutellaris</option>
+          <option>Melipona subnitida</option>
+          <option>Scaptotrigona depilis</option>
+        </select></label>
+      <label class="field"><span>Tipo de caixa</span>
+        <input name="caixa" placeholder="INPA"></label>
+    </div>
+    <button type="submit">Adicionar colmeia</button>
+  </form>
+</div>
+{% else %}
+<div class="card empty">Nenhum meliponário cadastrado ainda.</div>
+{% endfor %}
+
+<h2>Novo meliponário</h2>
+<form method="post" action="{{ url_for('manage.create_apiary') }}" class="card">
+  <div class="form-row">
+    <label class="field"><span>Nome</span><input name="nome" required></label>
+    <label class="field"><span>Município</span><input name="municipio" placeholder="João Pessoa"></label>
+    <label class="field"><span>Latitude</span><input name="latitude" placeholder="-7.1408"></label>
+    <label class="field"><span>Longitude</span><input name="longitude" placeholder="-34.8556"></label>
+  </div>
+  <button type="submit">Cadastrar meliponário</button>
+</form>
+
+<h2>Nós sensores</h2>
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead><tr><th>Nó</th><th>Colmeia atual</th><th>Última mensagem</th><th></th></tr></thead>
+    <tbody>
+      {% for node in nodes %}
+      {% set assignment = node.current_assignment %}
+      <tr>
+        <td><code>{{ node.node_id }}</code></td>
+        <td>{{ assignment.hive.name if assignment else '—' }}</td>
+        <td>{{ node.last_seen_at | localtime }}</td>
+        <td style="text-align:right">
+          <a class="btn ghost" href="{{ url_for('manage.assign_node', node_id=node.id) }}">
+            {{ 'Remanejar' if assignment else 'Vincular' }}</a>
+          {% if assignment %}
+          <form method="post" action="{{ url_for('manage.unassign_node', node_id=node.id) }}"
+                style="display:inline">
+            <button class="btn ghost" type="submit">Desvincular</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">Nenhum nó registrado ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

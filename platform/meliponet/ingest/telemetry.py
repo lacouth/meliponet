@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -54,10 +54,23 @@ class Telemetry:
 
     node_id: str
     seq: int
+    #: Instante da *medicao*, pelo relogio do no.
     ts: datetime
+    #: Instante da *chegada*, pelo relogio do servidor.
+    #:
+    #: Os dois sao distintos e a diferenca e informacao: uma mensagem drenada do spool
+    #: apos uma queda de rede chega horas depois de ter sido medida. A defasagem entre
+    #: eles tambem e como a Fase 6 detecta deriva do relogio do no, que sem WiFi (e
+    #: portanto sem NTP) e um problema real no cenario LoRa.
+    received_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     metrics: dict[str, float] = field(default_factory=dict)
     flags: tuple[str, ...] = ()
     gateway_id: str | None = None
+
+    @property
+    def transit_delay(self) -> timedelta:
+        """Quanto tempo a leitura levou entre ser medida e chegar."""
+        return self.received_at - self.ts
 
     @property
     def thermal_differential_c(self) -> float | None:

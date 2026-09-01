@@ -164,19 +164,37 @@ def resume_state(hives: list[HiveSimulator]) -> None:
             LOGGER.info("nó %s retomado na seq %d", hive.node_id, hive.seq)
 
 
-def seed_database(hives: list[HiveSimulator]) -> None:
-    """Cadastra meliponarios, colmeias e nos, para que a telemetria tenha onde pousar."""
+def seed_database(hives: list[HiveSimulator], organization: str, history_hours: int) -> None:
+    """Cadastra organizacao, meliponarios, colmeias, nos e vinculos.
+
+    O vinculo e aberto com ``installed_at`` recuado antes do inicio do historico. Sem
+    isso, as leituras sinteticas anteriores a instalacao ficariam sem colmeia -- que e
+    o comportamento correto do modelo, ja que a colmeia de uma leitura e resolvida pelo
+    instante da medicao, mas nao e o que se quer de um seed de demonstracao.
+    """
     from meliponet.db import session_scope
-    from meliponet.models import Apiary, Hive, Node
+    from meliponet.models import Apiary, Hive, Node, NodeAssignment, Organization
     from sqlalchemy import select
 
+    installed_at = datetime.now(UTC) - timedelta(hours=history_hours + 1)
+
     with session_scope() as session:
+        org = session.scalar(select(Organization).where(Organization.name == organization))
+        if org is None:
+            org = Organization(name=organization)
+            session.add(org)
+            session.flush()
+
         apiaries = []
         for name, municipality, lat, lon in APIARIES:
             apiary = session.scalar(select(Apiary).where(Apiary.name == name))
             if apiary is None:
                 apiary = Apiary(
-                    name=name, municipality=municipality, latitude=lat, longitude=lon
+                    organization_id=org.id,
+                    name=name,
+                    municipality=municipality,
+                    latitude=lat,
+                    longitude=lon,
                 )
                 session.add(apiary)
                 session.flush()
@@ -184,7 +202,7 @@ def seed_database(hives: list[HiveSimulator]) -> None:
 
         for index, sim in enumerate(hives):
             node = session.scalar(select(Node).where(Node.node_id == sim.node_id))
-            if node is not None and node.hive_id is not None:
+            if node is not None and node.current_assignment is not None:
                 continue
 
             apiary = apiaries[index % len(apiaries)]
@@ -196,7 +214,7 @@ def seed_database(hives: list[HiveSimulator]) -> None:
                     apiary_id=apiary.id,
                     name=sim.name,
                     species=sim.species,
-                    installed_at=datetime.now(UTC),
+                    installed_at=installed_at,
                 )
                 session.add(hive)
                 session.flush()
@@ -204,9 +222,29 @@ def seed_database(hives: list[HiveSimulator]) -> None:
             if node is None:
                 node = Node(node_id=sim.node_id, label=f"MelipoSense {sim.node_id}")
                 session.add(node)
-            node.hive_id = hive.id
+                session.flush()
+            node.organization_id = org.id
 
-        LOGGER.info("cadastrados %d meliponários e %d colmeias", len(apiaries), len(hives))
+            session.add(
+                NodeAssignment(
+                    node_id=node.id,
+                    hive_id=hive.id,
+                    installed_at=installed_at,
+                    sensor_placement=(
+                        "SHT30 interno na parede lateral, 2 cm acima do invólucro de "
+                        "cerume; SHT30 externo à sombra sob a tampa; célula de carga "
+                        "sob o ninho."
+                    ),
+                    protocol_notes="Instalação sintética gerada pelo simulador.",
+                )
+            )
+
+        LOGGER.info(
+            "cadastrados %d meliponários e %d colmeias em %s",
+            len(apiaries),
+            len(hives),
+            organization,
+        )
 
 
 class DirectPublisher:
@@ -274,6 +312,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--tempo-real", action="store_true",
         help="continua emitindo após o histórico",
     )
+    parser.add_argument(
+        "--organizacao", default="Meliponicultores da Paraíba",
+        help="organização dona dos meliponários simulados",
+    )
     return parser.parse_args(argv)
 
 
@@ -302,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.transporte == "direto":
         engine = init_engine(config.database_url)
         create_all(engine)
-        seed_database(hives)
+        seed_database(hives, args.organizacao, args.historico)
         resume_state(hives)
         publisher: DirectPublisher | MqttPublisher = DirectPublisher()
     else:
@@ -311,7 +353,7 @@ def main(argv: list[str] | None = None) -> int:
         # colmeia, entao ele e feito uma vez aqui.
         engine = init_engine(config.database_url)
         create_all(engine)
-        seed_database(hives)
+        seed_database(hives, args.organizacao, args.historico)
         resume_state(hives)
         publisher = MqttPublisher(
             config.mqtt_host, config.mqtt_port, config.mqtt_username, config.mqtt_password
