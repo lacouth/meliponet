@@ -1,0 +1,105 @@
+{# Fragmento recarregado pelo HTMX. Contém os cards, os gráficos e o script que os
+   (re)constrói — por isso precisa ser autossuficiente e destruir os gráficos
+   anteriores ao ser trocado, sob pena de vazar uma instância Chart.js por minuto. #}
+
+<div class="grid">
+  <div class="card stat">
+    <div class="label">Temperatura interna</div>
+    <div class="value">{{ latest.temp_in_c | num(1, ' °C') if latest else '—' }}</div>
+    <div class="note">faixa de cria saudável ≈ 30 °C</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Temperatura externa</div>
+    <div class="value">{{ latest.temp_out_c | num(1, ' °C') if latest else '—' }}</div>
+    <div class="note">{{ latest.rh_out_pct | num(0, '% UR') if latest else '—' }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Diferencial térmico</div>
+    <div class="value">{{ latest.thermal_differential_c | num(1, ' °C') if latest else '—' }}</div>
+    <div class="note">esforço termorregulatório da colônia</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Peso</div>
+    <div class="value">{{ latest.weight_kg | num(2, ' kg') if latest else '—' }}</div>
+    <div class="note">{{ latest.vbat_v | num(2, ' V na bateria') if latest else '—' }}</div>
+  </div>
+</div>
+
+<p class="live" style="margin-top: 14px;">
+  Última leitura {{ latest.time | localtime if latest else '—' }} ·
+  {{ completeness.received }} de {{ completeness.expected }} mensagens na janela
+  {%- if completeness.gaps %}, {{ completeness.gaps }} perdida(s){% endif %}
+  {%- if latest and latest.quality_flags %} ·
+    <span class="flags">
+      {% for flag in latest.quality_flags.split(',') %}<span class="flag">{{ flag }}</span>{% endfor %}
+    </span>
+  {%- endif %}
+</p>
+
+{% if point_count %}
+<h2>Temperatura e diferencial</h2>
+<div class="card"><div class="chart-wrap"><canvas id="grafico-temp"></canvas></div></div>
+
+<h2>Peso</h2>
+<div class="card"><div class="chart-wrap"><canvas id="grafico-peso"></canvas></div></div>
+
+<h2>Umidade relativa</h2>
+<div class="card"><div class="chart-wrap"><canvas id="grafico-umidade"></canvas></div></div>
+
+<script>
+(function () {
+  const chart = {{ chart | tojson }};
+
+  // Gráficos anteriores precisam ser destruídos: o HTMX troca o HTML mas as instâncias
+  // Chart.js sobreviveriam presas aos canvas antigos.
+  window.melipoCharts = window.melipoCharts || [];
+  window.melipoCharts.forEach(function (c) { c.destroy(); });
+  window.melipoCharts = [];
+
+  const base = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.25 } },
+    scales: {
+      x: { ticks: { maxTicksLimit: 8, color: "#7a7266" }, grid: { display: false } },
+      y: { ticks: { color: "#7a7266" }, grid: { color: "#eee7da" } }
+    },
+    plugins: { legend: { labels: { boxWidth: 12, color: "#2b2721" } } }
+  };
+
+  function build(id, datasets) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    // spanGaps fica desligado de propósito: uma lacuna na série é informação, e o
+    // gráfico precisa mostrar o buraco em vez de interpolar por cima dele.
+    window.melipoCharts.push(new Chart(canvas, {
+      type: "line",
+      data: { labels: chart.labels, datasets: datasets },
+      options: base
+    }));
+  }
+
+  build("grafico-temp", [
+    { label: "Interna (°C)", data: chart.series.temp_in_c, borderColor: "#c8791a" },
+    { label: "Externa (°C)", data: chart.series.temp_out_c, borderColor: "#4f7fa8" },
+    { label: "Δ interna − externa (°C)", data: chart.thermal_differential,
+      borderColor: "#9a8fb8", borderDash: [5, 4] }
+  ]);
+
+  build("grafico-peso", [
+    { label: "Peso (kg)", data: chart.series.weight_kg, borderColor: "#6a8f4f",
+      fill: true, backgroundColor: "rgba(106,143,79,0.10)" }
+  ]);
+
+  build("grafico-umidade", [
+    { label: "Interna (%)", data: chart.series.rh_in_pct, borderColor: "#c8791a" },
+    { label: "Externa (%)", data: chart.series.rh_out_pct, borderColor: "#4f7fa8" }
+  ]);
+})();
+</script>
+{% else %}
+<div class="card empty" style="margin-top: 18px;">
+  Nenhuma leitura nesta janela.
+</div>
+{% endif %}

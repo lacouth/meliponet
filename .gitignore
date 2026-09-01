@@ -21,3 +21,7 @@ deploy/mosquitto.passwd
 
 # Sistema
 .DS_Store
+
+# Banco de desenvolvimento local
+meliponet-dev.sqlite3*
+meliponet.sqlite3*

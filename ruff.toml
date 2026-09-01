@@ -1,0 +1,17 @@
+# Configuracao unica de lint do monorepo.
+#
+# Fica na raiz, e nao em platform/pyproject.toml, porque contracts/ e simulator/ estao
+# fora do pacote da plataforma e usariam a configuracao padrao do ruff -- divergindo
+# silenciosamente das regras do resto do repositorio.
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "E402", "F", "I", "UP", "B", "RUF"]
+
+[lint.per-file-ignores]
+# Estes modulos precisam ajustar sys.path antes de importar do monorepo, o que obriga
+# o import a vir depois de codigo executavel.
+"contracts/tools/gen_testdata.py" = ["E402"]
+"simulator/__main__.py" = ["E402"]

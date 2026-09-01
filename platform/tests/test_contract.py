@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 from canonical import canonical_dumps, quantize, render_scaled
-
 from meliponet.ingest.telemetry import SCHEMA_ID, TelemetryError, decode
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

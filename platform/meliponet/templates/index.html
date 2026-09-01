@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Colmeias monitoradas</h1>
+<p class="sub">{{ total_measurements }} medições recebidas.</p>
+
+{% if overview %}
+<div class="card" style="padding: 0; overflow: hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Colmeia</th><th>Meliponário</th><th>Espécie</th>
+        <th>Interna</th><th>Externa</th><th>Δ térmico</th><th>Peso</th><th>Última leitura</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in overview %}
+      {% set m = row.latest %}
+      <tr>
+        <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=row.hive.id) }}">{{ row.hive.name }}</a></td>
+        <td>{{ row.apiary.name }}</td>
+        <td><em>{{ row.hive.species or '—' }}</em></td>
+        <td class="num">{{ m.temp_in_c | num(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.temp_out_c | num(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.thermal_differential_c | num(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.weight_kg | num(2, ' kg') if m else '—' }}</td>
+        <td>{{ m.time | localtime if m else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty">
+  Nenhuma colmeia cadastrada ainda. Rode o simulador para popular a plataforma:<br>
+  <code>python -m simulator --hives 4</code>
+</div>
+{% endif %}
+
+{% if orphan_nodes %}
+<h2>Nós sem colmeia</h2>
+<p class="sub">
+  Nós que publicaram telemetria válida mas ainda não foram vinculados a uma colmeia.
+  As leituras já estão guardadas e passam a aparecer nos gráficos assim que o vínculo existir.
+</p>
+<div class="card">
+  {% for node in orphan_nodes %}
+    <code>{{ node.node_id }}</code>{% if not loop.last %} · {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if rejects %}
+<h2>Mensagens recusadas</h2>
+<p class="sub">
+  Toda recusa é registrada com o motivo — é o que permite reportar a proporção de
+  leituras descartadas exigida pelo Edital 17, em vez de estimá-la.
+</p>
+<div class="card" style="padding: 0; overflow: hidden;">
+  <table>
+    <thead><tr><th>Quando</th><th>Motivo</th></tr></thead>
+    <tbody>
+      {% for reject in rejects %}
+      <tr><td>{{ reject.received_at | localtime }}</td><td>{{ reject.reason }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}
