@@ -107,9 +107,14 @@ Testes no PC, sem hardware — cobrem o codec, a escala, a montagem da mensagem,
 calibração da célula, o agendamento e o spool:
 
 ```bash
-pip install platformio
+uv tool install platformio      # ou: pipx install platformio
 pio test -e native -d firmware
 ```
+
+> `pip install platformio` falha em distribuições com PEP 668 (Arch, Debian 12+,
+> Ubuntu 24.04+), que bloqueiam instalação no Python do sistema. `uv tool` e `pipx`
+> instalam a ferramenta isolada, sem sudo. No Arch há também
+> `sudo pacman -S platformio-core`.
 
 Na placa:
 

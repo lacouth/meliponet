@@ -25,8 +25,25 @@ python3 -m venv .venv
 ### Firmware
 
 ```bash
-pip install --user platformio
+uv tool install platformio          # ou: pipx install platformio
 pio test -e native -d firmware      # roda no PC, não precisa de placa
+```
+
+Se `pio` não for encontrado depois de instalar, confira que `~/.local/bin` está no
+seu `PATH`.
+
+> **Por que não `pip install platformio`.** As distribuições recentes (Arch, Debian
+> 12+, Ubuntu 24.04+) marcam o Python do sistema como *externally managed* (PEP 668) e
+> recusam a instalação, para que um `pip install` não quebre pacotes do sistema. É a
+> mesma razão pela qual a plataforma usa ambiente virtual. `uv tool` e `pipx` instalam
+> cada ferramenta num ambiente isolado próprio, o que resolve o problema sem sudo.
+
+**Para gravar na placa** (só quando você tiver hardware em mãos), o Linux precisa das
+regras de acesso à porta USB, senão o `upload` falha por permissão:
+
+```bash
+sudo pacman -S platformio-core-udev     # Arch
+# outras distribuições: veja docs.platformio.org/en/latest/core/installation/udev-rules.html
 ```
 
 ## Vendo o sistema rodar

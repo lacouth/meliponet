@@ -65,7 +65,7 @@ em milissegundos:
 pio test -e native -d firmware
 ```
 
-O exemplo concreto é `lib/MelipoNet/TelemetryCodec`. Ele não inclui `Arduino.h`, não
+O exemplo concreto é `lib/MelipoCore/TelemetryCodec`. Ele não inclui `Arduino.h`, não
 aloca memória, e é exatamente o que o teste dos vetores dourados exercita. Sem isso,
 verificar que o C++ concorda com o Python exigiria um ESP32 ligado e uma rede
 funcionando — e ninguém faria isso a cada commit.
