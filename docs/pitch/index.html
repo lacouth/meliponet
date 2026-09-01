@@ -6,33 +6,30 @@
 /* ---------------------------------------------------------------------------
    MelipoNet — pitch.
 
-   Direção: um instrumento lendo uma coisa viva. O fundo é o papel de um caderno
-   de campo — a luz lavada do sertão, não um creme aconchegante — e as leituras
-   são placas brancas assentadas sobre ele. As duas únicas cores saturadas são as
-   do dado: ocre de cerume para a cria, azul do céu seco para o ambiente.
+   Direção: um instrumento lendo uma coisa viva. O fundo é o carvão quente do
+   interior de uma caixa racional, não preto; as duas únicas cores saturadas são
+   as do dado — ocre de cerume para a cria, azul do céu seco para o ambiente. A
+   página se compromete com um único mundo visual (leitura noturna de
+   instrumento) e por isso pinta tudo explicitamente, em vez de trocar de tema.
 
-   A página se compromete com um único mundo visual, claro, e por isso pinta tudo
-   explicitamente em vez de trocar de tema. Os dois passos de cor foram validados
-   para separação em daltonismo e contraste tanto sobre o papel quanto sobre o
-   branco das placas.
+   Os dois passos de cor foram validados para separação em daltonismo e para
+   contraste sobre este fundo.
    --------------------------------------------------------------------------- */
 :root {
-  --ground: #EFEBE3;      /* papel do caderno de campo */
-  --plate: #FFFFFF;       /* a placa em que a leitura é assentada */
-  --surface: #FFFFFF;
-  --line: #DAD2C2;
-  --line-soft: #E4DDCE;
-  --ink: #201A13;
-  --ink-soft: #453B2F;
-  --muted: #6B5F51;
-  --faint: #948878;
+  --ground: #171310;
+  --ground-deep: #100D0B;
+  --surface: #211B17;
+  --line: #332A23;
+  --line-soft: #262019;
+  --ink: #EFE6DA;
+  --ink-soft: #C9BCAC;
+  --muted: #9C8D79;
+  --faint: #6E6355;
 
-  --interior: #9A6414;
-  --exterior: #00688F;
-  --good: #5E7A2E;
-  --alert: #B33F1C;
-
-  --plate-shadow: 0 1px 2px rgba(32, 26, 19, .05), 0 10px 28px -18px rgba(32, 26, 19, .35);
+  --interior: #C68128;
+  --exterior: #3A9AC6;
+  --good: #9DB861;
+  --alert: #E4744A;
 
   --measure: 63ch;
   --gap: clamp(72px, 9vw, 128px);
@@ -103,11 +100,10 @@ section + section { border-top: 1px solid var(--line-soft); }
 
 .reading {
   position: relative;
-  background: var(--plate);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--ground-deep) 100%);
   border: 1px solid var(--line);
-  border-radius: 5px 5px 0 0;
+  border-radius: 5px;
   padding: 22px 24px 18px;
-  box-shadow: var(--plate-shadow);
 }
 .reading-head { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
 .reading-title { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
@@ -121,8 +117,8 @@ canvas { display: block; width: 100%; height: auto; }
 }
 
 /* --- números do herói ---------------------------------------------------- */
-.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 5px 5px; overflow: hidden; box-shadow: var(--plate-shadow); }
-.readout > div { background: var(--plate); padding: 16px 20px; }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 5px 5px; overflow: hidden; }
+.readout > div { background: var(--ground-deep); padding: 16px 20px; }
 .readout .k { font-size: 10.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: var(--faint); }
 .readout .v { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 25px; font-variant-numeric: tabular-nums; margin-top: 5px; letter-spacing: -0.02em; }
 .readout .v small { font-size: 14px; color: var(--muted); }
@@ -158,8 +154,8 @@ canvas { display: block; width: 100%; height: auto; }
 .state.andamento { color: var(--interior); border-color: color-mix(in srgb, var(--interior) 40%, transparent); }
 
 /* --- provas -------------------------------------------------------------- */
-.proof { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; box-shadow: var(--plate-shadow); }
-.proof > div { background: var(--plate); padding: 22px 20px; }
+.proof { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.proof > div { background: var(--surface); padding: 22px 20px; }
 .proof .v { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 33px; letter-spacing: -0.03em; line-height: 1; }
 .proof .k { font-size: 13.5px; color: var(--muted); margin-top: 9px; }
 .proof .n { font-size: 12.5px; color: var(--faint); margin-top: 5px; line-height: 1.45; }
@@ -497,7 +493,7 @@ footer .repo { margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, mo
     for (let i = 0; i < upto; i++) ctx.lineTo(x(i), y(inside[i]));
     for (let i = upto - 1; i >= 0; i--) ctx.lineTo(x(i), y(outside[i]));
     ctx.closePath();
-    ctx.fillStyle = "rgba(154, 100, 20, 0.10)";
+    ctx.fillStyle = "rgba(198, 129, 40, 0.11)";
     ctx.fill();
 
     const trace = (data, color) => {
@@ -523,7 +519,7 @@ footer .repo { margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, mo
       ctx.fillStyle = color;
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = tok("--plate");
+      ctx.strokeStyle = tok("--ground-deep");
       ctx.stroke();
     };
     endpoint(outside, tok("--exterior"));
