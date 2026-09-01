@@ -35,29 +35,6 @@ def localtime(value: datetime | None) -> str:
     return value.astimezone(_display_tz()).strftime("%d/%m/%Y %H:%M")
 
 
-#: Extremos da faixa desenhada e da janela fisiologicamente saudavel da cria.
-#: Colonias de Melipona com favos e involucro de cerume mantem a regiao de cria
-#: proxima de 30 graus (Roldao-Sbordoni et al., 2024); desvios sustentados sinalizam
-#: estresse, enfraquecimento ou evento reprodutivo.
-BAND_MIN_C, BAND_MAX_C = 24.0, 36.0
-BROOD_MIN_C, BROOD_MAX_C = 28.0, 32.0
-
-
-@bp.app_template_filter("brood_pos")
-def brood_pos(value: float | None) -> float | None:
-    """Posicao de uma temperatura na faixa desenhada, em porcentagem."""
-    if value is None:
-        return None
-    clamped = min(BAND_MAX_C, max(BAND_MIN_C, value))
-    return round((clamped - BAND_MIN_C) / (BAND_MAX_C - BAND_MIN_C) * 100, 1)
-
-
-@bp.app_template_filter("brood_ok")
-def brood_ok(value: float | None) -> bool:
-    """Verdadeiro se a temperatura esta dentro da janela saudavel da cria."""
-    return value is not None and BROOD_MIN_C <= value <= BROOD_MAX_C
-
-
 @bp.app_template_filter("num")
 def num(value: float | None, digits: int = 1, suffix: str = "") -> str:
     if value is None:

@@ -1,88 +1,55 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>Colmeias</h1>
-<p class="sub">
-  A faixa mostra onde a temperatura da cria está dentro do intervalo de 24 a 36 °C.
-  A janela clara é a zona saudável — colônias de <span class="species">Melipona</span>
-  mantêm a cria perto de 30 °C, e desvios sustentados merecem uma visita.
-</p>
+<h1>Colmeias monitoradas</h1>
+<p class="sub">{{ total_measurements }} medições recebidas.</p>
 
 {% if overview %}
-<div class="table-wrap">
+<div class="card" style="padding: 0; overflow: hidden;">
   <table>
     <thead>
       <tr>
-        <th>Colmeia</th>
-        <th>Espécie</th>
-        <th>Cria</th>
-        <th class="num">Interna</th>
-        <th class="num">Externa</th>
-        <th class="num">Δ</th>
-        <th class="num">Peso</th>
-        <th>Leitura</th>
+        <th>Colmeia</th><th>Meliponário</th><th>Espécie</th>
+        <th>Interna</th><th>Externa</th><th>Δ térmico</th><th>Peso</th><th>Última leitura</th>
       </tr>
     </thead>
     <tbody>
       {% for row in overview %}
       {% set m = row.latest %}
-      {% set pos = m.temp_in_c | brood_pos if m else none %}
       <tr>
-        <td>
-          <a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=row.hive.id) }}">{{ row.hive.name }}</a>
-          <div class="meta" style="margin-top:2px">{{ row.apiary.name }}</div>
-        </td>
-        <td class="species">{{ row.hive.species or '—' }}</td>
-        <td>
-          {% if pos is not none %}
-          <div class="band">
-            <div class="band-track">
-              <div class="band-safe"></div>
-              <div class="band-mark {{ '' if m.temp_in_c | brood_ok else 'fora' }}"
-                   style="left: {{ pos }}%"
-                   title="{{ m.temp_in_c | num(1) }} °C"></div>
-            </div>
-            <span class="band-value">{{ m.temp_in_c | num(1) }}</span>
-          </div>
-          {% else %}<span class="pill">sem leitura</span>{% endif %}
-        </td>
-        <td class="num interior">{{ m.temp_in_c | num(1) if m else '—' }}</td>
-        <td class="num exterior">{{ m.temp_out_c | num(1) if m else '—' }}</td>
-        <td class="num">{{ m.thermal_differential_c | num(1) if m else '—' }}</td>
-        <td class="num">{{ m.weight_kg | num(2) if m else '—' }}</td>
-        <td class="meta">{{ m.time | localtime if m else '—' }}</td>
+        <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=row.hive.id) }}">{{ row.hive.name }}</a></td>
+        <td>{{ row.apiary.name }}</td>
+        <td><em>{{ row.hive.species or '—' }}</em></td>
+        <td class="num">{{ m.temp_in_c | num(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.temp_out_c | num(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.thermal_differential_c | num(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.weight_kg | num(2, ' kg') if m else '—' }}</td>
+        <td>{{ m.time | localtime if m else '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
-<p class="meta" style="margin-top:14px">
-  <span class="live-dot"></span>
-  {{ total_measurements }} medições recebidas · temperaturas em °C, peso em kg
-</p>
 {% else %}
 <div class="card empty">
   Nenhuma colmeia visível ainda.<br>
-  Cadastre um meliponário e uma colmeia em
-  <a href="{{ url_for('manage.index') }}">Cadastros</a>, e vincule um nó a ela.
+  Cadastre um meliponário e uma colmeia em <a href="{{ url_for('manage.index') }}">Cadastros</a>,
+  e vincule um nó a ela.
 </div>
 {% endif %}
 
 {% if rejects %}
 <h2>Mensagens recusadas</h2>
 <p class="sub">
-  Toda recusa é registrada com o motivo. É o que permite reportar a proporção de
-  leituras descartadas em vez de estimá-la.
+  Toda recusa é registrada com o motivo — é o que permite reportar a proporção de
+  leituras descartadas exigida pelo Edital 17, em vez de estimá-la.
 </p>
-<div class="table-wrap">
+<div class="card" style="padding: 0; overflow: hidden;">
   <table>
     <thead><tr><th>Quando</th><th>Motivo</th></tr></thead>
     <tbody>
       {% for reject in rejects %}
-      <tr>
-        <td class="meta">{{ reject.received_at | localtime }}</td>
-        <td>{{ reject.reason }}</td>
-      </tr>
+      <tr><td>{{ reject.received_at | localtime }}</td><td>{{ reject.reason }}</td></tr>
       {% endfor %}
     </tbody>
   </table>

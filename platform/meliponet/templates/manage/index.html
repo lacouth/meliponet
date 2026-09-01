@@ -16,7 +16,7 @@
   {% for node in pending %}
     <div style="display:flex; align-items:center; gap:12px; padding:6px 0;">
       <code>{{ node.node_id }}</code>
-      <span class="pill">última mensagem {{ node.last_seen_at | localtime }}</span>
+      <span class="pill">visto {{ node.last_seen_at | localtime }}</span>
       <a class="btn ghost" style="margin-left:auto"
          href="{{ url_for('manage.assign_node', node_id=node.id) }}">Vincular a uma colmeia</a>
     </div>
@@ -32,18 +32,18 @@
     <span class="pill">{{ apiary.municipality or 'sem município' }}</span>
   </div>
   {% if apiary.hives %}
-  <div class="table-wrap" style="margin-top:12px;"><table>
+  <table style="margin-top:10px;">
     <thead><tr><th>Colmeia</th><th>Espécie</th><th>Caixa</th></tr></thead>
     <tbody>
       {% for hive in apiary.hives %}
       <tr>
         <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=hive.id) }}">{{ hive.name }}</a></td>
-        <td class="species">{{ hive.species or '—' }}</td>
+        <td><em>{{ hive.species or '—' }}</em></td>
         <td>{{ hive.box_type or '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>
-  </table></div>
+  </table>
   {% else %}
   <p class="sub" style="margin:10px 0 0;">Nenhuma colmeia neste meliponário ainda.</p>
   {% endif %}
@@ -82,7 +82,7 @@
 </form>
 
 <h2>Nós sensores</h2>
-<div class="table-wrap">
+<div class="card" style="padding:0; overflow:hidden;">
   <table>
     <thead><tr><th>Nó</th><th>Colmeia atual</th><th>Última mensagem</th><th></th></tr></thead>
     <tbody>

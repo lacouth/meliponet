@@ -2,22 +2,20 @@
 {% block title %}Entrar — MelipoNet{% endblock %}
 {% block content %}
 
-<div style="max-width: 400px; margin: 7vh auto 0;">
+<div style="max-width: 380px; margin: 8vh auto 0;">
   <h1>Entrar</h1>
-  <p class="sub" style="margin-bottom: 22px;">
-    Monitoramento contínuo de colmeias de abelhas nativas sem ferrão na Paraíba.
-  </p>
+  <p class="sub">Monitoramento de colmeias de abelhas nativas sem ferrão.</p>
 
-  <form method="post" class="card" style="padding: 24px;">
+  <form method="post" class="card">
     <label class="field">
       <span>E-mail</span>
       <input type="email" name="email" value="{{ email }}" required autofocus autocomplete="username">
     </label>
-    <label class="field" style="margin-bottom: 22px;">
+    <label class="field">
       <span>Senha</span>
       <input type="password" name="senha" required autocomplete="current-password">
     </label>
-    <button type="submit" style="width: 100%;">Entrar</button>
+    <button type="submit">Entrar</button>
   </form>
 </div>
 
