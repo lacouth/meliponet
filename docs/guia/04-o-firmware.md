@@ -14,17 +14,23 @@ porque cada um tinha uma versão diferente de uma biblioteca.
 
 ```ini
 [env:esp32c6]
-platform = espressif32
+platform = https://github.com/pioarduino/platform-espressif32/releases/download/55.03.311/platform-espressif32.zip
 board = esp32-c6-devkitc-1
 framework = arduino
 lib_deps =
-    bblanchon/ArduinoJson@^7.2.0
+    knolleary/PubSubClient@^2.8
     robtillaart/SHT31@^0.5.0
     bogde/HX711@^0.7.5
 ```
 
 Repare que cada biblioteca tem **versão fixada**. Não é preciosismo: uma atualização
 silenciosa de biblioteca já quebrou muito projeto que funcionava.
+
+E repare no `platform`: não é o `espressif32` oficial. O platform oficial do PlatformIO
+parou no Arduino core 2.x, e o **ESP32-C6 só ganhou suporte no core 3.x** — com o
+oficial, o build falha com *"This board doesn't support arduino framework!"*. O fork
+`pioarduino` é o caminho que a comunidade usa para os chips novos (C6, H2, P4). A
+versão está fixada pelo mesmo motivo das bibliotecas.
 
 ## Dois ambientes
 
@@ -74,13 +80,29 @@ firmware/
 ├── src/
 │   └── main.cpp            setup() e loop() — só orquestra
 ├── lib/
-│   ├── MelipoSensors/         ShtPair, LoadCell        (precisa de hardware)
-│   ├── MelipoNet/             WifiLink, MqttPublisher,
-│   │                          TelemetryCodec, Spool     (codec é puro)
-│   └── MelipoCore/            Config (NVS), Scheduler
-└── test/native/
-    └── test_codec/         roda no PC
+│   ├── MelipoCore/         LÓGICA PURA — compila no PC e no ESP32
+│   │                       Scaling, Sample, Calibration, Scheduler,
+│   │                       TelemetryCodec, Spool
+│   └── MelipoHardware/     FALA COM O HARDWARE — só compila no ESP32
+│                           ShtPair, LoadCell, WifiLink, MqttPublisher,
+│                           Config (NVS), LittleFsSpoolStorage
+└── test/native/            roda no PC, sem placa
+    ├── test_codec/  test_scaling/  test_sample/
+    ├── test_core/   test_spool/
 ```
+
+**A divisão das pastas é a regra do projeto, materializada.** `MelipoCore` não inclui
+`Arduino.h` em lugar nenhum; `MelipoHardware` fica de fora do build nativo com uma
+linha só no `platformio.ini`:
+
+```ini
+lib_ignore = MelipoHardware
+```
+
+Isso tem que ser por **pasta**, não por arquivo: o PlatformIO compila todos os arquivos
+de uma pasta de biblioteca. Misturar código puro e código de hardware na mesma pasta
+faz o build nativo falhar procurando `WiFi.h` — foi assim que a estrutura chegou a
+esta forma.
 
 ### Interface comum para os sensores
 
@@ -127,6 +149,11 @@ nó — você perderia horas procurando no lugar errado.
 
 **`float` de 32 bits não é `double`.** No ESP32, `float` tem ~7 dígitos significativos.
 É outro motivo para as métricas trafegarem como inteiros.
+
+**Um cabeçalho traz os próprios tipos.** Se um `.h` usa `size_t`, ele inclui
+`<stddef.h>` — não conta com o arquivo que o inclui ter feito isso antes. Esse erro não
+aparece no build nativo se o arquivo não for compilado lá, e só surge no build do
+alvo.
 
 ## Fluxo de trabalho
 
