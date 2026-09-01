@@ -82,6 +82,8 @@
 <script>
 (function () {
   const chart = {{ chart | tojson }};
+
+  function render() {
   const css = getComputedStyle(document.documentElement);
   const token = (name) => css.getPropertyValue(name).trim();
 
@@ -187,6 +189,12 @@
     { label: "Externa", data: chart.series.rh_out_pct, borderColor: EXTERIOR,
       fill: false, spanGaps: false },
   ], "%");
+  }
+
+  render();
+  // O seletor de tema chama isto: as cores vêm dos tokens no momento da
+  // construção, então trocar o tema exige refazer os gráficos.
+  window.melipoRedesenhar = render;
 })();
 </script>
 {% else %}
