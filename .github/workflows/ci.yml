@@ -1,0 +1,48 @@
+# O CI existe sobretudo por um motivo: garantir que o firmware C++ e a plataforma
+# Python continuem falando o mesmo contrato. Os tres jobs abaixo verificam isso de
+# angulos diferentes, e qualquer um deles falhando significa que os dois lados
+# divergiram.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  contrato:
+    name: vetores dourados atualizados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Se alguem editar o contrato sem regerar os vetores, o restante do CI poderia
+      # passar comparando contra vetores velhos. Este job fecha essa brecha.
+      - run: python3 contracts/tools/gen_testdata.py --check
+
+  plataforma:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e "platform[dev]"
+      - run: ruff check platform contracts simulator
+      - run: pytest platform/tests
+
+  firmware:
+    name: pio test -e native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install platformio
+      # Roda no PC, sem hardware: compara a saida do codec C++ com os mesmos vetores
+      # que o job `plataforma` consome pelo lado Python.
+      - run: pio test -e native -d firmware

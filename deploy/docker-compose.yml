@@ -1,0 +1,86 @@
+# Pilha completa do MelipoNet. Sobe igual no notebook do bolsista e na VM do IFPB --
+# a unica diferenca sao os valores em deploy/.env.
+#
+# O ingestor e um servico separado do web, de proposito: o Flask pode reiniciar,
+# escalar ou cair sem que se perca telemetria, porque quem tem a sessao MQTT
+# persistente e o outro processo.
+
+name: meliponet
+
+services:
+  db:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-meliponet}
+      POSTGRES_USER: ${POSTGRES_USER:-meliponet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD em deploy/.env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meliponet} -d ${POSTGRES_DB:-meliponet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  broker:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto.passwd:/mosquitto/config/mosquitto.passwd:ro
+      - broker_data:/mosquitto/data
+    ports:
+      # Exposto para que os nos em campo publiquem. Em producao, prefira 8883 com TLS
+      # terminado no proprio broker.
+      - "1883:1883"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: gunicorn --bind 0.0.0.0:8000 --workers 3 "meliponet:create_app()"
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-meliponet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-meliponet}
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY em deploy/.env}
+      TZ: America/Fortaleza
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingest:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: meliponet-ingest
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-meliponet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-meliponet}
+      MQTT_HOST: broker
+      MQTT_PORT: "1883"
+      MQTT_USERNAME: ${MQTT_USERNAME:-ingest}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?defina MQTT_PASSWORD em deploy/.env}
+      TZ: America/Fortaleza
+    depends_on:
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  broker_data:
+  caddy_data:

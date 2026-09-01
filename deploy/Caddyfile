@@ -1,0 +1,6 @@
+# Substitua pelo dominio da VM do IFPB para que o Caddy emita o certificado
+# automaticamente. Em desenvolvimento, `localhost` serve HTTP local sem TLS.
+{$MELIPONET_DOMAIN:localhost} {
+	encode gzip
+	reverse_proxy web:8000
+}

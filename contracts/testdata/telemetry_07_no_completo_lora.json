@@ -1,0 +1,1 @@
+{"schema":"meliponet.telemetry.v1","node_id":"C1090E22","seq":88291,"ts":"2027-06-02T15:00:00Z","temp_in_c":31.44,"temp_out_c":38.90,"rh_in_pct":62.75,"rh_out_pct":28.30,"weight_kg":18.207,"vbat_v":4.05,"rssi":-104,"snr":7.5,"sound_rms":1820.0,"sound_bands":[412.0,980.5,233.3,61.0],"gateway_id":"gw-jp-01"}

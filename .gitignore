@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Propostas ainda nao submetidas aos editais de 2026. Sao a fonte de requisitos de
+# todo o codigo, mas ficam apenas na maquina local, fora do controle de versao.
+propostas/
+
+# Segredos e estado local
+deploy/.env
+deploy/mosquitto.passwd
+*.sqlite3
+
+# Sistema
+.DS_Store

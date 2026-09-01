@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meliponet.ifpb.edu.br/contracts/telemetry.v1.schema.json",
+  "title": "MelipoNet Telemetry v1",
+  "description": "Mensagem de telemetria publicada em meliponet/v1/<node_id>/telemetry. Fonte da verdade compartilhada pelo firmware MelipoSense (C++), pelo simulador e pelo ingestor da plataforma.",
+  "type": "object",
+  "required": ["schema", "node_id", "seq", "ts"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "meliponet.telemetry.v1",
+      "description": "Identificador da versao do contrato."
+    },
+    "node_id": {
+      "type": "string",
+      "pattern": "^[0-9A-F]{8}$",
+      "description": "Identificador do no, derivado dos 4 ultimos bytes do MAC do ESP32-C6, em hexadecimal maiusculo."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "description": "Contador monotonico por no, persistido em NVS. Lacunas nesta sequencia sao a medida primaria de completude das series."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Instante da amostragem no relogio do no, em UTC (RFC 3339, sufixo Z)."
+    },
+    "temp_in_c": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 85,
+      "description": "Temperatura interna da colmeia em graus Celsius (SHT30 no endereco 0x44)."
+    },
+    "temp_out_c": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 85,
+      "description": "Temperatura externa em graus Celsius (SHT30 no endereco 0x45)."
+    },
+    "rh_in_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Umidade relativa interna em porcentagem."
+    },
+    "rh_out_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Umidade relativa externa em porcentagem."
+    },
+    "weight_kg": {
+      "type": "number",
+      "minimum": -5,
+      "maximum": 100,
+      "description": "Peso da colmeia em quilogramas, ja com tara e escala aplicadas (celula de 50 kg via HX711). Valores levemente negativos sao aceitos por deriva de tara e sinalizados na curadoria."
+    },
+    "vbat_v": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 6,
+      "description": "Tensao da alimentacao em volts."
+    },
+    "rssi": {
+      "type": "integer",
+      "minimum": -150,
+      "maximum": 0,
+      "description": "Intensidade do sinal recebido em dBm. No prototipo e o RSSI do WiFi medido no no; a partir da Fase 5 e o RSSI do enlace LoRa medido no gateway."
+    },
+    "snr": {
+      "type": "number",
+      "minimum": -30,
+      "maximum": 30,
+      "description": "Relacao sinal-ruido em dB. Preenchido apenas pelo gateway LoRa (Fase 5)."
+    },
+    "sound_rms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Valor RMS da janela acustica. Preenchido apenas por nos com INMP441 (Fase 5)."
+    },
+    "sound_bands": {
+      "type": "array",
+      "items": { "type": "number", "minimum": 0 },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "Energia em 4 bandas de frequencia calculada na borda. Preenchido apenas por nos com INMP441 (Fase 5)."
+    },
+    "gateway_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,31}$",
+      "description": "Identificador do gateway que reencaminhou a mensagem. Ausente quando o no publica direto por WiFi."
+    },
+    "flags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "sht_in_fault",
+          "sht_out_fault",
+          "hx711_fault",
+          "mic_fault",
+          "low_batt",
+          "clock_unsynced",
+          "spooled"
+        ]
+      },
+      "description": "Condicoes detectadas pelo proprio no. 'clock_unsynced' indica que o NTP nao respondeu e 'ts' e estimado; 'spooled' indica reenvio de mensagem que ficou em buffer local."
+    }
+  },
+  "anyOf": [
+    { "required": ["temp_in_c"] },
+    { "required": ["temp_out_c"] },
+    { "required": ["rh_in_pct"] },
+    { "required": ["rh_out_pct"] },
+    { "required": ["weight_kg"] },
+    { "required": ["sound_rms"] }
+  ]
+}
