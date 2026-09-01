@@ -40,6 +40,7 @@ from canonical import (
     SCHEMA_ID,
     STRINGS,
     canonical_dumps,
+    quantize,
     scaled_message,
 )
 
@@ -134,6 +135,37 @@ VALID: dict[str, dict] = {
     },
 }
 
+#: Casos da conversao leitura fisica -> inteiro escalado, o unico ponto do firmware em
+#: que ponto flutuante vira inteiro. Sao gerados por `canonical.quantize` e verificados
+#: em C++ contra `meliponet::scale`, fechando a ultima costura entre as duas
+#: implementacoes: sem eles, firmware e simulador poderiam produzir inteiros diferentes
+#: para a mesma leitura sem que nada acusasse.
+#:
+#: A escolha dos valores e deliberada -- empates (x.xx5), valores em que o produto em
+#: ponto flutuante cai do outro lado do empate, negativos, e os limites da faixa.
+SCALING: list[tuple[str, float]] = [
+    ("temp_in_c", 30.125),   # empate exatamente representavel
+    ("temp_in_c", 8.615),    # produto cai do outro lado do empate
+    ("temp_in_c", -9.985),   # idem, negativo
+    ("temp_in_c", -0.004),   # arredonda para zero
+    ("temp_in_c", 30.12),
+    ("temp_in_c", 68.4),
+    ("temp_in_c", -40.0),    # limite inferior do SHT30
+    ("temp_in_c", 85.0),     # limite superior do SHT30
+    ("rh_in_pct", 99.999),
+    ("rh_in_pct", 0.0),
+    ("rh_in_pct", 33.335),
+    ("weight_kg", 12.5),
+    ("weight_kg", 12.483),
+    ("weight_kg", -0.012),   # deriva de tara
+    ("weight_kg", 0.0005),   # meio grama: empate na terceira casa
+    ("weight_kg", 49.9995),
+    ("vbat_v", 3.925),
+    ("vbat_v", 4.0),
+    ("vbat_v", 3.415),
+]
+
+
 #: Casos que o ingestor precisa rejeitar. Nao sao produzidos pelo firmware -- servem
 #: para provar que a validacao da plataforma nao aceita lixo, e cada um vem com o
 #: motivo esperado para que o teste verifique a mensagem, nao so a rejeicao.
@@ -184,6 +216,18 @@ def _cpp_literal(field: str, value) -> str:
     return str(value)
 
 
+#: Nome do enum C++ correspondente a cada campo escalado.
+SCALE_ENUM = {
+    "temp_in_c": "Scale::Temperature",
+    "temp_out_c": "Scale::Temperature",
+    "rh_in_pct": "Scale::Humidity",
+    "rh_out_pct": "Scale::Humidity",
+    "weight_kg": "Scale::Weight",
+    "vbat_v": "Scale::Voltage",
+    "sound_rms": "Scale::Sound",
+}
+
+
 def render_header() -> str:
     """Monta ``testdata/vectors.h`` com os casos validos para o teste nativo C++."""
     lines = [
@@ -194,6 +238,7 @@ def render_header() -> str:
         "// Rode `python3 contracts/tools/gen_testdata.py` apos alterar o contrato.",
         "#pragma once",
         "",
+        '#include "Scaling.h"',
         '#include "TelemetryCodec.h"',
         "",
         "namespace meliponet {",
@@ -230,6 +275,27 @@ def render_header() -> str:
         "};",
         "",
         "inline constexpr size_t kVectorCount = sizeof(kVectors) / sizeof(kVectors[0]);",
+        "",
+        "// Conversao leitura fisica -> inteiro escalado. O `expected` vem de",
+        "// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::scale.",
+        "struct ScalingVector {",
+        "  double reading;",
+        "  Scale unit;",
+        "  int32_t expected;",
+        "  const char *field;",
+        "};",
+        "",
+        "inline const ScalingVector kScalingVectors[] = {",
+    ]
+    for field, reading in SCALING:
+        lines.append(
+            f'    {{{reading!r}, {SCALE_ENUM[field]}, {quantize(field, reading)}, "{field}"}},'
+        )
+    lines += [
+        "};",
+        "",
+        "inline constexpr size_t kScalingVectorCount =",
+        "    sizeof(kScalingVectors) / sizeof(kScalingVectors[0]);",
         "",
         "}  // namespace testdata",
         "}  // namespace meliponet",

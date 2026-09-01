@@ -98,12 +98,24 @@ FLAG_ORDER: tuple[str, ...] = (
 def quantize(field: str, value: float) -> int:
     """Converte ``value`` no inteiro escalado canonico de ``field``.
 
-    Usa ``ROUND_HALF_UP`` sobre o valor binario exato, de modo que empates como
-    30.125 -> 3013 tenham um resultado unico e documentado, em vez de dependerem do
-    modo de arredondamento da biblioteca C de cada plataforma.
+    A regra e: **multiplique em ponto flutuante de dupla precisao, depois arredonde o
+    produto com empate para longe do zero.** Nessa ordem, e nao arredondando o valor
+    original com aritmetica decimal exata.
 
-    Levanta ``ValueError`` para NaN e infinito: um sensor com falha deve omitir o
-    campo e sinalizar a flag correspondente, nunca emitir um valor nao finito.
+    A ordem importa e a escolha e deliberada. Arredondar o valor original seria mais
+    "correto" numericamente, mas nao e reproduzivel em C++: para reproduzi-la o firmware
+    precisaria da expansao decimal exata do double, que o ESP32 nao tem como calcular
+    barato. Ja esta regra e exatamente ``llround(value * 10^places)`` em C -- uma linha,
+    identica bit a bit, porque as duas linguagens fazem a mesma multiplicacao IEEE 754 e
+    arredondam o mesmo produto do mesmo jeito.
+
+    A diferenca entre as duas ordens nao e teorica: em ~23% dos valores da forma x.xx5 o
+    produto em ponto flutuante cai do outro lado do empate. Sem fixar a ordem, firmware
+    e simulador produziriam inteiros diferentes para a mesma leitura, e a divergencia so
+    apareceria em algumas leituras especificas -- o pior tipo de bug.
+
+    Levanta ``ValueError`` para NaN e infinito: um sensor com falha deve omitir o campo e
+    sinalizar a flag correspondente, nunca emitir um valor nao finito.
     """
     number = float(value)
     if not math.isfinite(number):
@@ -114,8 +126,13 @@ def quantize(field: str, value: float) -> int:
         places = DECIMALS.get(field, -1)
         if places < 0:
             raise ValueError(f"campo numerico sem escala canonica definida: {field}")
-    scale = Decimal(10) ** places
-    return int((Decimal(number) * scale).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+    # O produto e calculado em double, como o C++ fara; so entao ele e arredondado.
+    # Decimal(produto) e exato, e ROUND_HALF_UP sobre ele equivale a llround.
+    product = number * (10.0**places)
+    if not math.isfinite(product):
+        raise ValueError(f"escala estoura a faixa em {field}: {number}")
+    return int(Decimal(product).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def render_scaled(field: str, scaled: int) -> str:

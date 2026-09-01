@@ -29,7 +29,12 @@ dashboard com gráfico ao vivo —, provando a arquitetura inteira sem hardware 
 A **Fase 2** trouxe autenticação, os três perfis, o isolamento por organização e o
 vínculo histórico nó↔colmeia, com migrações Alembic.
 
-Próximo passo: Fase 3, o firmware do protótipo (SHT30 + HX711 + WiFi/MQTT).
+A **Fase 3** entregou o firmware do protótipo: dois SHT30, célula de carga via HX711,
+WiFi com NTP, MQTT com Last Will e spool em LittleFS. Toda a lógica que não depende de
+sensor — escala, montagem da mensagem, calibração, agendamento, fila do spool — é
+testada no PC, sem placa. **Falta a verificação em hardware real.**
+
+Próximo passo: Fase 4 (dashboard completo, alertas, relatórios, INMET).
 
 ## Recorte do primeiro protótipo
 
@@ -96,11 +101,30 @@ comportamento sob reconexão — para isso, use a pilha completa abaixo.
 cd platform && .venv/bin/pytest
 ```
 
-Firmware (testes no PC, sem hardware):
+### Firmware
+
+Testes no PC, sem hardware — cobrem o codec, a escala, a montagem da mensagem, a
+calibração da célula, o agendamento e o spool:
 
 ```bash
 pip install platformio
 pio test -e native -d firmware
+```
+
+Na placa:
+
+```bash
+pio run -e esp32c6 -d firmware -t upload -t monitor
+```
+
+Credenciais **não** vão no código: são gravadas na NVS pelo console serial.
+
+```
+wifi <ssid> <senha>     grava as credenciais de WiFi
+broker <host>           grava o endereço do broker MQTT
+tara                    tara a célula com a colmeia vazia
+calibrar <kg>           calibra com uma massa-padrão conhecida
+estado                  mostra sensores, conexões, calibração e spool
 ```
 
 Pilha completa:

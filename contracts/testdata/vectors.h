@@ -5,6 +5,7 @@
 // Rode `python3 contracts/tools/gen_testdata.py` apos alterar o contrato.
 #pragma once
 
+#include "Scaling.h"
 #include "TelemetryCodec.h"
 
 namespace meliponet {
@@ -134,6 +135,40 @@ inline const Vector kVectors[] = {
 };
 
 inline constexpr size_t kVectorCount = sizeof(kVectors) / sizeof(kVectors[0]);
+
+// Conversao leitura fisica -> inteiro escalado. O `expected` vem de
+// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::scale.
+struct ScalingVector {
+  double reading;
+  Scale unit;
+  int32_t expected;
+  const char *field;
+};
+
+inline const ScalingVector kScalingVectors[] = {
+    {30.125, Scale::Temperature, 3013, "temp_in_c"},
+    {8.615, Scale::Temperature, 862, "temp_in_c"},
+    {-9.985, Scale::Temperature, -999, "temp_in_c"},
+    {-0.004, Scale::Temperature, 0, "temp_in_c"},
+    {30.12, Scale::Temperature, 3012, "temp_in_c"},
+    {68.4, Scale::Temperature, 6840, "temp_in_c"},
+    {-40.0, Scale::Temperature, -4000, "temp_in_c"},
+    {85.0, Scale::Temperature, 8500, "temp_in_c"},
+    {99.999, Scale::Humidity, 10000, "rh_in_pct"},
+    {0.0, Scale::Humidity, 0, "rh_in_pct"},
+    {33.335, Scale::Humidity, 3334, "rh_in_pct"},
+    {12.5, Scale::Weight, 12500, "weight_kg"},
+    {12.483, Scale::Weight, 12483, "weight_kg"},
+    {-0.012, Scale::Weight, -12, "weight_kg"},
+    {0.0005, Scale::Weight, 1, "weight_kg"},
+    {49.9995, Scale::Weight, 50000, "weight_kg"},
+    {3.925, Scale::Voltage, 393, "vbat_v"},
+    {4.0, Scale::Voltage, 400, "vbat_v"},
+    {3.415, Scale::Voltage, 342, "vbat_v"},
+};
+
+inline constexpr size_t kScalingVectorCount =
+    sizeof(kScalingVectors) / sizeof(kScalingVectors[0]);
 
 }  // namespace testdata
 }  // namespace meliponet

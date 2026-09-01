@@ -43,6 +43,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install platformio
-      # Roda no PC, sem hardware: compara a saida do codec C++ com os mesmos vetores
-      # que o job `plataforma` consome pelo lado Python.
+      # Roda no PC, sem hardware. Cobre o codec, a escala, a montagem da mensagem, a
+      # calibracao, o agendamento e o spool -- toda a logica do firmware que nao depende
+      # de sensor. Os testes de codec e de escala comparam com os mesmos vetores que o
+      # job `plataforma` consome pelo lado Python.
       - run: pio test -e native -d firmware
+
+      # Compila para o alvo. Nao prova que funciona em campo, mas pega erro de
+      # compilacao especifico do ESP32 que o ambiente `native` nao veria -- e o CI e o
+      # unico lugar onde isso e checado a cada commit.
+      - run: pio run -e esp32c6 -d firmware
