@@ -122,6 +122,13 @@ O isolamento vive num helper único, `meliponet/services/scope.py`. A razão é 
 falha: uma consulta que esquece o filtro não quebra nem levanta erro — ela apenas
 mostra a um meliponicultor as colmeias de outro.
 
+## Para quem vai contribuir
+
+Comece por **[`docs/guia/`](docs/guia/README.md)** — um guia de onboarding escrito para
+estudantes de Engenharia Elétrica que vão trabalhar no projeto: o contrato, a estrutura
+da plataforma Flask, a do firmware, e as práticas de engenharia de software (git,
+ambientes, testes, revisão) que o projeto usa e por quê.
+
 ## Contrato
 
 Antes de mexer em firmware ou em ingestão, leia `contracts/README.md`. A regra que
