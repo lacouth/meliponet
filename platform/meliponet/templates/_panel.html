@@ -3,103 +3,192 @@
    anteriores ao ser trocado, sob pena de vazar uma instância Chart.js por minuto. #}
 
 <div class="grid">
-  <div class="card stat">
-    <div class="label">Temperatura interna</div>
-    <div class="value">{{ latest.temp_in_c | num(1, ' °C') if latest else '—' }}</div>
-    <div class="note">faixa de cria saudável ≈ 30 °C</div>
+  <div class="card stat is-interior">
+    <div class="label">Cria (interna)</div>
+    <div class="value">{{ latest.temp_in_c | num(1) if latest else '—' }}<span class="unit">°C</span></div>
+    <div class="note">
+      {% if latest and latest.temp_in_c is not none %}
+        {% if latest.temp_in_c | brood_ok %}
+          <span class="pill ok">dentro da faixa</span>
+        {% else %}
+          <span class="pill alerta">fora de 28–32 °C</span>
+        {% endif %}
+      {% else %}sem leitura{% endif %}
+    </div>
   </div>
-  <div class="card stat">
-    <div class="label">Temperatura externa</div>
-    <div class="value">{{ latest.temp_out_c | num(1, ' °C') if latest else '—' }}</div>
-    <div class="note">{{ latest.rh_out_pct | num(0, '% UR') if latest else '—' }}</div>
+  <div class="card stat is-exterior">
+    <div class="label">Ambiente (externa)</div>
+    <div class="value">{{ latest.temp_out_c | num(1) if latest else '—' }}<span class="unit">°C</span></div>
+    <div class="note">{{ latest.rh_out_pct | num(0) if latest else '—' }}% de umidade</div>
   </div>
   <div class="card stat">
     <div class="label">Diferencial térmico</div>
-    <div class="value">{{ latest.thermal_differential_c | num(1, ' °C') if latest else '—' }}</div>
-    <div class="note">esforço termorregulatório da colônia</div>
+    <div class="value">{{ latest.thermal_differential_c | num(1) if latest else '—' }}<span class="unit">°C</span></div>
+    <div class="note">esforço de termorregulação</div>
   </div>
   <div class="card stat">
     <div class="label">Peso</div>
-    <div class="value">{{ latest.weight_kg | num(2, ' kg') if latest else '—' }}</div>
-    <div class="note">{{ latest.vbat_v | num(2, ' V na bateria') if latest else '—' }}</div>
+    <div class="value">{{ latest.weight_kg | num(2) if latest else '—' }}<span class="unit">kg</span></div>
+    <div class="note">{{ latest.vbat_v | num(2) if latest else '—' }} V na bateria</div>
   </div>
 </div>
 
-<p class="live" style="margin-top: 14px;">
-  Última leitura {{ latest.time | localtime if latest else '—' }} ·
-  {{ completeness.received }} de {{ completeness.expected }} mensagens na janela
-  {%- if completeness.gaps %}, {{ completeness.gaps }} perdida(s){% endif %}
-  {%- if latest and latest.quality_flags %} ·
+<p class="meta" style="margin-top:16px">
+  <span class="live-dot"></span>
+  Última leitura {{ latest.time | localtime if latest else '—' }}
+  <span>·</span>
+  <span>{{ completeness.received }} de {{ completeness.expected }} mensagens na janela</span>
+  {% if completeness.gaps %}
+    <span class="pill alerta">{{ completeness.gaps }} perdida{{ 's' if completeness.gaps > 1 }}</span>
+  {% endif %}
+  {% if latest and latest.quality_flags %}
     <span class="flags">
-      {% for flag in latest.quality_flags.split(',') %}<span class="flag">{{ flag }}</span>{% endfor %}
+      {% for flag in latest.quality_flags.split(',') %}<span class="pill alerta">{{ flag }}</span>{% endfor %}
     </span>
-  {%- endif %}
+  {% endif %}
 </p>
 
 {% if point_count %}
-<h2>Temperatura e diferencial</h2>
-<div class="card"><div class="chart-wrap"><canvas id="grafico-temp"></canvas></div></div>
+<h2>Temperatura</h2>
+<div class="card chart-card">
+  <div class="chart-head">
+    <span class="chart-title">Cria e ambiente</span>
+    <span class="legend">
+      <span><i style="background: var(--interior)"></i> Interna</span>
+      <span><i style="background: var(--exterior)"></i> Externa</span>
+    </span>
+  </div>
+  <div class="chart-wrap"><canvas id="grafico-temp"></canvas></div>
+</div>
 
 <h2>Peso</h2>
-<div class="card"><div class="chart-wrap"><canvas id="grafico-peso"></canvas></div></div>
+<div class="card chart-card">
+  <div class="chart-head"><span class="chart-title">Massa da colmeia</span></div>
+  <div class="chart-wrap"><canvas id="grafico-peso"></canvas></div>
+</div>
 
 <h2>Umidade relativa</h2>
-<div class="card"><div class="chart-wrap"><canvas id="grafico-umidade"></canvas></div></div>
+<div class="card chart-card">
+  <div class="chart-head">
+    <span class="chart-title">Interna e externa</span>
+    <span class="legend">
+      <span><i style="background: var(--interior)"></i> Interna</span>
+      <span><i style="background: var(--exterior)"></i> Externa</span>
+    </span>
+  </div>
+  <div class="chart-wrap"><canvas id="grafico-umidade"></canvas></div>
+</div>
 
 <script>
 (function () {
   const chart = {{ chart | tojson }};
+  const css = getComputedStyle(document.documentElement);
+  const token = (name) => css.getPropertyValue(name).trim();
 
-  // Gráficos anteriores precisam ser destruídos: o HTMX troca o HTML mas as instâncias
-  // Chart.js sobreviveriam presas aos canvas antigos.
+  const INTERIOR = token("--interior");
+  const EXTERIOR = token("--exterior");
+  const GRID = token("--line");
+  const MUTED = token("--muted");
+  const INK = token("--ink");
+  const SURFACE = token("--surface");
+
+  // O HTMX troca o HTML, mas as instâncias Chart.js sobreviveriam presas aos canvas
+  // antigos — uma por minuto, para sempre.
   window.melipoCharts = window.melipoCharts || [];
-  window.melipoCharts.forEach(function (c) { c.destroy(); });
+  window.melipoCharts.forEach((c) => c.destroy());
   window.melipoCharts = [];
 
   const base = {
     responsive: true,
     maintainAspectRatio: false,
+    // Cruzeta: passar o mouse em qualquer ponto do eixo mostra as duas séries
+    // naquele instante, que é como se lê um par de temperaturas.
     interaction: { mode: "index", intersect: false },
-    elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.25 } },
-    scales: {
-      x: { ticks: { maxTicksLimit: 8, color: "#7a7266" }, grid: { display: false } },
-      y: { ticks: { color: "#7a7266" }, grid: { color: "#eee7da" } }
+    elements: {
+      point: { radius: 0, hoverRadius: 4, hoverBorderWidth: 2, hoverBorderColor: SURFACE },
+      line: { borderWidth: 2, tension: 0.3 },
     },
-    plugins: { legend: { labels: { boxWidth: 12, color: "#2b2721" } } }
+    scales: {
+      x: {
+        ticks: { maxTicksLimit: 7, color: MUTED, font: { size: 11, family: "IBM Plex Mono" } },
+        grid: { display: false },
+        border: { color: GRID },
+      },
+      y: {
+        ticks: { color: MUTED, font: { size: 11, family: "IBM Plex Mono" }, padding: 8 },
+        grid: { color: GRID, drawTicks: false },
+        border: { display: false },
+      },
+    },
+    plugins: {
+      legend: { display: false },  // a legenda é HTML, no cabeçalho do cartão
+      tooltip: {
+        backgroundColor: SURFACE,
+        titleColor: MUTED,
+        bodyColor: INK,
+        borderColor: GRID,
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 3,
+        displayColors: true,
+        boxWidth: 8,
+        boxHeight: 8,
+        boxPadding: 4,
+        titleFont: { family: "Archivo", size: 11, weight: "600" },
+        bodyFont: { family: "IBM Plex Mono", size: 12 },
+      },
+    },
   };
 
-  function build(id, datasets) {
+  function build(id, datasets, unit) {
     const canvas = document.getElementById(id);
     if (!canvas) return;
-    // spanGaps fica desligado de propósito: uma lacuna na série é informação, e o
-    // gráfico precisa mostrar o buraco em vez de interpolar por cima dele.
-    window.melipoCharts.push(new Chart(canvas, {
+    const options = JSON.parse(JSON.stringify(base));
+    options.plugins.tooltip.callbacks = {};
+    const instance = new Chart(canvas, {
       type: "line",
-      data: { labels: chart.labels, datasets: datasets },
-      options: base
-    }));
+      data: { labels: chart.labels, datasets },
+      options: {
+        ...base,
+        plugins: {
+          ...base.plugins,
+          tooltip: {
+            ...base.plugins.tooltip,
+            callbacks: {
+              label: (ctx) =>
+                ctx.parsed.y === null
+                  ? `${ctx.dataset.label}: sem leitura`
+                  : `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(unit === "kg" ? 3 : 1)} ${unit}`,
+            },
+          },
+        },
+      },
+    });
+    window.melipoCharts.push(instance);
   }
 
+  // spanGaps fica desligado de propósito: uma lacuna na série é informação, e o
+  // gráfico precisa mostrar o buraco em vez de interpolar por cima dele.
   build("grafico-temp", [
-    { label: "Interna (°C)", data: chart.series.temp_in_c, borderColor: "#c8791a" },
-    { label: "Externa (°C)", data: chart.series.temp_out_c, borderColor: "#4f7fa8" },
-    { label: "Δ interna − externa (°C)", data: chart.thermal_differential,
-      borderColor: "#9a8fb8", borderDash: [5, 4] }
-  ]);
+    { label: "Interna", data: chart.series.temp_in_c, borderColor: INTERIOR,
+      fill: false, spanGaps: false },
+    { label: "Externa", data: chart.series.temp_out_c, borderColor: EXTERIOR,
+      fill: false, spanGaps: false },
+  ], "°C");
 
   build("grafico-peso", [
-    { label: "Peso (kg)", data: chart.series.weight_kg, borderColor: "#6a8f4f",
-      fill: true, backgroundColor: "rgba(106,143,79,0.10)" }
-  ]);
+    { label: "Peso", data: chart.series.weight_kg, borderColor: INTERIOR,
+      backgroundColor: token("--interior-fill"), fill: true, spanGaps: false },
+  ], "kg");
 
   build("grafico-umidade", [
-    { label: "Interna (%)", data: chart.series.rh_in_pct, borderColor: "#c8791a" },
-    { label: "Externa (%)", data: chart.series.rh_out_pct, borderColor: "#4f7fa8" }
-  ]);
+    { label: "Interna", data: chart.series.rh_in_pct, borderColor: INTERIOR,
+      fill: false, spanGaps: false },
+    { label: "Externa", data: chart.series.rh_out_pct, borderColor: EXTERIOR,
+      fill: false, spanGaps: false },
+  ], "%");
 })();
 </script>
 {% else %}
-<div class="card empty" style="margin-top: 18px;">
-  Nenhuma leitura nesta janela.
-</div>
+<div class="card empty" style="margin-top:18px">Nenhuma leitura nesta janela.</div>
 {% endif %}

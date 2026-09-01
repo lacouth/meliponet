@@ -4,7 +4,7 @@
 
 <h1>{{ hive.name }}</h1>
 <p class="sub">
-  {{ hive.apiary.name }}{% if hive.species %} · <em>{{ hive.species }}</em>{% endif %}
+  {{ hive.apiary.name }}{% if hive.species %} · <span class="species">{{ hive.species }}</span>{% endif %}
 </p>
 
 <div class="windows">
@@ -14,9 +14,9 @@
   {% endfor %}
 </div>
 
-<!-- O painel se recarrega sozinho a cada 60 s. Com amostragem de 5 minutos, polling
-     de um fragmento é mais robusto sob conectividade rural do que uma conexão
-     persistente que precisaria ser reestabelecida a cada oscilação do enlace. -->
+<!-- Recarrega sozinho a cada 60 s. Com amostragem de 5 minutos, polling de um
+     fragmento é mais robusto sob conectividade rural do que uma conexão persistente
+     que precisaria ser reestabelecida a cada oscilação do enlace. -->
 <div id="painel"
      hx-get="{{ url_for('dashboard.hive_panel', hive_id=hive.id, janela=window) }}"
      hx-trigger="every 60s"

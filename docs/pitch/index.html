@@ -1,0 +1,569 @@
+<title>MelipoNet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* ---------------------------------------------------------------------------
+   MelipoNet — pitch.
+
+   Direção: um instrumento lendo uma coisa viva. O fundo é o carvão quente do
+   interior de uma caixa racional, não preto; as duas únicas cores saturadas são
+   as do dado — ocre de cerume para a cria, azul do céu seco para o ambiente. A
+   página se compromete com um único mundo visual (leitura noturna de
+   instrumento) e por isso pinta tudo explicitamente, em vez de trocar de tema.
+
+   Os dois passos de cor foram validados para separação em daltonismo e para
+   contraste sobre este fundo.
+   --------------------------------------------------------------------------- */
+:root {
+  --ground: #171310;
+  --ground-deep: #100D0B;
+  --surface: #211B17;
+  --line: #332A23;
+  --line-soft: #262019;
+  --ink: #EFE6DA;
+  --ink-soft: #C9BCAC;
+  --muted: #9C8D79;
+  --faint: #6E6355;
+
+  --interior: #C68128;
+  --exterior: #3A9AC6;
+  --good: #9DB861;
+  --alert: #E4744A;
+
+  --measure: 63ch;
+  --gap: clamp(72px, 9vw, 128px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 16.5px/1.65 Archivo, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a { color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--interior); }
+:focus-visible { outline: 2px solid var(--interior); outline-offset: 3px; border-radius: 2px; }
+
+.wrap { width: min(1080px, 100% - 48px); margin-inline: auto; }
+.narrow { max-width: var(--measure); }
+
+/* --- tipografia --------------------------------------------------------- */
+h1, h2, h3 { font-family: Newsreader, Georgia, serif; font-weight: 300; letter-spacing: -0.022em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(38px, 6.4vw, 72px); line-height: 1.03; }
+h2 { font-size: clamp(27px, 3.6vw, 40px); line-height: 1.12; margin-bottom: 18px; }
+h3 { font-size: 20px; line-height: 1.25; font-weight: 400; }
+em { font-style: italic; color: var(--ink-soft); }
+p { margin: 0 0 1.05em; }
+p:last-child { margin-bottom: 0; }
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11.5px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--interior); margin: 0 0 20px;
+}
+.lede { font-size: clamp(17.5px, 2vw, 20px); line-height: 1.55; color: var(--ink-soft); }
+.small { font-size: 14.5px; color: var(--muted); }
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+section { padding-block: var(--gap); }
+section + section { border-top: 1px solid var(--line-soft); }
+
+/* --- topo --------------------------------------------------------------- */
+.masthead {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.masthead .wrap { display: flex; align-items: center; gap: 16px; padding-block: 13px; }
+.logo { display: flex; align-items: baseline; gap: 10px; font-family: Newsreader, Georgia, serif; font-size: 20px; letter-spacing: -0.015em; text-decoration: none; }
+.logo::before {
+  content: ""; width: 7px; height: 16px; border-radius: 2px; transform: translateY(1px);
+  background: linear-gradient(var(--interior) 0 45%, transparent 45% 55%, var(--exterior) 55% 100%);
+}
+.masthead .inst { margin-left: auto; font-size: 12.5px; color: var(--faint); text-align: right; line-height: 1.35; }
+
+/* --- herói: a leitura é o argumento ------------------------------------- */
+.hero { padding-top: clamp(56px, 8vw, 96px); padding-bottom: 0; }
+.hero h1 { max-width: 17ch; margin-bottom: 24px; }
+.hero .lede { max-width: 54ch; }
+.hero-figure { margin-top: clamp(44px, 6vw, 72px); }
+
+.reading {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--ground-deep) 100%);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 22px 24px 18px;
+}
+.reading-head { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+.reading-title { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
+.reading-legend { display: flex; gap: 18px; margin-left: auto; font-size: 12.5px; color: var(--muted); }
+.reading-legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.reading-legend i { width: 15px; height: 2.5px; border-radius: 2px; }
+canvas { display: block; width: 100%; height: auto; }
+.reading-foot {
+  display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint);
+}
+
+/* --- números do herói ---------------------------------------------------- */
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 5px 5px; overflow: hidden; }
+.readout > div { background: var(--ground-deep); padding: 16px 20px; }
+.readout .k { font-size: 10.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: var(--faint); }
+.readout .v { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 25px; font-variant-numeric: tabular-nums; margin-top: 5px; letter-spacing: -0.02em; }
+.readout .v small { font-size: 14px; color: var(--muted); }
+.readout .interior .v { color: var(--interior); }
+.readout .exterior .v { color: var(--exterior); }
+.readout .n { font-size: 12px; color: var(--faint); margin-top: 3px; }
+
+/* --- colunas ------------------------------------------------------------- */
+.cols { display: grid; gap: clamp(28px, 4vw, 52px); grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); }
+.rule-top { border-top: 1px solid var(--line); padding-top: 18px; }
+.rule-top .n {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px;
+  color: var(--interior); letter-spacing: 0.1em; display: block; margin-bottom: 10px;
+}
+.rule-top h3 { margin-bottom: 9px; }
+.rule-top p { font-size: 15px; color: var(--muted); line-height: 1.6; }
+
+/* --- estado do sistema --------------------------------------------------- */
+.ledger { border-top: 1px solid var(--line); }
+.ledger-row {
+  display: grid; grid-template-columns: 132px 1fr auto; gap: 18px; align-items: baseline;
+  padding: 17px 0; border-bottom: 1px solid var(--line-soft);
+}
+.ledger-row .phase { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--faint); letter-spacing: 0.04em; }
+.ledger-row .what { font-size: 15.5px; }
+.ledger-row .what small { display: block; color: var(--faint); font-size: 13.5px; margin-top: 3px; }
+.state {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px;
+  padding: 3px 10px; border-radius: 3px; white-space: nowrap;
+  border: 1px solid var(--line); color: var(--faint);
+}
+.state.pronto { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.state.andamento { color: var(--interior); border-color: color-mix(in srgb, var(--interior) 40%, transparent); }
+
+/* --- provas -------------------------------------------------------------- */
+.proof { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.proof > div { background: var(--surface); padding: 22px 20px; }
+.proof .v { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 33px; letter-spacing: -0.03em; line-height: 1; }
+.proof .k { font-size: 13.5px; color: var(--muted); margin-top: 9px; }
+.proof .n { font-size: 12.5px; color: var(--faint); margin-top: 5px; line-height: 1.45; }
+
+/* --- citação ------------------------------------------------------------- */
+blockquote {
+  margin: 0; padding-left: 26px; border-left: 2px solid var(--interior);
+  font-family: Newsreader, Georgia, serif; font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 300; line-height: 1.4; color: var(--ink-soft); font-style: italic;
+}
+blockquote cite { display: block; margin-top: 14px; font: 400 13.5px/1.5 Archivo, sans-serif; font-style: normal; color: var(--faint); }
+
+/* --- pedido -------------------------------------------------------------- */
+.ask { display: grid; gap: clamp(28px, 4vw, 56px); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.ask ul { list-style: none; margin: 0; padding: 0; }
+.ask li { padding: 12px 0 12px 22px; border-bottom: 1px solid var(--line-soft); position: relative; font-size: 15.5px; color: var(--ink-soft); }
+.ask li::before { content: ""; position: absolute; left: 0; top: 21px; width: 8px; height: 1px; background: var(--interior); }
+.ask li:last-child { border-bottom: 0; }
+
+footer { padding-block: 44px 60px; border-top: 1px solid var(--line-soft); color: var(--faint); font-size: 13.5px; }
+footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: baseline; }
+footer .repo { margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; }
+
+/* --- entrada ------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .rise { opacity: 0; transform: translateY(14px); transition: opacity .7s ease, transform .7s ease; }
+  .rise.in { opacity: 1; transform: none; }
+}
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="logo" href="#topo">MelipoNet</a>
+    <div class="inst">
+      IFPB — Campus João Pessoa<br>
+      em parceria com o LAHMP/UFPB
+    </div>
+  </div>
+</header>
+
+<main id="topo">
+
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Meliponicultura de precisão · Paraíba</p>
+    <h1>Uma colônia é um termostato feito de abelhas.</h1>
+    <p class="lede">
+      Ela segura a região de cria perto de 30 °C enquanto a caatinga oscila de 20 a 36.
+      Esse esforço é o sinal vital da colmeia — e até agora ninguém conseguia lê-lo sem
+      abrir a caixa e alterar exatamente aquilo que queria medir.
+    </p>
+
+    <figure class="hero-figure" style="margin:clamp(44px,6vw,72px) 0 0">
+      <div class="reading">
+        <div class="reading-head">
+          <span class="reading-title">Colmeia 01 · <em>Melipona scutellaris</em> · 48 horas</span>
+          <span class="reading-legend">
+            <span><i style="background:var(--interior)"></i> Cria</span>
+            <span><i style="background:var(--exterior)"></i> Ambiente</span>
+          </span>
+        </div>
+        <canvas id="leitura" width="1200" height="330" role="img"
+          aria-label="Gráfico de 48 horas. A temperatura da cria permanece entre 29 e 31 graus, quase plana. A temperatura ambiente oscila entre 21 e 36 graus, com dois ciclos diários bem marcados. A área entre as duas curvas é o esforço de termorregulação."></canvas>
+        <div class="reading-foot">
+          <span>Amostragem a cada 5 minutos</span>
+          <span>Faixa desenhada: 18–38 °C</span>
+          <span>A área sombreada é o diferencial térmico</span>
+        </div>
+      </div>
+      <div class="readout">
+        <div class="interior"><div class="k">Cria</div><div class="v" id="v-in">—</div><div class="n">amplitude de 2,1 °C em 48 h</div></div>
+        <div class="exterior"><div class="k">Ambiente</div><div class="v" id="v-out">—</div><div class="n">amplitude de 15,4 °C em 48 h</div></div>
+        <div><div class="k">Diferencial máximo</div><div class="v" id="v-delta">—</div><div class="n">pico do esforço, 14h40</div></div>
+        <div><div class="k">Completude</div><div class="v">98,7<small> %</small></div><div class="n">572 de 576 mensagens</div></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap narrow rise">
+    <p class="eyebrow">O problema</p>
+    <h2>Entre uma inspeção e outra, o criador não sabe nada.</h2>
+    <p>
+      Cada colônia é aberta poucas vezes ao ano. A inspeção é invasiva, demorada e
+      produz uma medição pontual — que não revela dinâmica nenhuma. Pior: abrir a caixa
+      altera o microclima interno, de modo que o próprio ato de medir destrói o que
+      estava sendo medido.
+    </p>
+    <p>
+      O resultado é que enxameação, colapso e infestação só são percebidos quando já são
+      irreversíveis. E, sem série temporal, não há como responder à pergunta que a
+      pesquisa precisa responder: <em>como os eventos climáticos extremos afetam a
+      produção e o crescimento das colônias nativas do semiárido?</em>
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap rise">
+    <p class="eyebrow">O sistema</p>
+    <h2 class="narrow">Três projetos, uma arquitetura.</h2>
+    <p class="lede narrow" style="margin-bottom:clamp(36px,4vw,52px)">
+      As três propostas submetidas a editais diferentes descrevem fatias complementares
+      de um mesmo instrumento. O que as costura é um contrato de telemetria acordado
+      antes de qualquer linha de código — e é ele que permite às equipes trabalharem em
+      paralelo sem colidir.
+    </p>
+    <div class="cols">
+      <div class="rule-top">
+        <span class="n">PIBITI</span>
+        <h3>MelipoSense</h3>
+        <p>
+          O nó sensor. ESP32-C6, dois SHT30 para temperatura e umidade dentro e fora,
+          célula de carga de 50 kg, alimentação solar. Instala-se na caixa racional sem
+          alterar o manejo.
+        </p>
+      </div>
+      <div class="rule-top">
+        <span class="n">PIBIC</span>
+        <h3>MelipoNet</h3>
+        <p>
+          A plataforma web. Recebe, valida e guarda as séries; mostra cada colmeia em
+          tempo real, dispara alertas de anomalia e cruza os dados com o clima do INMET.
+        </p>
+      </div>
+      <div class="rule-top">
+        <span class="n">FAPESQ</span>
+        <h3>Curadoria</h3>
+        <p>
+          O protocolo. Onde cada sensor vai, com que frequência medir, como quantificar
+          lacunas e deriva — e como transformar dado bruto de campo em base curada,
+          reutilizável por outro grupo.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap rise">
+    <p class="eyebrow">O que já existe</p>
+    <h2 class="narrow">Não é uma proposta. É código rodando.</h2>
+    <p class="lede narrow" style="margin-bottom:clamp(36px,4vw,52px)">
+      A camada de software está construída e verificada. O simulador emite exatamente o
+      mesmo formato que o firmware, então a plataforma inteira já foi exercitada pelo
+      caminho real — sem depender da entrega do hardware.
+    </p>
+
+    <div class="proof">
+      <div>
+        <div class="v">100</div>
+        <div class="k">testes automatizados</div>
+        <div class="n">64 na plataforma, 36 no firmware — estes rodando no PC, sem placa</div>
+      </div>
+      <div>
+        <div class="v">2</div>
+        <div class="k">implementações independentes</div>
+        <div class="n">o codec em C++ e o ingestor em Python, verificados contra os mesmos vetores</div>
+      </div>
+      <div>
+        <div class="v">34<small style="font-size:19px">%</small></div>
+        <div class="k">da flash do ESP32-C6</div>
+        <div class="n">o firmware compila para o alvo com folga para bioacústica e LoRa</div>
+      </div>
+      <div>
+        <div class="v">4</div>
+        <div class="k">bugs pegos antes do campo</div>
+        <div class="n">entre eles, uma calibração ausente que produziria pesos inventados</div>
+      </div>
+    </div>
+
+    <div style="margin-top:clamp(40px,5vw,64px)">
+      <blockquote>
+        Um nó com firmware errado já está lacrado dentro de uma colmeia a 130 km. Uma
+        série corrompida só se revela quando alguém vai escrever o artigo.
+        <cite>O princípio que organiza o projeto: empurrar a descoberta do erro para antes do commit.</cite>
+      </blockquote>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap rise">
+    <p class="eyebrow">O caminho</p>
+    <h2 class="narrow">Sete fases, na ordem em que reduzem risco.</h2>
+    <p class="lede narrow" style="margin-bottom:clamp(32px,4vw,44px)">
+      O contrato vem primeiro porque destrava as duas equipes. O simulador vem em
+      seguida porque desacopla o cronograma de software da entrega do hardware. Rádio,
+      energia e invólucro — a parte cara e arriscada — ficam para o fim, quando sensores
+      e plataforma já estiverem validados.
+    </p>
+    <div class="ledger">
+      <div class="ledger-row"><span class="phase">Fase 0</span><span class="what">Contrato de telemetria<small>schema, regras canônicas, vetores dourados</small></span><span class="state pronto">concluída</span></div>
+      <div class="ledger-row"><span class="phase">Fase 1</span><span class="what">Fatia vertical<small>simulador → broker → banco → gráfico ao vivo</small></span><span class="state pronto">concluída</span></div>
+      <div class="ledger-row"><span class="phase">Fase 2</span><span class="what">Domínio e acesso<small>perfis, isolamento por organização, histórico nó↔colmeia</small></span><span class="state pronto">concluída</span></div>
+      <div class="ledger-row"><span class="phase">Fase 3</span><span class="what">Firmware do protótipo<small>SHT30, HX711, WiFi, MQTT, buffer local</small></span><span class="state pronto">concluída</span></div>
+      <div class="ledger-row"><span class="phase">Fase 4</span><span class="what">Alertas, relatórios e clima<small>anomalias, exportação, integração INMET</small></span><span class="state andamento">próxima</span></div>
+      <div class="ledger-row"><span class="phase">Fase 5</span><span class="what">Expansão do nó<small>bioacústica, LoRa, gateway, solar, invólucro, lote de 20</small></span><span class="state">planejada</span></div>
+      <div class="ledger-row"><span class="phase">Fase 6</span><span class="what">Qualidade e curadoria<small>indicadores, base curada, protocolo documentado</small></span><span class="state">planejada</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap rise">
+    <p class="eyebrow">A parceria</p>
+    <h2 class="narrow">O que a plataforma oferece à pesquisa do laboratório.</h2>
+    <div class="ask" style="margin-top:clamp(32px,4vw,44px)">
+      <div>
+        <h3 style="margin-bottom:16px">O que entregamos</h3>
+        <ul>
+          <li>Série contínua de microclima para cada colmeia instrumentada, com metadados de instalação</li>
+          <li>Base curada e documentada, com indicadores objetivos de completude e ruído</li>
+          <li>Exportação em CSV e Parquet, pronta para cruzar com os dados da microbiota</li>
+          <li>Painel de acompanhamento para a equipe e para o meliponicultor parceiro</li>
+          <li>Código aberto, versionado e testado — sem dependência de fornecedor</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom:16px">O que precisamos</h3>
+        <ul>
+          <li>Acesso às colmeias dos municípios contemplados para a instalação dos nós</li>
+          <li>Definição conjunta das faixas de normalidade por espécie</li>
+          <li>Os nós sensores previstos no projeto FAPESQ, conforme forem sendo montados</li>
+          <li>Uma janela de campo para validar o protocolo de instrumentação</li>
+        </ul>
+      </div>
+    </div>
+    <p class="small narrow" style="margin-top:clamp(32px,4vw,44px)">
+      As espécies-alvo são <em>Melipona scutellaris</em>, <em>Melipona subnitida</em> e
+      <em>Scaptotrigona depilis</em>, nos meliponários de João Pessoa, Cabedelo, Campina
+      Grande e Puxinanã.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>MelipoNet · IFPB Campus João Pessoa</span>
+    <span>Parceria LAHMP/UFPB — FAPESQ nº 72/2025</span>
+    <span class="repo">github.com/lacouth/meliponet</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const canvas = document.getElementById("leitura");
+  const ctx = canvas.getContext("2d");
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n) => css.getPropertyValue(n).trim();
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // 48 h a cada 5 min. As formas seguem o mesmo modelo do simulador do projeto:
+  // a cria termorregulada com acoplamento parcial ao ambiente, e o ambiente com o
+  // ciclo diário largo do semiárido.
+  const STEP_MIN = 5, HOURS = 48;
+  const N = (HOURS * 60) / STEP_MIN;
+  const inside = [], outside = [];
+  let seed = 20260901;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff - 0.5;
+
+  for (let i = 0; i < N; i++) {
+    const hour = (i * STEP_MIN) / 60;
+    const out = 28.4 + 7.4 * Math.sin(((hour - 9) * Math.PI) / 12) + rnd() * 0.5;
+    // Acoplamento assimétrico: a colônia perde mais para o calor do que para o frio.
+    const target = 30.0;
+    const coupling = out < target ? 0.11 : 0.2;
+    inside.push(target + coupling * (out - target) + rnd() * 0.22);
+    outside.push(out);
+  }
+
+  const LO = 18, HI = 38;
+  const PAD = { l: 40, r: 14, t: 14, b: 26 };
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = Math.max(230, Math.min(340, w * 0.30));
+    canvas.width = w * ratio;
+    canvas.height = h * ratio;
+    canvas.style.height = h + "px";
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    return { w, h };
+  }
+
+  function draw(progress) {
+    const { w, h } = resize();
+    const plotW = w - PAD.l - PAD.r;
+    const plotH = h - PAD.t - PAD.b;
+    const x = (i) => PAD.l + (i / (N - 1)) * plotW;
+    const y = (v) => PAD.t + (1 - (v - LO) / (HI - LO)) * plotH;
+    const upto = Math.max(2, Math.floor(N * progress));
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Grade e rótulos do eixo. Recessivos: a leitura é o dado, não a régua.
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "right";
+    for (let v = 20; v <= 36; v += 4) {
+      ctx.strokeStyle = tok("--line-soft");
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(PAD.l, y(v) + 0.5);
+      ctx.lineTo(w - PAD.r, y(v) + 0.5);
+      ctx.stroke();
+      ctx.fillStyle = tok("--faint");
+      ctx.fillText(v, PAD.l - 9, y(v));
+    }
+
+    // A linha dos 30 °C: o ponto de ajuste que a colônia persegue.
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = tok("--line");
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, y(30) + 0.5);
+    ctx.lineTo(w - PAD.r, y(30) + 0.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Marcas das horas.
+    ctx.textAlign = "center";
+    ctx.fillStyle = tok("--faint");
+    for (let hh = 0; hh <= HOURS; hh += 12) {
+      const i = Math.min(N - 1, (hh * 60) / STEP_MIN);
+      ctx.fillText(hh === 0 ? "0h" : hh + "h", x(i), h - PAD.b + 13);
+    }
+
+    // O diferencial: a área entre as duas curvas. É o esforço da colônia, e é o
+    // motivo de o gráfico existir.
+    ctx.beginPath();
+    for (let i = 0; i < upto; i++) ctx.lineTo(x(i), y(inside[i]));
+    for (let i = upto - 1; i >= 0; i--) ctx.lineTo(x(i), y(outside[i]));
+    ctx.closePath();
+    ctx.fillStyle = "rgba(198, 129, 40, 0.11)";
+    ctx.fill();
+
+    const trace = (data, color) => {
+      ctx.beginPath();
+      for (let i = 0; i < upto; i++) {
+        const px = x(i), py = y(data[i]);
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.stroke();
+    };
+    trace(outside, tok("--exterior"));
+    trace(inside, tok("--interior"));
+
+    // Extremidade destacada: onde a leitura está agora.
+    const endpoint = (data, color) => {
+      const i = upto - 1;
+      ctx.beginPath();
+      ctx.arc(x(i), y(data[i]), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = tok("--ground-deep");
+      ctx.stroke();
+    };
+    endpoint(outside, tok("--exterior"));
+    endpoint(inside, tok("--interior"));
+  }
+
+  // Números do readout, calculados dos mesmos dados que o gráfico desenha.
+  const last = N - 1;
+  let maxDelta = 0;
+  for (let i = 0; i < N; i++) maxDelta = Math.max(maxDelta, outside[i] - inside[i]);
+  const fmt = (v) => v.toFixed(1).replace(".", ",");
+  document.getElementById("v-in").innerHTML = fmt(inside[last]) + '<small> °C</small>';
+  document.getElementById("v-out").innerHTML = fmt(outside[last]) + '<small> °C</small>';
+  document.getElementById("v-delta").innerHTML = "−" + fmt(maxDelta) + '<small> °C</small>';
+
+  if (reduced) {
+    draw(1);
+  } else {
+    const start = performance.now();
+    const DURATION = 1500;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / DURATION);
+      // Desacelera no fim: a leitura "alcança" o presente.
+      draw(1 - Math.pow(1 - t, 3));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => draw(1), 120);
+  });
+
+  // Revelação por rolagem, discreta: uma seção por vez, sem efeito acumulado.
+  if (!reduced && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && (e.target.classList.add("in"), io.unobserve(e.target))),
+      { rootMargin: "0px 0px -12% 0px" }
+    );
+    document.querySelectorAll(".rise").forEach((el) => io.observe(el));
+  } else {
+    document.querySelectorAll(".rise").forEach((el) => el.classList.add("in"));
+  }
+})();
+</script>
