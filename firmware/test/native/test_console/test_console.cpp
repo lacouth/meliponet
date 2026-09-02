@@ -12,6 +12,7 @@
 using meliponet::Arg;
 using meliponet::copyArg;
 using meliponet::fits;
+using meliponet::parseCount;
 using meliponet::parsePort;
 using meliponet::splitArgs;
 
@@ -126,6 +127,36 @@ void test_porta_invalida_nao_altera_a_atual(void) {
   }
 }
 
+void test_contagem_valida(void) {
+  Arg args[2];
+  uint32_t n = 0;
+
+  splitArgs("ler 1", args, 2);
+  TEST_ASSERT_TRUE(parseCount(args[1], 600, n));
+  TEST_ASSERT_EQUAL_UINT32(1, n);
+
+  splitArgs("ler 600", args, 2);
+  TEST_ASSERT_TRUE(parseCount(args[1], 600, n));
+  TEST_ASSERT_EQUAL_UINT32(600, n);
+}
+
+void test_contagem_invalida_preserva_o_valor(void) {
+  Arg args[2];
+  uint32_t n = 7;
+
+  // Zero, acima do teto, nao numerico, e um numero longo o bastante para dar a volta
+  // num inteiro de 32 bits se a checagem so acontecesse no fim.
+  const char *recusadas[] = {"ler 0", "ler 601", "ler dez", "ler 4294967297", "ler 99999999999999"};
+  for (const char *linha : recusadas) {
+    splitArgs(linha, args, 2);
+    TEST_ASSERT_FALSE(parseCount(args[1], 600, n));
+    TEST_ASSERT_EQUAL_UINT32(7, n);
+  }
+
+  // `ler` sozinho: nao ha argumento para converter, e o padrao de quem chamou vale.
+  TEST_ASSERT_EQUAL_size_t(1, splitArgs("ler", args, 2));
+}
+
 }  // namespace
 
 void setUp(void) {}
@@ -142,5 +173,7 @@ int main(int, char **) {
   RUN_TEST(test_copia_no_limite_exato);
   RUN_TEST(test_porta_valida);
   RUN_TEST(test_porta_invalida_nao_altera_a_atual);
+  RUN_TEST(test_contagem_valida);
+  RUN_TEST(test_contagem_invalida_preserva_o_valor);
   return UNITY_END();
 }

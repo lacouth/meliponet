@@ -153,6 +153,10 @@ saem omitidas com a flag de falha por dias, e o `estado` continua dizendo `ausen
 o sensor funcionando. O inverso também vale: um sensor que se solta depois do boot
 continua marcado como presente.
 
+*Contorno hoje:* o comando serial `sondar` refaz a detecção sem reiniciar. Resolve na
+bancada, onde alguém está na frente da placa; não resolve em campo, que é onde o defeito
+importa.
+
 *Como corrigir:* tentar reconectar periodicamente — a cada N amostras, ou sempre que uma
 leitura falhar —, em vez de confiar num teste feito uma vez. A lógica de quando
 re-sondar é pura e cabe em `MelipoCore`, com teste nativo.

@@ -49,6 +49,11 @@ inline bool fits(const Arg &arg, size_t capacity) { return arg.length + 1 <= cap
 // autenticar para sempre sem que nada no serial explique o motivo.
 bool copyArg(const Arg &arg, char *dest, size_t capacity);
 
+// Converte `arg` num inteiro em 1..`maximum`. Devolve falso para vazio, texto nao
+// numerico, zero ou acima do teto -- e nesse caso **nao altera `out`**, para que um
+// comando recusado nunca troque o valor que ja estava valendo.
+bool parseCount(const Arg &arg, uint32_t maximum, uint32_t &out);
+
 // Converte `arg` numa porta TCP valida. Devolve falso para vazio, texto nao numerico,
 // zero ou acima de 65535.
 bool parsePort(const Arg &arg, uint16_t &port);

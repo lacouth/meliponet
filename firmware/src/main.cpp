@@ -138,6 +138,85 @@ void sample() {
   publishOrSpool(payload, length);
 }
 
+// Quantas leituras seguidas o comando `ler` aceita repetir. O teto existe para que um
+// numero digitado errado nao prenda o console por horas.
+constexpr uint32_t kMaxBenchReadings = 600;
+
+// Imprime uma leitura em unidade fisica e, ao lado, o inteiro escalado que iria para a
+// mensagem.
+//
+// Mostrar o par lado a lado e o ponto do comando: e na bancada que a regra central do
+// contrato -- metrica nenhuma trafega como float -- deixa de ser um paragrafo de
+// documento e vira uma coisa que se ve. 30,12 C vira 3012, e nao "30.12".
+void printReading(const char *label, const meliponet::Reading &reading, const char *unit,
+                  meliponet::Scale scale, double minimum, double maximum) {
+  if (!reading.valid) {
+    Serial.printf("  %-9s ausente\n", label);
+    return;
+  }
+
+  const meliponet::Scaled scaled = meliponet::scaleInRange(reading.value, scale, minimum, maximum);
+  if (!scaled.ok) {
+    // Fora da faixa fisica do sensor: a mensagem real omitiria o campo e ligaria a
+    // flag. Dizer isso aqui evita a conclusao errada de que o valor seria enviado.
+    Serial.printf("  %-9s %.3f %s  FORA DA FAIXA -- seria omitida da mensagem\n", label,
+                  reading.value, unit);
+    return;
+  }
+
+  Serial.printf("  %-9s %.3f %s  (escalado: %ld)\n", label, reading.value, unit,
+                static_cast<long>(scaled.value));
+}
+
+// Leitura imediata dos sensores, para a bancada.
+//
+// Nao toca em WiFi, MQTT, relogio nem `seq`, de proposito: o objetivo e verificar
+// sensores, ligacao e calibracao numa mesa, com a placa alimentada so pelo cabo USB.
+// Consumir `seq` aqui seria pior do que inutil -- cada teste de bancada abriria uma
+// lacuna permanente na serie do no depois de instalado, e a lacuna e exatamente o
+// indicador que o projeto se compromete a minimizar.
+void benchRead(uint32_t repetitions) {
+  for (uint32_t i = 1; i <= repetitions; ++i) {
+    const meliponet::ShtReadings sht = g_sht.read();
+
+    Serial.printf("[leitura %lu/%lu]\n", static_cast<unsigned long>(i),
+                  static_cast<unsigned long>(repetitions));
+    printReading("temp int", sht.temp_in, "C", meliponet::Scale::Temperature,
+                 meliponet::kSht30MinTempC, meliponet::kSht30MaxTempC);
+    printReading("ur int", sht.rh_in, "%", meliponet::Scale::Humidity, meliponet::kSht30MinRhPct,
+                 meliponet::kSht30MaxRhPct);
+    printReading("temp ext", sht.temp_out, "C", meliponet::Scale::Temperature,
+                 meliponet::kSht30MinTempC, meliponet::kSht30MaxTempC);
+    printReading("ur ext", sht.rh_out, "%", meliponet::Scale::Humidity, meliponet::kSht30MinRhPct,
+                 meliponet::kSht30MaxRhPct);
+
+    // A contagem bruta e lida uma vez e reaproveitada na conversao. Chamar `read()`
+    // aqui repetiria as dez leituras mediadas do HX711 -- um segundo inteiro a mais
+    // por iteracao, para chegar ao mesmo numero.
+    int32_t raw = 0;
+    if (g_load_cell.readRaw(raw)) {
+      // A contagem bruta aparece mesmo sem calibracao gravada, e e isso que permite
+      // conferir a ligacao da celula antes de calibrar: apertar a plataforma com a mao
+      // move a contagem.
+      Serial.printf("  %-9s %ld contagens\n", "hx711", static_cast<long>(raw));
+      const meliponet::Weight weight = meliponet::toKilograms(raw, g_load_cell.calibration());
+      printReading("peso", weight.ok ? meliponet::Reading::ok(weight.kilograms)
+                                     : meliponet::Reading::fault(),
+                   "kg", meliponet::Scale::Weight, meliponet::kMinWeightKg,
+                   meliponet::kMaxWeightKg);
+    } else {
+      Serial.printf("  %-9s sem resposta -- confira alimentacao e os fios DT/SCK\n", "hx711");
+    }
+
+    printReading("bateria", readBattery(), "V", meliponet::Scale::Voltage,
+                 meliponet::kMinVoltageV, meliponet::kMaxVoltageV);
+
+    if (i < repetitions) {
+      delay(1000);
+    }
+  }
+}
+
 // Console serial de preparacao do dispositivo. E por aqui que as credenciais entram na
 // NVS, em vez de irem no codigo-fonte.
 void handleSerial() {
@@ -256,6 +335,29 @@ void handleSerial() {
     meliponet::saveConfig(g_config);
     Serial.printf("escala = %.2f contagens/kg\n", cal.counts_per_kg);
 
+  } else if (command.equals("ler")) {
+    // Repeticoes opcionais: `ler 30` acompanha meia hora de deriva, ou mostra o peso
+    // mudando enquanto se poe massa na plataforma. Sem argumento, uma leitura so.
+    uint32_t repetitions = 1;
+    if (count >= 2 && !meliponet::parseCount(args[1], kMaxBenchReadings, repetitions)) {
+      Serial.printf("uso: ler [n]   (1 a %lu)\n", static_cast<unsigned long>(kMaxBenchReadings));
+      return;
+    }
+    benchRead(repetitions);
+
+  } else if (command.equals("sondar")) {
+    // Os sensores sao detectados uma vez, no boot. Na bancada isso atrapalha: ligar um
+    // SHT30 depois de a placa subir deixa o sensor marcado como ausente ate alguem
+    // reiniciar. Este comando refaz a deteccao sem reiniciar.
+    const bool sht_ok = g_sht.begin(kI2cSda, kI2cScl);
+    const bool cell_ok = g_load_cell.begin(kHx711Data, kHx711Clock, g_config.calibration);
+    Serial.printf("sht int   %s\n", g_sht.insidePresent() ? "ok" : "ausente");
+    Serial.printf("sht ext   %s\n", g_sht.outsidePresent() ? "ok" : "ausente");
+    Serial.printf("hx711     %s\n", cell_ok ? "ok" : "ausente");
+    if (!sht_ok && !cell_ok) {
+      Serial.println("nenhum sensor respondeu: confira alimentacao, fios e enderecos I2C");
+    }
+
   } else if (command.equals("estado")) {
     Serial.printf("no        %s\n", meliponet::nodeId());
     Serial.printf("wifi      %s\n", g_wifi.connected() ? "conectado" : "desconectado");
@@ -278,6 +380,8 @@ void handleSerial() {
     Serial.println("mqtt <usuario> <senha>       credenciais do broker (sem argumentos, apaga)");
     Serial.println("tara                         zera a celula com a colmeia vazia");
     Serial.println("calibrar <kg>                calibra com uma massa-padrao conhecida");
+    Serial.println("ler [n]                      le os sensores agora, sem publicar nada");
+    Serial.println("sondar                       redetecta os sensores, sem reiniciar");
     Serial.println("estado                       sensores, conexoes, calibracao e spool");
   }
 }
@@ -319,6 +423,9 @@ void setup() {
     // Sem credenciais nao ha o que tentar. Ficar em laco de reconexao gastaria bateria
     // sem chance de sucesso; melhor esperar a configuracao pelo serial.
     Serial.println("[config] sem wifi ou broker; use `wifi` e `broker`. `ajuda` lista tudo.");
+    // Nao publicar nao impede testar: `ler` funciona sem rede nenhuma, e e assim que a
+    // bancada verifica sensores e calibracao antes de o no ter para onde enviar.
+    Serial.println("[config] para conferir os sensores agora, use `ler`.");
     return;
   }
 

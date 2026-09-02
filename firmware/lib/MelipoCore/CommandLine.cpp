@@ -59,7 +59,7 @@ bool copyArg(const Arg &arg, char *dest, size_t capacity) {
   return true;
 }
 
-bool parsePort(const Arg &arg, uint16_t &port) {
+bool parseCount(const Arg &arg, uint32_t maximum, uint32_t &out) {
   if (arg.empty()) {
     return false;
   }
@@ -71,16 +71,27 @@ bool parsePort(const Arg &arg, uint16_t &port) {
       return false;
     }
     value = value * 10 + static_cast<uint32_t>(digit - '0');
-    if (value > 65535) {
+    // Compara a cada digito, e nao so no fim: assim uma entrada absurdamente longa e
+    // recusada em vez de dar a volta no inteiro e virar um numero pequeno e plausivel.
+    if (value > maximum) {
       return false;
     }
   }
 
-  // Porta 0 e reservada: aceita-la gravaria uma configuracao que nunca conecta.
   if (value == 0) {
     return false;
   }
 
+  out = value;
+  return true;
+}
+
+bool parsePort(const Arg &arg, uint16_t &port) {
+  uint32_t value = 0;
+  // Porta 0 e reservada, e o teto de 65535 sai do proprio protocolo.
+  if (!parseCount(arg, 65535, value)) {
+    return false;
+  }
   port = static_cast<uint16_t>(value);
   return true;
 }

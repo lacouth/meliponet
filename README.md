@@ -122,7 +122,10 @@ Na placa:
 pio run -e esp32c6 -d firmware -t upload -t monitor
 ```
 
-Credenciais **não** vão no código: são gravadas na NVS pelo console serial.
+Credenciais **não** vão no código: são gravadas na NVS pelo console serial. Para
+verificar a eletrônica na bancada não é preciso nada disso — `ler` funciona sem WiFi,
+sem broker e sem plataforma, e mostra cada grandeza em unidade física e no inteiro
+escalado que iria para a mensagem.
 
 ```
 wifi <ssid> <senha>     grava as credenciais de WiFi
@@ -130,6 +133,8 @@ broker <host> [porta]   grava o endereço do broker MQTT
 mqtt <usuario> <senha>  grava as credenciais do broker (sem argumentos, apaga)
 tara                    tara a célula com a colmeia vazia
 calibrar <kg>           calibra com uma massa-padrão conhecida
+ler [n]                 lê os sensores agora, sem rede e sem publicar
+sondar                  redetecta os sensores, sem reiniciar
 estado                  mostra sensores, conexões, calibração e spool
 ```
 

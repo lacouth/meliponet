@@ -344,7 +344,20 @@ pio run -e esp32c6 -d firmware -t upload -t monitor
 MelipoSense A4C1380F
 ```
 
-**4. Provisione pelo console serial.** Cada comando é uma linha; os dois primeiros pedem
+**4. Confira os sensores antes de qualquer rede.** Ainda na bancada, sem WiFi nem
+broker configurados:
+
+```
+ler          uma leitura agora
+sondar       redetecta os sensores, se você ligou algum depois do boot
+```
+
+Cada grandeza sai em unidade física e no inteiro escalado que iria para a mensagem, e um
+sensor que não respondeu sai como `ausente` — nunca como zero. Se a eletrônica estiver
+errada, é aqui que se descobre, e não depois de o gráfico não aparecer. Detalhes em
+[O firmware](04-o-firmware.md).
+
+**5. Provisione pelo console serial.** Cada comando é uma linha; os dois primeiros pedem
 reinício depois:
 
 ```
@@ -359,7 +372,7 @@ obrigatório fora de um broker de desenvolvimento. `mqtt` sem argumentos apaga a
 credenciais gravadas, que é como se volta a um broker com `allow_anonymous true`. A senha
 nunca é ecoada de volta no serial.
 
-**5. Calibre a célula de carga**, com a colmeia montada mas vazia:
+**6. Calibre a célula de carga**, com a colmeia montada mas vazia:
 
 ```
 tara                    zera com a caixa vazia
@@ -369,7 +382,7 @@ calibrar 5.0            com uma massa-padrão conhecida em cima
 Verifique em **vários pontos da faixa**, não só no da calibração: um ponto só ajusta a
 escala e esconde a não-linearidade da célula.
 
-**6. Confira tudo de uma vez:**
+**7. Confira tudo de uma vez:**
 
 ```
 estado
@@ -390,18 +403,18 @@ spool     0 pendentes, 0 descartadas
 Se o relógio estiver `NAO sincronizado`, o nó não vai amostrar — e está certo em não
 amostrar.
 
-**7. Veja o JSON cru no broker, antes de olhar o banco.** Isto separa "o nó não publica"
+**8. Veja o JSON cru no broker, antes de olhar o banco.** Isto separa "o nó não publica"
 de "a plataforma não grava", que são problemas em lugares diferentes:
 
 ```bash
 mosquitto_sub -t 'meliponet/v1/#' -v
 ```
 
-**8. Cadastre e vincule na web.** Meliponário → colmeia → `/gerenciar/` → "Vincular a uma
+**9. Cadastre e vincule na web.** Meliponário → colmeia → `/gerenciar/` → "Vincular a uma
 colmeia" no nó que apareceu como pendente. Registre o **posicionamento do sensor** no
 campo de observações: sem isso, comparar duas colmeias meses depois vira adivinhação.
 
-**9. Abra `/colmeia/<id>`.** O primeiro ponto aparece em até cinco minutos, e o painel se
+**10. Abra `/colmeia/<id>`.** O primeiro ponto aparece em até cinco minutos, e o painel se
 atualiza sozinho a cada minuto.
 
 ## 8. Lacunas conhecidas hoje

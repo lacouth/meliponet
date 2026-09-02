@@ -167,13 +167,67 @@ pio run -e esp32c6 -d firmware
 # 3. grava e abre o monitor serial
 pio run -e esp32c6 -d firmware -t upload -t monitor
 
-# 4. veja o JSON cru chegando ao broker, antes de olhar o banco
+# 4. no monitor serial: os sensores estão lendo? (não precisa de rede nenhuma)
+ler
+
+# 5. veja o JSON cru chegando ao broker, antes de olhar o banco
 mosquitto_sub -t 'meliponet/v1/#' -v
 ```
 
-O passo 4 é o mais útil na depuração: ele separa "o nó está publicando errado" de "a
-plataforma está lendo errado". Sem ele, você fica olhando um gráfico vazio sem saber de
-que lado está o problema.
+Os passos 4 e 5 existem pelo mesmo motivo: **separar as camadas antes de depurar**. O 4
+responde "os sensores estão lendo?" sem envolver WiFi, broker nem plataforma. O 5
+responde "o nó está publicando?" sem envolver o banco nem o dashboard. Sem eles, você
+fica olhando um gráfico vazio sem saber de que lado está o problema — e as causas
+possíveis vão de um fio solto a um filtro errado numa consulta SQL.
+
+## Testar os sensores na bancada
+
+Você não precisa de rede, broker, nem plataforma para verificar a eletrônica. Com a
+placa alimentada só pelo cabo USB:
+
+```
+ler          uma leitura agora
+ler 30       trinta leituras, uma por segundo
+sondar       redetecta os sensores, sem reiniciar
+```
+
+A saída mostra cada grandeza em unidade física **e** no inteiro escalado que iria para a
+mensagem:
+
+```
+[leitura 1/1]
+  temp int  30.115 C  (escalado: 3012)
+  ur int    68.402 %  (escalado: 6840)
+  temp ext  ausente
+  ur ext    ausente
+  hx711     118472 contagens
+  peso      12.483 kg  (escalado: 12483)
+  bateria   3.921 V  (escalado: 392)
+```
+
+Três coisas para reparar nessa saída:
+
+**O par unidade/escalado é a regra do contrato acontecendo.** 30,115 °C vira `3012`, não
+`30.115`. É a única passagem de ponto flutuante para inteiro no firmware, e aqui ela fica
+visível. Ver o arredondamento com os próprios olhos ensina mais do que
+[o documento do contrato](02-o-contrato.md).
+
+**`ausente` não é zero.** O SHT30 externo desligado aparece como `ausente`, e na mensagem
+real o campo seria **omitido** com uma flag ligada — nunca enviado como `0`. Desligue um
+sensor de propósito e confira: é a distinção mais importante do projeto inteiro, e custa
+dez segundos de bancada para entendê-la.
+
+**A contagem bruta do HX711 aparece mesmo sem calibração.** É o que permite conferir a
+ligação da célula antes de calibrar: aperte a plataforma com a mão e veja a contagem se
+mover. Se ela não se move, o problema é elétrico, e nenhuma calibração vai consertar.
+
+`ler` não toca em WiFi, MQTT, relógio nem no contador `seq` — testar na bancada não pode
+abrir lacuna na série do nó depois de instalado.
+
+O `sondar` existe porque os sensores são detectados **uma vez, no boot**. Se você ligar
+um SHT30 com a placa já rodando, ele fica marcado como ausente até alguém reiniciar. Em
+campo isso é um defeito ([D-05](../defeitos-conhecidos.md#d-05)); na bancada, onde se
+liga e desliga sensor o tempo todo, `sondar` resolve na hora.
 
 ## Calibração e verificação
 
