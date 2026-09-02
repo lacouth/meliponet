@@ -3,6 +3,11 @@
 Para quem vai mexer em `firmware/`. Esta é a parte mais próxima da sua formação — o que
 provavelmente é novo aqui não é o C++ nem o I²C, é a **forma de organizar e testar**.
 
+> **Nunca usou o PlatformIO?** Faça antes a prática de
+> [Primeiros passos com o PlatformIO](09-primeiros-passos-com-o-platformio.md): meia hora,
+> criando um projeto do zero. Este documento aqui é a referência do firmware do projeto e
+> assume que você já sabe operar a ferramenta.
+
 ## PlatformIO
 
 Usamos PlatformIO em vez da IDE do Arduino. A diferença que importa: a configuração do
