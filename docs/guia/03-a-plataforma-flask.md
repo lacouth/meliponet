@@ -221,6 +221,21 @@ hives = session.scalars(select(Hive))
 E repare que colmeia alheia responde **404, não 403**. Um 403 confirmaria que aquele id
 existe, e enumerar ids é justamente o ataque que a rota impede.
 
+**O que aconteceu quando alguém contornou o helper.** Duas rotas de vínculo comparavam
+`node.organization_id` com o do usuário diretamente, em vez de perguntar ao escopo. A
+comparação estava certa para o meliponicultor e nunca acompanhou os perfis que veem
+tudo: o administrador via na tela os nós de todas as organizações, com os botões
+desenhados, e levava **403 ao clicar**. Junto ia um defeito mais silencioso — o vínculo
+carimbava no nó a organização de quem estava logado, e um admin que adotasse um nó para
+a colmeia de outra organização levava o nó consigo, deixando o dono legítimo sem
+enxergar o próprio nó. É a mesma lição do arquivo, do outro lado: **a regra concentrada
+só protege quem a chama**. Hoje as duas rotas usam `can_manage_node`, e o nó recebe a
+organização da colmeia.
+
+E há uma segunda lição, sobre teste: nenhum teste exercitava o perfil `admin` — as
+fixtures nasciam meliponicultor. Um conjunto de testes que nunca constrói um dos casos
+não cobre aquele caso, por mais linhas que tenha.
+
 ## `ingest/` — por que é um processo separado
 
 `ingest/__main__.py` roda como um programa próprio, não dentro do servidor web. Ele:
