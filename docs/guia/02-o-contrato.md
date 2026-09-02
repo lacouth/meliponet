@@ -169,4 +169,4 @@ Só mude para `v2` em alteração incompatível. E aí o ingestor precisa aceita
 versões durante a transição — porque há nós lacrados dentro de colmeias que ninguém vai
 reprogramar no mesmo dia.
 
-→ Próximo: [Engenharia de software](05-engenharia-de-software.md)
+→ Próximo: [Do nó ao gráfico](08-do-no-ao-grafico.md)

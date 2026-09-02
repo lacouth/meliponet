@@ -44,7 +44,7 @@ localizando o ponto certo nele.
 1. SENSOR            SHT30 (I²C) e HX711 + célula de carga
                      ↓  o firmware lê e converte em inteiros escalados
 2. FIRMWARE          ESP32-C6 monta a mensagem no formato do contrato
-                     ↓  WiFi, MQTT, QoS 1
+                     ↓  WiFi, MQTT
 3. BROKER            Mosquitto — a "central telefônica" das mensagens
                      ↓
 4. INGESTOR          valida contra o contrato, resolve a colmeia, grava
@@ -72,6 +72,9 @@ recompensa de ter um contrato.
 **A rede vai cair.** Não "pode cair": vai. O meio rural tem conectividade intermitente,
 e o sistema é projetado assumindo isso — o nó guarda as mensagens em memória (o
 *spool*) e as reenvia quando a rede volta.
+
+Este caminho é percorrido passo a passo, com os comandos e as telas reais, em
+[Do nó ao gráfico](08-do-no-ao-grafico.md).
 
 ## O mapa do repositório
 
@@ -123,8 +126,8 @@ imperfeitos: em campo, os dados serão imperfeitos.
 | 0 | Contrato e fundação | ✅ pronta |
 | 1 | Fatia vertical: simulador → banco → dashboard | ✅ pronta |
 | 2 | Usuários, perfis, vínculo histórico nó↔colmeia | ✅ pronta |
-| 3 | **Firmware do protótipo**: SHT30 + HX711 + WiFi/MQTT | ⬜ próxima |
-| 4 | Dashboard completo, alertas, relatórios, INMET | ⬜ |
+| 3 | **Firmware do protótipo**: SHT30 + HX711 + WiFi/MQTT | ✅ pronta, falta verificar em hardware |
+| 4 | Dashboard completo, alertas, relatórios, INMET | ⬜ próxima |
 | 5 | Bioacústica, LoRa, gateway, energia solar, invólucro | ⬜ |
 | 6 | Qualidade e curadoria das séries | ⬜ |
 
