@@ -7,8 +7,6 @@
 namespace meliponet {
 namespace {
 
-constexpr uint32_t kMinBackoffMs = 1000;
-constexpr uint32_t kMaxBackoffMs = 60000;
 
 // O contrato limita a mensagem a bem menos que isso; o buffer do PubSubClient tem 256
 // bytes por padrao, pequeno demais para a telemetria completa.
@@ -19,8 +17,8 @@ PubSubClient g_mqtt(g_wifi);
 
 }  // namespace
 
-bool MqttPublisher::begin(const char *node_id, const char *host, uint16_t port,
-                          const char *username, const char *password) {
+void MqttPublisher::configure(const char *node_id, const char *host, uint16_t port,
+                              const char *username, const char *password) {
   host_ = host;
   port_ = port;
   username_ = (username != nullptr && username[0] != '\0') ? username : nullptr;
@@ -34,22 +32,27 @@ bool MqttPublisher::begin(const char *node_id, const char *host, uint16_t port,
   g_mqtt.setBufferSize(kBufferSize);
   g_mqtt.setKeepAlive(60);
 
-  return maintain(millis());
+  configured_ = true;
 }
 
 bool MqttPublisher::connected() { return g_mqtt.connected(); }
 
 bool MqttPublisher::maintain(uint32_t now_ms) {
   if (g_mqtt.connected()) {
-    backoff_ms_ = kMinBackoffMs;
+    backoff_.recordSuccess();
     return true;
   }
-  if (next_attempt_ms_ != 0 && now_ms < next_attempt_ms_) {
+  // Sem `configure` nao ha servidor nem topicos; tentar conectar iria para 0.0.0.0:0.
+  if (!configured_) {
+    return false;
+  }
+  if (!backoff_.ready(now_ms)) {
     return false;
   }
   if (WiFi.status() != WL_CONNECTED) {
     return false;
   }
+  backoff_.recordAttempt(now_ms);
 
   // O Last Will fica retido: quem assinar depois de o no cair ainda ve o estado. E o
   // "online" publicado na conexao tambem e retido, para que o par de mensagens conte a
@@ -58,12 +61,9 @@ bool MqttPublisher::maintain(uint32_t now_ms) {
                                  "offline", true);
   if (ok) {
     g_mqtt.publish(status_topic_, "online", true);
-    backoff_ms_ = kMinBackoffMs;
+    backoff_.recordSuccess();
     return true;
   }
-
-  next_attempt_ms_ = now_ms + backoff_ms_;
-  backoff_ms_ = backoff_ms_ * 2 > kMaxBackoffMs ? kMaxBackoffMs : backoff_ms_ * 2;
   return false;
 }
 

@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 
+#include "Backoff.h"
+
 namespace meliponet {
 
 class WifiLink {
@@ -40,8 +42,9 @@ class WifiLink {
   const char *ssid_ = nullptr;
   const char *password_ = nullptr;
   bool clock_synced_ = false;
-  uint32_t next_attempt_ms_ = 0;
-  uint32_t backoff_ms_ = 1000;
+  // 1 s a 5 min. O teto importa: sem ele, uma queda longa levaria o intervalo a horas e
+  // o no demoraria demais a voltar quando o sinal retornasse.
+  Backoff backoff_{1000, 300000};
   char timestamp_[24] = {0};
 };
 

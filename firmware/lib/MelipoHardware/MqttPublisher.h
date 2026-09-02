@@ -14,13 +14,26 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "Backoff.h"
+
 namespace meliponet {
 
 class MqttPublisher {
  public:
-  // `node_id` precisa sobreviver ao objeto: os topicos sao montados uma vez no begin.
-  bool begin(const char *node_id, const char *host, uint16_t port, const char *username,
-             const char *password);
+  // Guarda servidor, topicos e credenciais. **Nao** depende de haver rede: e chamada
+  // sempre, mesmo com o WiFi fora, e a conexao fica por conta de `maintain`.
+  //
+  // A separacao e o conserto de um defeito real: antes, a configuracao acontecia dentro
+  // do `if` que testava a conexao do WiFi. Um no que subisse mais rapido que o roteador
+  // -- rotina depois de uma falta de energia -- ficava com servidor e topicos vazios, e
+  // toda tentativa posterior ia para 0.0.0.0:0 com topico vazio. O WiFi reconectava, o
+  // no parecia saudavel, e nunca mais publicava nada ate alguem reiniciar a placa.
+  //
+  // `node_id` precisa sobreviver ao objeto: os topicos sao montados uma vez aqui.
+  void configure(const char *node_id, const char *host, uint16_t port, const char *username,
+                 const char *password);
+
+  bool configured() const { return configured_; }
 
   bool connected();
 
@@ -42,8 +55,10 @@ class MqttPublisher {
   uint16_t port_ = 1883;
   const char *username_ = nullptr;
   const char *password_ = nullptr;
-  uint32_t next_attempt_ms_ = 0;
-  uint32_t backoff_ms_ = 1000;
+  bool configured_ = false;
+  // 1 s a 1 min: o broker volta mais rapido que o roteador, entao o teto e menor que o
+  // do WiFi.
+  Backoff backoff_{1000, 60000};
 };
 
 }  // namespace meliponet

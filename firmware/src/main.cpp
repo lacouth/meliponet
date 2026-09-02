@@ -47,6 +47,13 @@ meliponet::LittleFsSpoolStorage g_storage;
 meliponet::Spool *g_spool = nullptr;
 meliponet::Scheduler *g_scheduler = nullptr;
 
+// Se o `setup` chegou a configurar rede e amostragem. O laco principal se guia por esta
+// bandeira, e nao por `g_config.usable()`: a configuracao pelo console serial pode
+// tornar `usable()` verdadeiro no meio da execucao, e o laco entraria com WifiLink e
+// MqttPublisher ainda nao configurados. Por isso os comandos de configuracao pedem
+// reinicio.
+bool g_running = false;
+
 meliponet::Reading readBattery() {
   const int raw = analogRead(kBatteryAdc);
   if (raw <= 0) {
@@ -244,17 +251,27 @@ void setup() {
     return;
   }
 
+  // O MQTT e configurado **sempre**, e nao so quando o WiFi sobe de primeira. Um no que
+  // liga mais rapido que o roteador -- rotina depois de uma falta de energia -- ficaria
+  // com servidor e topicos vazios, e nunca mais publicaria nada, mesmo depois de o WiFi
+  // reconectar sozinho.
+  g_mqtt.configure(meliponet::nodeId(), g_config.mqtt_host, g_config.mqtt_port,
+                   g_config.mqtt_username, g_config.mqtt_password);
+
   if (g_wifi.begin(g_config.wifi_ssid, g_config.wifi_password)) {
     g_wifi.syncClock();
-    g_mqtt.begin(meliponet::nodeId(), g_config.mqtt_host, g_config.mqtt_port,
-                 g_config.mqtt_username, g_config.mqtt_password);
+    g_mqtt.maintain(millis());
+  } else {
+    Serial.println("[aviso] wifi indisponivel no boot; reconexao em segundo plano");
   }
+
+  g_running = true;
 }
 
 void loop() {
   handleSerial();
 
-  if (!g_config.usable() || g_scheduler == nullptr) {
+  if (!g_running || g_scheduler == nullptr) {
     delay(100);
     return;
   }

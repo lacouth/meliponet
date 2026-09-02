@@ -6,10 +6,6 @@
 namespace meliponet {
 namespace {
 
-constexpr uint32_t kMinBackoffMs = 1000;
-// Teto do recuo: cinco minutos. Sem teto, uma queda longa levaria o intervalo a horas,
-// e o no demoraria demais a voltar quando o sinal retornasse.
-constexpr uint32_t kMaxBackoffMs = 300000;
 constexpr uint32_t kNtpTimeoutMs = 10000;
 
 // Ano de 2023 em epoch. Serve para distinguir "relogio sincronizado" de "relogio ainda
@@ -39,23 +35,27 @@ bool WifiLink::connected() const { return WiFi.status() == WL_CONNECTED; }
 
 void WifiLink::maintain(uint32_t now_ms) {
   if (connected()) {
-    backoff_ms_ = kMinBackoffMs;
+    backoff_.recordSuccess();
     return;
   }
 
-  // Subtracao sem sinal: continua correta quando millis() da a volta.
-  if ((now_ms - next_attempt_ms_) > kMaxBackoffMs && next_attempt_ms_ != 0) {
+  // Sem credenciais nao ha o que tentar. Chegar aqui com ssid_ nulo significaria
+  // WiFi.begin(nullptr, ...), que trava a placa.
+  if (ssid_ == nullptr) {
     return;
   }
-  if (next_attempt_ms_ != 0 && now_ms < next_attempt_ms_) {
+
+  if (!backoff_.ready(now_ms)) {
     return;
   }
+
+  // Registra a tentativa **antes** de faze-la: se WiFi.begin bloquear ou a funcao sair
+  // por outro caminho, o recuo ja avancou. Nao registrar foi o que travou a versao
+  // anterior desta funcao para sempre.
+  backoff_.recordAttempt(now_ms);
 
   WiFi.disconnect();
   WiFi.begin(ssid_, password_);
-
-  next_attempt_ms_ = now_ms + backoff_ms_;
-  backoff_ms_ = backoff_ms_ * 2 > kMaxBackoffMs ? kMaxBackoffMs : backoff_ms_ * 2;
 }
 
 bool WifiLink::syncClock() {

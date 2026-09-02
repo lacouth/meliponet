@@ -3,6 +3,8 @@
 #include <LittleFS.h>
 #include <stdio.h>
 
+#include "SpoolRecovery.h"
+
 namespace meliponet {
 namespace {
 
@@ -24,23 +26,31 @@ bool LittleFsSpoolStorage::begin(uint32_t &head, uint32_t &count) {
   }
   LittleFS.mkdir(kDirectory);
 
-  // Reconstroi a fila varrendo os arquivos existentes. Os nomes sao os indices, entao a
-  // ordem lexicografica dos nomes com zeros a esquerda e a ordem da fila.
-  uint32_t lowest = kSpoolCapacity;
-  uint32_t found = 0;
+  // Monta o mapa de slots ocupados e deixa a deducao da fila para `deriveQueueState`,
+  // que e pura e testada -- inclusive com o anel dado a volta, que a versao anterior
+  // desta funcao errava em silencio.
+  static bool occupied[kSpoolCapacity];
   for (uint32_t slot = 0; slot < kSpoolCapacity; ++slot) {
     char path[32];
     slotPath(slot, path, sizeof(path));
-    if (LittleFS.exists(path)) {
-      if (slot < lowest) {
-        lowest = slot;
+    occupied[slot] = LittleFS.exists(path);
+  }
+
+  const QueueState state = deriveQueueState(occupied, kSpoolCapacity);
+
+  // Apaga o que ficou fora do trecho escolhido. Sao restos de uma escrita interrompida
+  // por queda de energia; mante-los faria a contagem crescer a cada boot seguinte.
+  if (state.orphaned > 0) {
+    for (uint32_t slot = 0; slot < kSpoolCapacity; ++slot) {
+      const bool dentro = ((slot - state.head + kSpoolCapacity) % kSpoolCapacity) < state.count;
+      if (occupied[slot] && !dentro) {
+        erase(slot);
       }
-      ++found;
     }
   }
 
-  head = found == 0 ? 0 : lowest;
-  count = found;
+  head = state.head;
+  count = state.count;
   return true;
 }
 

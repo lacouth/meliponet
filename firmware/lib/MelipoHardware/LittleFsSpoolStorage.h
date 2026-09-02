@@ -1,8 +1,8 @@
 // Armazenamento do spool em LittleFS.
 //
-// A implementacao real da interface `SpoolStorage`. A logica de fila fica em `Spool`,
-// testada no PC com um armazenamento em memoria; aqui so mora o acesso ao sistema de
-// arquivos.
+// A implementacao real da interface `SpoolStorage`. A logica de fila fica em `Spool` e
+// a reconstrucao apos reinicio em `SpoolRecovery`, ambas testadas no PC; aqui so mora o
+// acesso ao sistema de arquivos.
 
 #pragma once
 
