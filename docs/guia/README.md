@@ -27,6 +27,12 @@ Leia os quatro primeiros na ordem. Depois siga a trilha do que você vai fazer.
 | 6 | [Primeira contribuição](06-primeira-contribuicao.md) — do clone ao pull request | todos |
 | — | [Glossário](07-glossario.md) — consulta rápida | todos |
 
+Fora do guia, mas na mesma estante:
+[defeitos conhecidos](../defeitos-conhecidos.md) — o registro dos defeitos que já
+encontramos e ainda não corrigimos. Vale ler antes de passar uma tarde depurando um
+comportamento estranho, e vale acrescentar uma entrada quando você encontrar um e não
+for corrigi-lo na hora.
+
 ## Regra que vale mais do que o guia inteiro
 
 **Quando não souber, pergunte antes de adivinhar.** Uma pergunta custa cinco minutos.

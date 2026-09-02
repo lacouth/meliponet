@@ -126,7 +126,8 @@ Credenciais **não** vão no código: são gravadas na NVS pelo console serial.
 
 ```
 wifi <ssid> <senha>     grava as credenciais de WiFi
-broker <host>           grava o endereço do broker MQTT
+broker <host> [porta]   grava o endereço do broker MQTT
+mqtt <usuario> <senha>  grava as credenciais do broker (sem argumentos, apaga)
 tara                    tara a célula com a colmeia vazia
 calibrar <kg>           calibra com uma massa-padrão conhecida
 estado                  mostra sensores, conexões, calibração e spool
@@ -157,6 +158,11 @@ Comece por **[`docs/guia/`](docs/guia/README.md)** — um guia de onboarding esc
 estudantes de Engenharia Elétrica que vão trabalhar no projeto: o contrato, a estrutura
 da plataforma Flask, a do firmware, e as práticas de engenharia de software (git,
 ambientes, testes, revisão) que o projeto usa e por quê.
+
+Antes de depurar qualquer comportamento estranho, confira
+**[`docs/defeitos-conhecidos.md`](docs/defeitos-conhecidos.md)**: é o registro dos
+defeitos que a equipe já conhece e ainda não corrigiu, com o sintoma de cada um. Vários
+deles se manifestam de forma que parece outra coisa.
 
 ## Contrato
 

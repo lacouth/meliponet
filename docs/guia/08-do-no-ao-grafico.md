@@ -348,10 +348,16 @@ MelipoSense A4C1380F
 reinício depois:
 
 ```
-wifi <ssid> <senha>     grava as credenciais de WiFi
-broker <host>           grava o endereço do broker MQTT
-ajuda                   lista os comandos
+wifi <ssid> <senha>      grava as credenciais da rede
+broker <host> [porta]    grava o endereço do broker MQTT
+mqtt <usuario> <senha>   grava as credenciais do broker
+ajuda                    lista os comandos
 ```
+
+O broker do projeto recusa clientes anônimos (`deploy/mosquitto.conf`), então o `mqtt` é
+obrigatório fora de um broker de desenvolvimento. `mqtt` sem argumentos apaga as
+credenciais gravadas, que é como se volta a um broker com `allow_anonymous true`. A senha
+nunca é ecoada de volta no serial.
 
 **5. Calibre a célula de carga**, com a colmeia montada mas vazia:
 
@@ -372,7 +378,8 @@ estado
 ```
 no        A4C1380F
 wifi      conectado
-broker    conectado
+broker    conectado em mqtt.ifpb.edu.br:1883
+mqtt auth no-puxinana, senha definida
 relogio   sincronizado
 sht int   ok
 sht ext   ok
@@ -399,19 +406,22 @@ atualiza sozinho a cada minuto.
 
 ## 8. Lacunas conhecidas hoje
 
-Um guia que descreve o sistema que gostaríamos de ter é pior do que nenhum guia. Estas
-são as diferenças conhecidas entre o que está escrito por aí e o que o código faz:
+Um guia que descreve o sistema que gostaríamos de ter é pior do que nenhum guia. As
+diferenças conhecidas entre o que a documentação afirma e o que o código faz ficam todas
+em **[docs/defeitos-conhecidos.md](../defeitos-conhecidos.md)**, com sintoma, causa e
+como corrigir cada uma.
 
-| Lacuna | Efeito prático | Onde |
-|---|---|---|
-| A telemetria sai em **QoS 0**, não QoS 1 — a biblioteca `PubSubClient` só publica em QoS 0 | o spool cobre o trecho nó→broker, mas o broker **não** guarda a mensagem enquanto o ingestor reinicia | `MqttPublisher.cpp`, `publish()` |
-| Não há comando serial para usuário, senha e porta do MQTT, e o broker recusa clientes anônimos | um nó de campo não consegue autenticar seguindo só o roteiro da seção 7 | `main.cpp`, `handleSerial()` · `deploy/mosquitto.conf` |
-| Medições anteriores ao vínculo não são reatribuídas | as primeiras leituras existem no banco mas não aparecem no gráfico | `ingest/store.py`, `store()` |
-| Os agregados contínuos do TimescaleDB são criados mas nunca consultados | a reamostragem acontece em Python; funciona hoje, não escala | `services/series.py` |
-| Ninguém assina o tópico `.../status` | o Last Will é publicado, mas "nó mudo" ainda não é detectado | `ingest/__main__.py` |
+As quatro que mais afetam quem está seguindo este documento:
 
-As três primeiras são defeitos, não decisões. Se você for mexer em alguma, escreva o teste
-que a pega antes da correção.
+| Lacuna | Efeito prático |
+|---|---|
+| [D-01](../defeitos-conhecidos.md#d-01) — a telemetria sai em **QoS 0**, não QoS 1 | o spool cobre o trecho nó→broker, mas o broker **não** guarda a mensagem enquanto o ingestor reinicia |
+| [D-02](../defeitos-conhecidos.md#d-02) — medições anteriores ao vínculo não são reatribuídas | as primeiras leituras existem no banco mas não aparecem no gráfico (é a armadilha da seção 5) |
+| [D-04](../defeitos-conhecidos.md#d-04) — `tara` só passa a valer depois de reiniciar | o peso logo após a tara sai com o zero antigo, e parece que a tara não pegou |
+| [D-06](../defeitos-conhecidos.md#d-06) — ninguém assina o tópico `.../status` | o Last Will é publicado, mas "nó mudo" ainda não é detectado |
+
+São defeitos, não decisões. Se você for mexer em algum, escreva primeiro o teste que o
+pega, e rode-o antes da correção para vê-lo falhar.
 
 ## 9. O que muda até a meta final
 
