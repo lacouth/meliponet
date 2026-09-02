@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}MelipoNet — monitoramento de colmeias de abelhas nativas{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <p class="eyebrow">IFPB · Campus João Pessoa — em parceria com o LAHMP/UFPB</p>
+  <h1>Saber como está a colmeia sem precisar abri-la</h1>
+  <p class="lede">
+    O MelipoNet acompanha em tempo real a temperatura, a umidade e o peso de colmeias de
+    abelhas nativas sem ferrão na Paraíba, e mostra tudo numa página que o meliponicultor
+    abre do celular.
+  </p>
+  <p>
+    <a class="btn" href="{{ url_for('auth.login') }}">Entrar na plataforma</a>
+  </p>
+</section>
+
+{% if stats.measurements %}
+<section class="numbers">
+  <div class="number">
+    <strong>{{ "{:,}".format(stats.measurements).replace(",", ".") }}</strong>
+    <span>medições coletadas</span>
+  </div>
+  <div class="number">
+    <strong>{{ stats.hives }}</strong>
+    <span>colmeia{{ 's' if stats.hives != 1 }} monitorada{{ 's' if stats.hives != 1 }}</span>
+  </div>
+  <div class="number">
+    <strong>{{ stats.apiaries }}</strong>
+    <span>meliponário{{ 's' if stats.apiaries != 1 }}</span>
+  </div>
+  <div class="number">
+    <strong>{{ stats.nodes }}</strong>
+    <span>nó{{ 's' if stats.nodes != 1 }} sensor{{ 'es' if stats.nodes != 1 }}</span>
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <h2>O problema</h2>
+  <div class="prose">
+    <p>
+      A colônia de abelha sem ferrão é um sistema homeostático: mantém a região de cria
+      numa faixa térmica estreita, perto de <strong>30&nbsp;°C</strong> nas espécies com
+      favos e invólucro de cerume. Desvios sinalizam estresse, enfraquecimento ou
+      eventos reprodutivos.
+    </p>
+    <p>
+      Só que ninguém consegue observar isso. O manejo tradicional é abrir a caixa poucas
+      vezes ao ano — o que <strong>altera justamente o microclima que se quer medir</strong>,
+      estressa a colônia e produz medições pontuais, incapazes de revelar qualquer
+      dinâmica. Entre uma inspeção e outra, o criador não sabe nada. Enxameação, colapso
+      e infestação só são percebidos quando já são irreversíveis.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Como funciona</h2>
+  <div class="flow">
+    <div class="step">
+      <span class="step-n">1</span>
+      <h3>O nó sensor</h3>
+      <p>
+        Um dispositivo dentro da caixa mede temperatura interna e externa, umidade e
+        peso. Alimentado por painel solar, feito para ficar meses em campo sem
+        manutenção.
+      </p>
+    </div>
+    <div class="step">
+      <span class="step-n">2</span>
+      <h3>A transmissão</h3>
+      <p>
+        Os dados sobem para a plataforma. Quando a rede cai — o que é rotina no meio
+        rural — o nó guarda tudo e reenvia depois, sem perder leitura.
+      </p>
+    </div>
+    <div class="step">
+      <span class="step-n">3</span>
+      <h3>A plataforma</h3>
+      <p>
+        Gráficos por colmeia, alertas quando algo sai da faixa, e o histórico completo
+        para pesquisa. O diferencial térmico entre dentro e fora estima o esforço da
+        colônia para se manter.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Espécies acompanhadas</h2>
+  <div class="species">
+    {% for scientific, popular in species %}
+    <div class="card">
+      <em>{{ scientific }}</em>
+      <span>{{ popular }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section>
+  <h2>Por que isso importa agora</h2>
+  <div class="prose">
+    <p>
+      O semiárido nordestino está entre as regiões mais vulneráveis às mudanças
+      climáticas no Brasil. Modelagens indicam que a jandaíra pode ter suas áreas
+      climaticamente adequadas <strong>reduzidas e fragmentadas</strong> na Paraíba em
+      cenários futuros, e a tolerância térmica dessas abelhas cai conforme aumenta o
+      tempo de exposição ao calor.
+    </p>
+    <p>
+      Documentar as condições a que as colônias estão submetidas hoje é condição para
+      avaliar esse risco amanhã. A base de séries temporais que a plataforma acumula é,
+      por si, uma contribuição científica — não existe nada equivalente para os
+      meliponários paraibanos.
+    </p>
+  </div>
+</section>
+
+<footer class="rodape">
+  <p>
+    Projeto do <strong>IFPB — Campus João Pessoa</strong> em parceria com o Laboratório
+    de Hidrologia, Microbiologia e Parasitologia da <strong>UFPB</strong>.
+    Financiamento CNPq/IFPB (PIBIC e PIBITI) e FAPESQ/SECTIES.
+  </p>
+  <p class="ods">ODS 2 · ODS 9 · ODS 13 · ODS 15</p>
+</footer>
+
+{% endblock %}

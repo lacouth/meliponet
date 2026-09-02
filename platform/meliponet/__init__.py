@@ -18,6 +18,7 @@ def create_app(config: Config | None = None) -> Flask:
     from meliponet.blueprints.auth import bp as auth_bp
     from meliponet.blueprints.dashboard import bp as dashboard_bp
     from meliponet.blueprints.manage import bp as manage_bp
+    from meliponet.blueprints.public import bp as public_bp
     from meliponet.db import create_all, init_engine, session_scope
     from meliponet.models import User
 
@@ -53,6 +54,7 @@ def create_app(config: Config | None = None) -> Flask:
 
     cli.register(app)
 
+    app.register_blueprint(public_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(manage_bp)

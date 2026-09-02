@@ -42,7 +42,7 @@ def num(value: float | None, digits: int = 1, suffix: str = "") -> str:
     return f"{value:.{digits}f}{suffix}"
 
 
-@bp.route("/")
+@bp.route("/colmeias")
 @login_required
 def index():
     with session_scope() as session:

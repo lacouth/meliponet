@@ -30,10 +30,37 @@ def login(client, make_user):
 
 
 def test_paginas_exigem_login(client, scenario) -> None:
-    for url in ("/", f"/colmeia/{scenario.hive_id}", "/gerenciar/"):
+    for url in ("/colmeias", f"/colmeia/{scenario.hive_id}", "/gerenciar/"):
         response = client.get(url)
         assert response.status_code == 302, url
         assert "/entrar" in response.headers["Location"], url
+
+
+def test_pagina_inicial_e_publica(client, scenario) -> None:
+    """A raiz é o rosto do projeto: precisa abrir sem login."""
+    response = client.get("/")
+    corpo = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "sem precisar abri-la" in corpo
+    assert "/entrar" in corpo
+
+
+def test_pagina_inicial_nao_vaza_dados_de_colmeia(client, scenario) -> None:
+    """Só agregados. Nome ou localização de colmeia não podem aparecer a anônimos."""
+    corpo = client.get("/").get_data(as_text=True)
+
+    assert "Colmeia 01" not in corpo
+    assert "Colmeia alheia" not in corpo
+    assert "Meliponário Mata do Buraquinho" not in corpo
+
+
+def test_usuario_autenticado_vai_para_o_painel(client, scenario, login) -> None:
+    login(scenario.organization_id)
+    response = client.get("/")
+
+    assert response.status_code == 302
+    assert "/colmeias" in response.headers["Location"]
 
 
 def test_senha_errada_nao_autentica(client, scenario, make_user) -> None:
@@ -41,7 +68,7 @@ def test_senha_errada_nao_autentica(client, scenario, make_user) -> None:
     response = client.post("/entrar", data={"email": user.email, "senha": "errada"})
 
     assert response.status_code == 401
-    assert client.get("/").status_code == 302
+    assert client.get("/colmeias").status_code == 302
 
 
 def test_email_inexistente_da_a_mesma_resposta(client, scenario) -> None:
@@ -67,7 +94,7 @@ def test_colmeia_alheia_responde_404(client, scenario, login) -> None:
 
 def test_dashboard_lista_apenas_colmeias_proprias(client, scenario, login) -> None:
     login(scenario.organization_id)
-    corpo = client.get("/").get_data(as_text=True)
+    corpo = client.get("/colmeias").get_data(as_text=True)
 
     assert "Colmeia 01" in corpo
     assert "Colmeia alheia" not in corpo
@@ -75,7 +102,7 @@ def test_dashboard_lista_apenas_colmeias_proprias(client, scenario, login) -> No
 
 def test_pesquisador_ve_as_duas(client, scenario, login) -> None:
     login(scenario.organization_id, Role.PESQUISADOR)
-    corpo = client.get("/").get_data(as_text=True)
+    corpo = client.get("/colmeias").get_data(as_text=True)
 
     assert "Colmeia 01" in corpo
     assert "Colmeia alheia" in corpo
