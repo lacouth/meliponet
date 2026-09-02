@@ -20,6 +20,18 @@ dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6"]
 [project.scripts]
 meliponet-ingest = "meliponet.ingest.__main__:main"
 
+# Sem esta secao o setuptools tenta adivinhar o que empacotar, encontra `meliponet/` e
+# `migrations/` lado a lado e se recusa a continuar ("Multiple top-level packages
+# discovered in a flat-layout"). Nao e ambiguidade de verdade: `migrations/` sao scripts
+# do Alembic, rodados a partir do repositorio, e nunca deveriam ser instalados junto com
+# a aplicacao.
+#
+# O defeito ficou escondido por meses porque um ambiente virtual criado antes de
+# `migrations/` existir continua funcionando -- so uma instalacao limpa falha. Era por
+# isso que o CI quebrava e a maquina de todo mundo passava.
+[tool.setuptools.packages.find]
+include = ["meliponet*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

@@ -256,4 +256,5 @@ constante paralela.
 
 | # | Defeito | Corrigido em |
 |---|---|---|
+| D-11 | O CI da plataforma quebrado desde a Fase 2: `pip install -e platform[dev]` falhava com "Multiple top-level packages discovered in a flat-layout", porque `pyproject.toml` não declarava o que empacotar e o Alembic trouxe `migrations/` para o lado de `meliponet/`. Passou despercebido por doze commits porque um ambiente virtual criado antes de `migrations/` existir continua funcionando — só instalação limpa falha | 2026-09-02 — `[tool.setuptools.packages.find]` em `platform/pyproject.toml` |
 | D-00 | Sem comando serial para as credenciais do broker MQTT: um nó de campo não conseguia autenticar num broker com `allow_anonymous false`, e a única saída era liberar acesso anônimo no broker | 2026-09-02 — comandos `mqtt <usuario> <senha>` e `broker <host> [porta]` |
