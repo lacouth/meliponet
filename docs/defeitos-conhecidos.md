@@ -33,7 +33,6 @@ corrigir agora, escrita para que a próxima pessoa não tropece.
 | [D-01](#d-01) | alta | firmware | A telemetria é publicada em QoS 0, não em QoS 1 |
 | [D-02](#d-02) | alta | plataforma | Medições anteriores ao vínculo ficam órfãs para sempre |
 | [D-03](#d-03) | média | firmware | O buffer do MQTT não tem folga para cabeçalho e tópico |
-| [D-04](#d-04) | média | firmware | `tara` só passa a valer depois de reiniciar |
 | [D-05](#d-05) | média | firmware | A presença dos sensores é decidida no boot e nunca revista |
 | [D-06](#d-06) | média | plataforma | O Last Will é publicado e ninguém o assina |
 | [D-07](#d-07) | baixa | plataforma | Os agregados contínuos são criados e nunca consultados |
@@ -119,25 +118,6 @@ existe, mas some quando a Fase 5 acrescentar `sound_bands`.
 cabeçalho e do tópico, com um `static_assert` que quebre o build se as duas constantes
 voltarem a se aproximar. E, independentemente disso, `drainSpool` deveria descartar (com
 contador) uma mensagem recusada mais de N vezes, em vez de tentar a mesma para sempre.
-
----
-
-### D-04
-
-**`tara` só passa a valer depois de reiniciar.**
-
-*Onde:* `firmware/src/main.cpp`, comando `tara` em `handleSerial()`.
-
-*Sintoma:* quem tara a célula e mede em seguida vê o peso calculado com o zero **antigo**.
-Reiniciar a placa resolve, e é fácil concluir que a tara "não pegou" e refazer o
-procedimento várias vezes.
-
-*Por que acontece:* o comando grava o novo `offset` em `g_config` e na NVS, mas não
-chama `g_load_cell.setCalibration()`. O objeto da célula segue com a calibração que
-recebeu no boot. O comando `calibrar` faz a chamada; o `tara` não.
-
-*Como corrigir:* uma linha — `g_load_cell.setCalibration(g_config.calibration);` depois
-de atualizar o offset, como o `calibrar` já faz.
 
 ---
 
@@ -260,5 +240,6 @@ constante paralela.
 
 | # | Defeito | Corrigido em |
 |---|---|---|
+| D-04 | `tara` gravava o novo zero na NVS mas não o passava para o objeto da célula: a leitura logo após a tara saía com o offset antigo, e só um reinício fazia a tara valer — o que leva a pessoa a repetir a tara achando que não pegou | 2026-09-02 — `setCalibration()` no comando `tara`, como o `calibrar` já fazia |
 | D-11 | O CI da plataforma quebrado desde a Fase 2: `pip install -e platform[dev]` falhava com "Multiple top-level packages discovered in a flat-layout", porque `pyproject.toml` não declarava o que empacotar e o Alembic trouxe `migrations/` para o lado de `meliponet/`. Passou despercebido por doze commits porque um ambiente virtual criado antes de `migrations/` existir continua funcionando — só instalação limpa falha | 2026-09-02 — `[tool.setuptools.packages.find]` em `platform/pyproject.toml` |
 | D-00 | Sem comando serial para as credenciais do broker MQTT: um nó de campo não conseguia autenticar num broker com `allow_anonymous false`, e a única saída era liberar acesso anônimo no broker | 2026-09-02 — comandos `mqtt <usuario> <senha>` e `broker <host> [porta]` |

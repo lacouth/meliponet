@@ -307,6 +307,12 @@ void handleSerial() {
       return;
     }
     g_config.calibration.offset = raw;
+    // A celula precisa receber a calibracao nova junto, e nao so a NVS. Sem esta linha
+    // o objeto seguia com o zero que recebeu no boot: a leitura logo apos a tara saia
+    // com o offset antigo, e so um reinicio fazia a tara valer. Na bancada isso leva a
+    // pessoa a repetir a tara varias vezes achando que ela nao pegou. O `calibrar`
+    // abaixo sempre fez essa chamada; aqui ela faltava.
+    g_load_cell.setCalibration(g_config.calibration);
     meliponet::saveConfig(g_config);
     Serial.printf("tara = %ld\n", static_cast<long>(raw));
 

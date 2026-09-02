@@ -424,13 +424,12 @@ diferenças conhecidas entre o que a documentação afirma e o que o código faz
 em **[docs/defeitos-conhecidos.md](../defeitos-conhecidos.md)**, com sintoma, causa e
 como corrigir cada uma.
 
-As quatro que mais afetam quem está seguindo este documento:
+As três que mais afetam quem está seguindo este documento:
 
 | Lacuna | Efeito prático |
 |---|---|
 | [D-01](../defeitos-conhecidos.md#d-01) — a telemetria sai em **QoS 0**, não QoS 1 | o spool cobre o trecho nó→broker, mas o broker **não** guarda a mensagem enquanto o ingestor reinicia |
 | [D-02](../defeitos-conhecidos.md#d-02) — medições anteriores ao vínculo não são reatribuídas | as primeiras leituras existem no banco mas não aparecem no gráfico (é a armadilha da seção 5) |
-| [D-04](../defeitos-conhecidos.md#d-04) — `tara` só passa a valer depois de reiniciar | o peso logo após a tara sai com o zero antigo, e parece que a tara não pegou |
 | [D-06](../defeitos-conhecidos.md#d-06) — ninguém assina o tópico `.../status` | o Last Will é publicado, mas "nó mudo" ainda não é detectado |
 
 São defeitos, não decisões. Se você for mexer em algum, escreva primeiro o teste que o
