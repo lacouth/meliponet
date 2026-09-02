@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 from meliponet.db import session_scope
-from meliponet.models import Apiary, Hive, Role
+from meliponet.models import Apiary, Hive, Node, Role
 from meliponet.services import scope
 
 
@@ -78,3 +78,42 @@ def test_escopo_acompanha_colmeia_nova(scenario, meliponicultor) -> None:
         hives = list(session.scalars(scope.hives_for(meliponicultor)))
 
     assert {h.name for h in hives} == {"Colmeia 01", "Colmeia 02"}
+
+
+@pytest.fixture
+def admin(scenario, make_user):
+    return make_user(scenario.organization_id, Role.ADMIN)
+
+
+def test_admin_administra_no_de_qualquer_organizacao(
+    scenario, admin, meliponicultor, dono_alheio
+) -> None:
+    """Ver tudo e poder administrar tudo andam juntos para o admin.
+
+    O meliponicultor continua alcançando só o próprio nó — é este par de asserções que
+    impede a correção de virar um buraco no isolamento.
+    """
+    with session_scope() as session:
+        assert scope.can_manage_node(session, admin, scenario.node_pk)
+        assert scope.can_manage_node(session, meliponicultor, scenario.node_pk)
+        assert not scope.can_manage_node(session, dono_alheio, scenario.node_pk)
+
+
+def test_no_sem_dono_e_adotavel_por_quem_administra(
+    scenario, admin, meliponicultor, dono_alheio
+) -> None:
+    """Adotar um nó recém-aparecido é a operação que lhe dá organização.
+
+    Enquanto ele não tem dono, exigir que já pertença a alguém tornaria a adoção
+    impossível — e o nó publicaria para sempre sem aparecer em gráfico nenhum.
+    """
+    with session_scope() as session:
+        orfao = Node(node_id="FFFFAA03")
+        session.add(orfao)
+        session.flush()
+        orfao_pk = orfao.id
+
+    with session_scope() as session:
+        assert scope.can_manage_node(session, admin, orfao_pk)
+        assert scope.can_manage_node(session, meliponicultor, orfao_pk)
+        assert scope.can_manage_node(session, dono_alheio, orfao_pk)

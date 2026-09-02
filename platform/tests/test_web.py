@@ -188,3 +188,54 @@ def test_no_pendente_aparece_para_quem_administra(client, scenario, login) -> No
     corpo = client.get("/gerenciar/").get_data(as_text=True)
 
     assert "FFFFAA01" in corpo
+
+
+def test_admin_administra_no_de_outra_organizacao(client, scenario, login) -> None:
+    """O perfil admin administra os cadastros de todas as organizações.
+
+    É o que a documentação promete e o que a própria tela oferece: `nodes_for` devolve
+    ao admin os nós de todas as organizações, e a tabela renderiza "Remanejar" e
+    "Desvincular" para cada um. Recusar o clique depois de mostrar o botão é o pior dos
+    dois mundos — a pessoa descobre a regra errando.
+    """
+    login(scenario.other_organization_id, Role.ADMIN)
+
+    vinculo = client.post(
+        f"/gerenciar/no/{scenario.node_pk}/vincular", data={"colmeia_id": scenario.hive_id}
+    )
+    assert vinculo.status_code == 302
+
+    desvinculo = client.post(f"/gerenciar/no/{scenario.node_pk}/desvincular")
+    assert desvinculo.status_code == 302
+
+    with session_scope() as session:
+        aberto = session.scalars(
+            select(NodeAssignment)
+            .where(NodeAssignment.node_id == scenario.node_pk)
+            .where(NodeAssignment.removed_at.is_(None))
+        ).all()
+    assert aberto == [], "o desvínculo do admin precisa fechar o período aberto"
+
+
+def test_no_adotado_fica_com_a_organizacao_da_colmeia(client, scenario, login) -> None:
+    """Quem clica não vira dono do nó.
+
+    O vínculo carimbava no nó a organização de quem estava logado. Um admin adotando um
+    nó para a colmeia de outra organização levava o nó junto: o dono legítimo da colmeia
+    deixava de enxergar o próprio nó e não conseguia mais desvinculá-lo — sem erro
+    nenhum, só um cadastro inconsistente.
+    """
+    with session_scope() as session:
+        orfao = Node(node_id="FFFFAA02")
+        session.add(orfao)
+        session.flush()
+        orfao_pk = orfao.id
+
+    login(scenario.other_organization_id, Role.ADMIN)
+    response = client.post(
+        f"/gerenciar/no/{orfao_pk}/vincular", data={"colmeia_id": scenario.hive_id}
+    )
+    assert response.status_code == 302
+
+    with session_scope() as session:
+        assert session.get(Node, orfao_pk).organization_id == scenario.organization_id

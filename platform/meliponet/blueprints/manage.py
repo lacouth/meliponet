@@ -145,8 +145,8 @@ def assign_node(node_id: int):
         if node is None:
             abort(404)
         # Um nó ainda sem dono pode ser adotado por quem administra; um nó de outra
-        # organização, não.
-        if node.organization_id not in (None, current_user.organization_id):
+        # organização, só por quem administra todas.
+        if not scope.can_manage_node(session, current_user, node.id):
             abort(403)
 
         if request.method == "POST":
@@ -163,7 +163,12 @@ def assign_node(node_id: int):
             if current is not None:
                 current.removed_at = installed_at
 
-            node.organization_id = current_user.organization_id
+            # O nó passa a pertencer à organização **da colmeia**, não à de quem
+            # clicou. Carimbar o usuário logado fazia um administrador levar consigo o
+            # nó que adotasse para a colmeia de outra organização: o dono legítimo
+            # deixava de enxergar o próprio nó e não conseguia mais desvinculá-lo, sem
+            # erro nenhum na tela.
+            node.organization_id = hive.apiary.organization_id
             session.add(
                 NodeAssignment(
                     node_id=node.id,
@@ -206,8 +211,10 @@ def unassign_node(node_id: int):
         node = session.scalar(
             select(Node).options(selectinload(Node.assignments)).where(Node.id == node_id)
         )
-        if node is None or node.organization_id != current_user.organization_id:
-            abort(404 if node is None else 403)
+        if node is None:
+            abort(404)
+        if not scope.can_manage_node(session, current_user, node.id):
+            abort(403)
 
         current = node.current_assignment
         if current is None:
