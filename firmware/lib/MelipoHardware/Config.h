@@ -24,13 +24,17 @@ namespace meliponet {
 constexpr size_t kMaxSsidLength = 33;
 constexpr size_t kMaxPasswordLength = 65;
 constexpr size_t kMaxHostLength = 65;
+// O usuario do broker nao tem relacao com o SSID -- dimensiona-lo com `kMaxSsidLength`
+// so funcionava por coincidencia, e apertaria o limite errado no dia em que o SSID
+// mudasse de tamanho.
+constexpr size_t kMaxUsernameLength = 65;
 
 struct Config {
   char wifi_ssid[kMaxSsidLength] = {0};
   char wifi_password[kMaxPasswordLength] = {0};
   char mqtt_host[kMaxHostLength] = {0};
   uint16_t mqtt_port = 1883;
-  char mqtt_username[kMaxSsidLength] = {0};
+  char mqtt_username[kMaxUsernameLength] = {0};
   char mqtt_password[kMaxPasswordLength] = {0};
   uint32_t sample_interval_s = 300;
   LoadCellCalibration calibration;
@@ -56,7 +60,12 @@ uint32_t nextSequence();
 
 // Identificador do no: os 4 ultimos bytes do MAC, em hexadecimal maiusculo, conforme o
 // contrato. Derivar do MAC evita ter de gravar um id unico em cada unidade do lote de
-// 20 -- e dois nos jamais colidem.
+// 20, e o identificador sobrevive a apagar a NVS.
+//
+// Colisao e improvavel, nao impossivel: dentro de um mesmo OUI da Espressif so tres dos
+// quatro bytes variam. Se dois nos colidirem, as mensagens de um serao descartadas como
+// duplicatas do outro pela restricao UNIQUE (node_id, seq) -- silenciosamente. Por isso
+// o `estado` imprime o id: conferi-lo e o primeiro passo diante de um no mudo.
 const char *nodeId();
 
 }  // namespace meliponet

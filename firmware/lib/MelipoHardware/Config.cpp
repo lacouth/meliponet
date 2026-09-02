@@ -27,7 +27,7 @@ Config loadConfig() {
   copyString(config.wifi_password, kMaxPasswordLength, g_prefs.getString("wifi_pw", ""));
   copyString(config.mqtt_host, kMaxHostLength, g_prefs.getString("mqtt_host", ""));
   config.mqtt_port = g_prefs.getUShort("mqtt_port", 1883);
-  copyString(config.mqtt_username, kMaxSsidLength, g_prefs.getString("mqtt_user", ""));
+  copyString(config.mqtt_username, kMaxUsernameLength, g_prefs.getString("mqtt_user", ""));
   copyString(config.mqtt_password, kMaxPasswordLength, g_prefs.getString("mqtt_pw", ""));
   config.sample_interval_s = g_prefs.getULong("interval_s", 300);
   config.calibration.offset = g_prefs.getInt("cal_offset", 0);
