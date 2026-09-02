@@ -187,8 +187,9 @@ possíveis vão de um fio solto a um filtro errado numa consulta SQL.
 
 ## Testar os sensores na bancada
 
-Você não precisa de rede, broker, nem plataforma para verificar a eletrônica. Com a
-placa alimentada só pelo cabo USB:
+Você não precisa de rede, broker, nem plataforma para verificar a eletrônica. A ligação
+de cada peça — pinos, cuidados de alimentação e a ordem segura de energizar — está em
+[O hardware](10-o-hardware.md). Com a placa alimentada só pelo cabo USB:
 
 ```
 ler          uma leitura agora
@@ -242,4 +243,4 @@ liga e desliga sensor o tempo todo, `sondar` resolve na hora.
 - **Consumo**: meça por estado (dormindo, lendo, transmitindo). É o que vai comprovar
   a autonomia de ≥ 15 dias prometida na meta M5 do PIBITI.
 
-→ Próximo: [Engenharia de software](05-engenharia-de-software.md)
+→ Próximo: [O hardware](10-o-hardware.md)
