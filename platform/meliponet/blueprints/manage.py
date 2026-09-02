@@ -84,7 +84,12 @@ def index():
         )
 
     return render_template(
-        "manage/index.html", apiaries=apiaries, nodes=nodes, pending=pending
+        "manage/index.html",
+        apiaries=apiaries,
+        nodes=nodes,
+        pending=pending,
+        species=SPECIES,
+        pode_gerenciar=scope.can_manage(current_user),
     )
 
 

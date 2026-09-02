@@ -5,6 +5,16 @@
 <h1>Cadastros</h1>
 <p class="sub">Meliponários, colmeias e vínculo dos nós sensores.</p>
 
+{% if not pode_gerenciar %}
+<div class="card">
+  <p class="sub" style="margin:0;">
+    Seu perfil vê os cadastros mas não os altera. Quem instalou o nó na caixa é quem
+    sabe onde cada sensor ficou — por isso o cadastro de campo é editado por quem
+    administra o meliponário, e não por quem analisa os dados.
+  </p>
+</div>
+{% endif %}
+
 {% if pending %}
 <h2>Nós aguardando vínculo</h2>
 <p class="sub">
@@ -48,6 +58,7 @@
   <p class="sub" style="margin:10px 0 0;">Nenhuma colmeia neste meliponário ainda.</p>
   {% endif %}
 
+  {% if pode_gerenciar %}
   <form method="post" action="{{ url_for('manage.create_hive') }}" style="margin-top:14px;">
     <input type="hidden" name="meliponario_id" value="{{ apiary.id }}">
     <div class="form-row">
@@ -56,20 +67,20 @@
       <label class="field"><span>Espécie</span>
         <select name="especie">
           <option value="">—</option>
-          <option>Melipona scutellaris</option>
-          <option>Melipona subnitida</option>
-          <option>Scaptotrigona depilis</option>
+          {% for nome in species %}<option>{{ nome }}</option>{% endfor %}
         </select></label>
       <label class="field"><span>Tipo de caixa</span>
         <input name="caixa" placeholder="INPA"></label>
     </div>
     <button type="submit">Adicionar colmeia</button>
   </form>
+  {% endif %}
 </div>
 {% else %}
 <div class="card empty">Nenhum meliponário cadastrado ainda.</div>
 {% endfor %}
 
+{% if pode_gerenciar %}
 <h2>Novo meliponário</h2>
 <form method="post" action="{{ url_for('manage.create_apiary') }}" class="card">
   <div class="form-row">
@@ -80,6 +91,7 @@
   </div>
   <button type="submit">Cadastrar meliponário</button>
 </form>
+{% endif %}
 
 <h2>Nós sensores</h2>
 <div class="card" style="padding:0; overflow:hidden;">
@@ -93,6 +105,7 @@
         <td>{{ assignment.hive.name if assignment else '—' }}</td>
         <td>{{ node.last_seen_at | localtime }}</td>
         <td style="text-align:right">
+          {% if pode_gerenciar %}
           <a class="btn ghost" href="{{ url_for('manage.assign_node', node_id=node.id) }}">
             {{ 'Remanejar' if assignment else 'Vincular' }}</a>
           {% if assignment %}
@@ -101,6 +114,7 @@
             <button class="btn ghost" type="submit">Desvincular</button>
           </form>
           {% endif %}
+          {% else %}—{% endif %}
         </td>
       </tr>
       {% else %}

@@ -239,3 +239,27 @@ def test_no_adotado_fica_com_a_organizacao_da_colmeia(client, scenario, login) -
 
     with session_scope() as session:
         assert session.get(Node, orfao_pk).organization_id == scenario.organization_id
+
+
+def test_pesquisador_nao_ve_os_formularios_de_cadastro(client, scenario, login) -> None:
+    """A interface precisa contar a mesma regra que a rota aplica.
+
+    O pesquisador via os dois formulários e os botões de vínculo, e levava 403 em
+    todos: descobrir a permissão errando é a pior forma de expô-la.
+    """
+    login(scenario.organization_id, Role.PESQUISADOR)
+    corpo = client.get("/gerenciar/").get_data(as_text=True)
+
+    assert "Cadastrar meliponário" not in corpo
+    assert "Adicionar colmeia" not in corpo
+    assert "Desvincular" not in corpo
+    # E, no lugar, uma explicação — não o sumiço silencioso.
+    assert "não os altera" in corpo
+
+
+def test_quem_administra_continua_vendo_os_formularios(client, scenario, login) -> None:
+    login(scenario.organization_id)
+    corpo = client.get("/gerenciar/").get_data(as_text=True)
+
+    assert "Cadastrar meliponário" in corpo
+    assert "Adicionar colmeia" in corpo
