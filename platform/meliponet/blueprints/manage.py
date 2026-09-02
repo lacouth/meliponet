@@ -50,6 +50,17 @@ def _parse_local(value: str | None) -> datetime | None:
     return naive.replace(tzinfo=ZoneInfo(DISPLAY_TIMEZONE)).astimezone(UTC)
 
 
+def _local_input(value: datetime | None) -> str:
+    """Formata um instante UTC para preencher um ``datetime-local`` do formulario.
+
+    Inverso de ``_parse_local``. Sem ele, abrir a tela de edicao mostraria o campo de
+    data vazio e salvar apagaria a data que ja estava gravada.
+    """
+    if value is None:
+        return ""
+    return value.astimezone(ZoneInfo(DISPLAY_TIMEZONE)).strftime("%Y-%m-%dT%H:%M")
+
+
 @bp.route("/")
 @login_required
 def index():
@@ -131,11 +142,96 @@ def create_hive():
                 name=request.form["nome"].strip(),
                 species=(request.form.get("especie") or "").strip() or None,
                 box_type=(request.form.get("caixa") or "").strip() or None,
-                installed_at=utcnow(),
+                # Em branco significa "agora", que e o caso comum; mas uma colmeia
+                # cadastrada semanas depois de instalada precisa da data verdadeira, e
+                # e ela que delimita a serie da colmeia.
+                installed_at=_parse_local(request.form.get("instalado_em")) or utcnow(),
             )
         )
     flash("Colmeia cadastrada.", "ok")
     return redirect(url_for("manage.index"))
+
+
+@bp.route("/meliponario/<int:apiary_id>/editar", methods=["GET", "POST"])
+@login_required
+def edit_apiary(apiary_id: int):
+    """Corrige o cadastro de um meliponario.
+
+    Um cadastro so criavel e um cadastro que envelhece errado: municipio digitado com
+    erro, coordenada trocada de sinal, estacao do INMET descoberta depois. Nada disso
+    justifica recriar o meliponario, o que orfanaria as colmeias e a serie inteira.
+    """
+    _require_manager()
+    with session_scope() as session:
+        # Mesmo padrao de `create_hive`: o objeto precisa estar no escopo do usuario,
+        # senao trocar o numero na URL viraria a chave do cadastro alheio.
+        apiary = session.scalar(scope.apiaries_for(current_user).where(Apiary.id == apiary_id))
+        if apiary is None:
+            abort(403)
+
+        if request.method == "POST":
+            apiary.name = request.form["nome"].strip()
+            apiary.municipality = (request.form.get("municipio") or "").strip() or None
+            apiary.latitude = _float_or_none(request.form.get("latitude"))
+            apiary.longitude = _float_or_none(request.form.get("longitude"))
+            apiary.inmet_station = (request.form.get("estacao_inmet") or "").strip() or None
+            apiary.notes = (request.form.get("observacoes") or "").strip() or None
+            flash("Meliponário atualizado.", "ok")
+            return redirect(url_for("manage.index"))
+
+        # Os valores saem da sessao antes que ela feche: o template renderiza depois.
+        dados = {
+            "id": apiary.id,
+            "nome": apiary.name,
+            "municipio": apiary.municipality or "",
+            "latitude": apiary.latitude if apiary.latitude is not None else "",
+            "longitude": apiary.longitude if apiary.longitude is not None else "",
+            "estacao_inmet": apiary.inmet_station or "",
+            "observacoes": apiary.notes or "",
+        }
+
+    return render_template("manage/apiary_edit.html", apiary=dados)
+
+
+@bp.route("/colmeia/<int:hive_id>/editar", methods=["GET", "POST"])
+@login_required
+def edit_hive(hive_id: int):
+    """Corrige o cadastro de uma colmeia.
+
+    Inclui a data de instalacao, que ate aqui era carimbada como "agora" no cadastro e
+    nao tinha como ser ajustada depois -- e e ela que diz a partir de quando a serie
+    daquela colmeia comeca a valer.
+    """
+    _require_manager()
+    with session_scope() as session:
+        hive = session.scalar(
+            scope.hives_for(current_user)
+            .options(selectinload(Hive.apiary))
+            .where(Hive.id == hive_id)
+        )
+        if hive is None:
+            abort(403)
+
+        if request.method == "POST":
+            hive.name = request.form["nome"].strip()
+            hive.species = (request.form.get("especie") or "").strip() or None
+            hive.box_type = (request.form.get("caixa") or "").strip() or None
+            hive.installed_at = _parse_local(request.form.get("instalado_em"))
+            hive.notes = (request.form.get("observacoes") or "").strip() or None
+            flash("Colmeia atualizada.", "ok")
+            return redirect(url_for("manage.index"))
+
+        dados = {
+            "id": hive.id,
+            "nome": hive.name,
+            "especie": hive.species or "",
+            "caixa": hive.box_type or "",
+            "instalado_em": _local_input(hive.installed_at),
+            "observacoes": hive.notes or "",
+            "meliponario": hive.apiary.name,
+        }
+
+    return render_template("manage/hive_edit.html", hive=dados, species=SPECIES)
 
 
 @bp.route("/no/<int:node_id>/vincular", methods=["GET", "POST"])

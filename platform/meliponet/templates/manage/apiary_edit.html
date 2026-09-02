@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Editar {{ apiary.nome }} — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>Editar meliponário</h1>
+<p class="sub">
+  Corrigir o cadastro não mexe em nenhuma leitura: as colmeias, os vínculos e a série
+  continuam onde estão.
+</p>
+
+<form method="post" class="card" style="max-width:620px;">
+  <label class="field"><span>Nome</span>
+    <input name="nome" required value="{{ apiary.nome }}"></label>
+
+  <div class="form-row">
+    <label class="field"><span>Município</span>
+      <input name="municipio" value="{{ apiary.municipio }}" placeholder="João Pessoa"></label>
+    <label class="field"><span>Latitude</span>
+      <input name="latitude" value="{{ apiary.latitude }}" placeholder="-7.1408"></label>
+    <label class="field"><span>Longitude</span>
+      <input name="longitude" value="{{ apiary.longitude }}" placeholder="-34.8556"></label>
+  </div>
+
+  <label class="field">
+    <span>Estação do INMET mais próxima</span>
+    <input name="estacao_inmet" value="{{ apiary.estacao_inmet }}" placeholder="A320">
+  </label>
+
+  <label class="field">
+    <span>Observações</span>
+    <textarea name="observacoes"
+      placeholder="Acesso, sombreamento, vegetação do entorno, o que mais ajudar quem for a campo.">{{ apiary.observacoes }}</textarea>
+  </label>
+
+  <p class="sub" style="font-size:13px;">
+    O código da estação do INMET é o que vai permitir cruzar a série da colmeia com o
+    clima da região na Fase 4. Coordenada e município valem o mesmo cuidado: são eles
+    que situam o meliponário no mapa e na análise.
+  </p>
+
+  <button type="submit">Salvar</button>
+  <a class="btn ghost" href="{{ url_for('manage.index') }}">Cancelar</a>
+</form>
+
+{% endblock %}

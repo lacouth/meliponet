@@ -40,16 +40,25 @@
   <div style="display:flex; align-items:baseline; gap:10px;">
     <strong>{{ apiary.name }}</strong>
     <span class="pill">{{ apiary.municipality or 'sem município' }}</span>
+    {% if pode_gerenciar %}
+    <a class="btn ghost" style="margin-left:auto"
+       href="{{ url_for('manage.edit_apiary', apiary_id=apiary.id) }}">Editar</a>
+    {% endif %}
   </div>
   {% if apiary.hives %}
   <table style="margin-top:10px;">
-    <thead><tr><th>Colmeia</th><th>Espécie</th><th>Caixa</th></tr></thead>
+    <thead><tr><th>Colmeia</th><th>Espécie</th><th>Caixa</th><th></th></tr></thead>
     <tbody>
       {% for hive in apiary.hives %}
       <tr>
         <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=hive.id) }}">{{ hive.name }}</a></td>
         <td><em>{{ hive.species or '—' }}</em></td>
         <td>{{ hive.box_type or '—' }}</td>
+        <td style="text-align:right">
+          {% if pode_gerenciar %}
+          <a class="btn ghost" href="{{ url_for('manage.edit_hive', hive_id=hive.id) }}">Editar</a>
+          {% else %}—{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -71,6 +80,8 @@
         </select></label>
       <label class="field"><span>Tipo de caixa</span>
         <input name="caixa" placeholder="INPA"></label>
+      <label class="field"><span>Instalada em (em branco = agora)</span>
+        <input type="datetime-local" name="instalado_em"></label>
     </div>
     <button type="submit">Adicionar colmeia</button>
   </form>

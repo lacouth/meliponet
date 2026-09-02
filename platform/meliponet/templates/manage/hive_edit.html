@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Editar {{ hive.nome }} — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>Editar colmeia</h1>
+<p class="sub">Em <strong>{{ hive.meliponario }}</strong>.</p>
+
+<form method="post" class="card" style="max-width:620px;">
+  <label class="field"><span>Nome</span>
+    <input name="nome" required value="{{ hive.nome }}"></label>
+
+  <div class="form-row">
+    <label class="field"><span>Espécie</span>
+      <select name="especie">
+        <option value="">—</option>
+        {% for nome in species %}
+        <option {% if nome == hive.especie %}selected{% endif %}>{{ nome }}</option>
+        {% endfor %}
+        {% if hive.especie and hive.especie not in species %}
+        <option selected>{{ hive.especie }}</option>
+        {% endif %}
+      </select></label>
+    <label class="field"><span>Tipo de caixa</span>
+      <input name="caixa" value="{{ hive.caixa }}" placeholder="INPA"></label>
+  </div>
+
+  <label class="field">
+    <span>Instalada em (horário local)</span>
+    <input type="datetime-local" name="instalado_em" value="{{ hive.instalado_em }}">
+  </label>
+
+  <label class="field">
+    <span>Observações</span>
+    <textarea name="observacoes"
+      placeholder="Origem da colônia, manejos feitos, o que for útil para interpretar a série.">{{ hive.observacoes }}</textarea>
+  </label>
+
+  <p class="sub" style="font-size:13px;">
+    A data de instalação é a que delimita a partir de quando a série desta colmeia vale.
+    Quando a colmeia é cadastrada semanas depois de instalada, é aqui que a data
+    verdadeira entra.
+  </p>
+
+  <button type="submit">Salvar</button>
+  <a class="btn ghost" href="{{ url_for('manage.index') }}">Cancelar</a>
+</form>
+
+{% endblock %}

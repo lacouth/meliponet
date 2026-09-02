@@ -6,9 +6,11 @@ rotas de fato a aplicam — a regra certa num helper que ninguém chama não pro
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 from meliponet.db import session_scope
-from meliponet.models import Hive, Node, NodeAssignment, Role
+from meliponet.models import Apiary, Hive, Node, NodeAssignment, Role
 from sqlalchemy import select
 
 
@@ -263,3 +265,83 @@ def test_quem_administra_continua_vendo_os_formularios(client, scenario, login) 
 
     assert "Cadastrar meliponário" in corpo
     assert "Adicionar colmeia" in corpo
+
+
+def test_editar_meliponario(client, scenario, login) -> None:
+    """Cadastro só criável envelhece errado: município com erro de digitação,
+    coordenada com o sinal trocado, estação do INMET descoberta depois."""
+    login(scenario.organization_id)
+
+    response = client.post(
+        f"/gerenciar/meliponario/{scenario.apiary_id}/editar",
+        data={
+            "nome": "Meliponário Mata do Buraquinho",
+            "municipio": "João Pessoa",
+            "latitude": "-7.1408",
+            "longitude": "-34.8556",
+            "estacao_inmet": "A320",
+            "observacoes": "Acesso por trilha; sombreado o dia inteiro.",
+        },
+    )
+    assert response.status_code == 302
+
+    with session_scope() as session:
+        apiary = session.get(Apiary, scenario.apiary_id)
+        assert apiary.municipality == "João Pessoa"
+        assert apiary.latitude == pytest.approx(-7.1408)
+        # Dois campos que, antes disto, nenhum formulário alcançava.
+        assert apiary.inmet_station == "A320"
+        assert apiary.notes.startswith("Acesso por trilha")
+
+
+def test_editar_colmeia_corrige_a_data_de_instalacao(client, scenario, login) -> None:
+    """A data era carimbada como "agora" no cadastro e não tinha como ser ajustada.
+
+    Uma colmeia cadastrada semanas depois de instalada ficava com a data errada para
+    sempre — e é ela que diz a partir de quando a série daquela colmeia vale.
+    """
+    login(scenario.organization_id)
+
+    response = client.post(
+        f"/gerenciar/colmeia/{scenario.hive_id}/editar",
+        data={
+            "nome": "Colmeia 01",
+            "especie": "Melipona subnitida",
+            "caixa": "INPA",
+            "instalado_em": "2026-03-10T08:30",
+            "observacoes": "Colônia dividida em março.",
+        },
+    )
+    assert response.status_code == 302
+
+    with session_scope() as session:
+        hive = session.get(Hive, scenario.hive_id)
+        assert hive.species == "Melipona subnitida"
+        assert hive.box_type == "INPA"
+        # 08:30 na Paraíba (UTC-3) são 11:30 UTC: a data entra pelo mesmo tratamento
+        # de fuso da tela de vínculo, e não deslocada em três horas.
+        assert hive.installed_at.astimezone(UTC).hour == 11
+        assert hive.installed_at.astimezone(UTC).day == 10
+
+
+def test_nao_se_edita_cadastro_alheio(client, scenario, login) -> None:
+    """Trocar o número na URL não pode virar a chave do cadastro de outra organização."""
+    login(scenario.other_organization_id)
+
+    apiary = client.post(
+        f"/gerenciar/meliponario/{scenario.apiary_id}/editar", data={"nome": "Sequestrado"}
+    )
+    hive = client.post(
+        f"/gerenciar/colmeia/{scenario.hive_id}/editar", data={"nome": "Sequestrada"}
+    )
+
+    assert apiary.status_code == 403
+    assert hive.status_code == 403
+
+
+def test_pesquisador_nao_edita_cadastro(client, scenario, login) -> None:
+    login(scenario.organization_id, Role.PESQUISADOR)
+
+    response = client.get(f"/gerenciar/colmeia/{scenario.hive_id}/editar")
+
+    assert response.status_code == 403
