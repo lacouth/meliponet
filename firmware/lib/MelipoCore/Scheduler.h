@@ -17,9 +17,18 @@ namespace meliponet {
 
 class Scheduler {
  public:
-  // `interval_ms` e o periodo entre amostras. `start_ms` e o instante inicial.
-  Scheduler(uint32_t interval_ms, uint32_t start_ms)
-      : interval_ms_(interval_ms), last_ms_(start_ms) {}
+  // Nasce parada, e comeca a contar em `begin`. Poder ser construida sem argumentos e o
+  // que permite que ela seja uma variavel global comum no `main.cpp`: o intervalo vem da
+  // NVS e o instante inicial vem de `millis()`, e nenhum dos dois existe ainda quando as
+  // globais sao construidas, antes do `setup()`.
+  Scheduler() = default;
+
+  // `interval_ms` e o periodo entre amostras. `now_ms` e o instante em que a contagem
+  // comeca.
+  void begin(uint32_t interval_ms, uint32_t now_ms) {
+    interval_ms_ = interval_ms;
+    last_ms_ = now_ms;
+  }
 
   // Verdadeiro se ja passou um intervalo desde a ultima amostra.
   //
@@ -40,8 +49,8 @@ class Scheduler {
   void setInterval(uint32_t interval_ms) { interval_ms_ = interval_ms; }
 
  private:
-  uint32_t interval_ms_;
-  uint32_t last_ms_;
+  uint32_t interval_ms_ = 0;
+  uint32_t last_ms_ = 0;
 };
 
 }  // namespace meliponet

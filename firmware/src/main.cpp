@@ -45,8 +45,8 @@ meliponet::LoadCell g_load_cell;
 meliponet::WifiLink g_wifi;
 meliponet::MqttPublisher g_mqtt;
 meliponet::LittleFsSpoolStorage g_storage;
-meliponet::Spool *g_spool = nullptr;
-meliponet::Scheduler *g_scheduler = nullptr;
+meliponet::Spool g_spool(g_storage);
+meliponet::Scheduler g_scheduler;
 
 // Se o `setup` chegou a configurar rede e amostragem. O laco principal se guia por esta
 // bandeira, e nao por `g_config.usable()`: a configuracao pelo console serial pode
@@ -68,11 +68,11 @@ void publishOrSpool(const char *payload, size_t length) {
   if (g_mqtt.publish(payload, length)) {
     return;
   }
-  if (!g_spool->push(payload, length)) {
+  if (!g_spool.push(payload, length)) {
     Serial.println("[erro] falha ao guardar no spool; medicao perdida");
   } else {
     Serial.printf("[spool] guardada; %u pendentes\n",
-                  static_cast<unsigned>(g_spool->size()));
+                  static_cast<unsigned>(g_spool.size()));
   }
 }
 
@@ -80,21 +80,21 @@ void publishOrSpool(const char *payload, size_t length) {
 // nao segurar o laco principal por minutos apos uma queda longa -- o que atrasaria a
 // proxima amostragem e criaria uma lacuna nova enquanto se recupera da antiga.
 void drainSpool() {
-  if (g_spool->empty() || !g_mqtt.connected()) {
+  if (g_spool.empty() || !g_mqtt.connected()) {
     return;
   }
 
   char buffer[meliponet::kMaxTelemetryJson];
-  const size_t length = g_spool->peek(buffer, sizeof(buffer));
+  const size_t length = g_spool.peek(buffer, sizeof(buffer));
   if (length == 0) {
-    g_spool->pop();  // entrada ilegivel: descarta para nao travar a fila
+    g_spool.pop();  // entrada ilegivel: descarta para nao travar a fila
     return;
   }
 
   // So remove depois da confirmacao: remover antes perderia a mensagem se a publicacao
   // falhasse, que e justamente o cenario em que o spool existe.
   if (g_mqtt.publish(buffer, length)) {
-    g_spool->pop();
+    g_spool.pop();
   }
 }
 
@@ -376,8 +376,8 @@ void handleSerial() {
     Serial.printf("sht ext   %s\n", g_sht.outsidePresent() ? "ok" : "ausente");
     Serial.printf("calibrac. %s\n", g_config.calibration.valid() ? "ok" : "AUSENTE");
     Serial.printf("spool     %u pendentes, %u descartadas\n",
-                  static_cast<unsigned>(g_spool->size()),
-                  static_cast<unsigned>(g_spool->dropped()));
+                  static_cast<unsigned>(g_spool.size()),
+                  static_cast<unsigned>(g_spool.dropped()));
 
   } else if (cmd.is("ajuda") || cmd.is("?")) {
     Serial.println("wifi <ssid> <senha>          credenciais da rede");
@@ -402,17 +402,14 @@ void setup() {
 
   uint32_t head = 0;
   uint32_t count = 0;
-  static meliponet::Spool spool(g_storage);
-  g_spool = &spool;
   if (g_storage.begin(head, count)) {
     // Restaura a fila do reinicio: mensagens guardadas antes de uma queda de energia
     // continuam pendentes, em vez de virarem lacuna.
-    g_spool->restore(head, count);
+    g_spool.restore(head, count);
     Serial.printf("[spool] %u mensagens recuperadas\n", static_cast<unsigned>(count));
   }
 
-  static meliponet::Scheduler scheduler(g_config.sample_interval_s * 1000UL, millis());
-  g_scheduler = &scheduler;
+  g_scheduler.begin(g_config.sample_interval_s * 1000UL, millis());
 
   if (!g_sht.begin(kI2cSda, kI2cScl)) {
     Serial.println("[aviso] nenhum SHT30 respondeu");
@@ -454,7 +451,7 @@ void setup() {
 void loop() {
   handleSerial();
 
-  if (!g_running || g_scheduler == nullptr) {
+  if (!g_running) {
     delay(100);
     return;
   }
@@ -468,8 +465,8 @@ void loop() {
     g_wifi.syncClock();
   }
 
-  if (g_scheduler->due(now)) {
-    g_scheduler->mark(now);
+  if (g_scheduler.due(now)) {
+    g_scheduler.mark(now);
     sample();
   }
 
