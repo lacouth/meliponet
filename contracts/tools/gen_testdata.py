@@ -213,7 +213,7 @@ def _cpp_literal(field: str, value) -> str:
     if field in ARRAYS:
         return "{" + ", ".join(str(item) for item in value) + "}"
     if field == "flags":
-        return " | ".join(f"Flag::{flag}" for flag in value) or "Flag::none"
+        return " | ".join(f"Flag::{flag}" for flag in value) or "Flag::nenhuma"
     return str(value)
 
 
@@ -227,26 +227,26 @@ def render_header() -> str:
         "// Rode `python3 contracts/tools/gen_testdata.py` apos alterar o contrato.",
         "#pragma once",
         "",
-        '#include "Scaling.h"',
-        '#include "TelemetryCodec.h"',
+        '#include "Escala.h"',
+        '#include "Telemetria.h"',
         "",
         "namespace meliponet {",
         "namespace testdata {",
         "",
-        "struct Vector {",
-        "  const char *name;",
-        "  Telemetry telemetry;",
-        "  const char *expected_json;",
+        "struct Vetor {",
+        "  const char *nome;",
+        "  Telemetria telemetria;",
+        "  const char *json_esperado;",
         "};",
         "",
-        "inline const Vector kVectors[] = {",
+        "inline const Vetor kVetores[] = {",
     ]
 
     for name, message in VALID.items():
         scaled = scaled_message(message)
         lines.append("    {")
         lines.append(f'        "{name}",')
-        lines.append("        Telemetry{")
+        lines.append("        Telemetria{")
         for field, value in scaled.items():
             if field == "schema":
                 continue  # constante do contrato, preenchida pelo proprio codec
@@ -254,8 +254,8 @@ def render_header() -> str:
         # node_id, seq e ts sao obrigatorios pelo contrato; o bitmask de presenca
         # cobre apenas os campos opcionais, que sao os que podem ou nao ser emitidos.
         optional = [f for f in scaled if f not in REQUIRED and f != "flags"]
-        present = " | ".join(f"Field::{f}" for f in optional) or "Field::none"
-        lines.append(f"            .present = {present},")
+        presentes = " | ".join(f"Campo::{f}" for f in optional) or "Campo::nenhum"
+        lines.append(f"            .presentes = {presentes},")
         lines.append("        },")
         lines.append(f"        {_json_literal(canonical_dumps(message))},")
         lines.append("    },")
@@ -263,21 +263,21 @@ def render_header() -> str:
     lines += [
         "};",
         "",
-        "inline constexpr size_t kVectorCount = sizeof(kVectors) / sizeof(kVectors[0]);",
+        "inline constexpr size_t kQuantidadeDeVetores = sizeof(kVetores) / sizeof(kVetores[0]);",
         "",
-        "// Conversao leitura fisica -> inteiro escalado. O `expected` vem de",
-        "// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::scale.",
+        "// Conversao leitura fisica -> inteiro escalado. O `esperado` vem de",
+        "// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::escalar.",
         "//",
         "// As casas decimais vem de canonical.DECIMALS, a mesma tabela que o lado",
         "// Python usa -- nao ha aqui uma segunda copia para sair de sincronia.",
-        "struct ScalingVector {",
-        "  double reading;",
-        "  int decimals;",
-        "  int32_t expected;",
-        "  const char *field;",
+        "struct VetorDeEscala {",
+        "  double leitura;",
+        "  int casas;",
+        "  int32_t esperado;",
+        "  const char *campo;",
         "};",
         "",
-        "inline const ScalingVector kScalingVectors[] = {",
+        "inline const VetorDeEscala kVetoresDeEscala[] = {",
     ]
     for field, reading in SCALING:
         lines.append(
@@ -286,8 +286,8 @@ def render_header() -> str:
     lines += [
         "};",
         "",
-        "inline constexpr size_t kScalingVectorCount =",
-        "    sizeof(kScalingVectors) / sizeof(kScalingVectors[0]);",
+        "inline constexpr size_t kQuantidadeDeVetoresDeEscala =",
+        "    sizeof(kVetoresDeEscala) / sizeof(kVetoresDeEscala[0]);",
         "",
         "}  // namespace testdata",
         "}  // namespace meliponet",
