@@ -149,13 +149,13 @@ constexpr uint32_t kMaxBenchReadings = 600;
 // contrato -- metrica nenhuma trafega como float -- deixa de ser um paragrafo de
 // documento e vira uma coisa que se ve. 30,12 C vira 3012, e nao "30.12".
 void printReading(const char *label, const meliponet::Reading &reading, const char *unit,
-                  meliponet::Scale scale, double minimum, double maximum) {
+                  const meliponet::Metric &metric) {
   if (!reading.valid) {
     Serial.printf("  %-9s ausente\n", label);
     return;
   }
 
-  const meliponet::Scaled scaled = meliponet::scaleInRange(reading.value, scale, minimum, maximum);
+  const meliponet::Scaled scaled = meliponet::scaleInRange(reading.value, metric);
   if (!scaled.ok) {
     // Fora da faixa fisica do sensor: a mensagem real omitiria o campo e ligaria a
     // flag. Dizer isso aqui evita a conclusao errada de que o valor seria enviado.
@@ -181,14 +181,10 @@ void benchRead(uint32_t repetitions) {
 
     Serial.printf("[leitura %lu/%lu]\n", static_cast<unsigned long>(i),
                   static_cast<unsigned long>(repetitions));
-    printReading("temp int", sht.temp_in, "C", meliponet::Scale::Temperature,
-                 meliponet::kSht30MinTempC, meliponet::kSht30MaxTempC);
-    printReading("ur int", sht.rh_in, "%", meliponet::Scale::Humidity, meliponet::kSht30MinRhPct,
-                 meliponet::kSht30MaxRhPct);
-    printReading("temp ext", sht.temp_out, "C", meliponet::Scale::Temperature,
-                 meliponet::kSht30MinTempC, meliponet::kSht30MaxTempC);
-    printReading("ur ext", sht.rh_out, "%", meliponet::Scale::Humidity, meliponet::kSht30MinRhPct,
-                 meliponet::kSht30MaxRhPct);
+    printReading("temp int", sht.temp_in, "C", meliponet::kTemperature);
+    printReading("ur int", sht.rh_in, "%", meliponet::kHumidity);
+    printReading("temp ext", sht.temp_out, "C", meliponet::kTemperature);
+    printReading("ur ext", sht.rh_out, "%", meliponet::kHumidity);
 
     // A contagem bruta e lida uma vez e reaproveitada na conversao. Chamar `read()`
     // aqui repetiria as dez leituras mediadas do HX711 -- um segundo inteiro a mais
@@ -202,14 +198,12 @@ void benchRead(uint32_t repetitions) {
       const meliponet::Weight weight = meliponet::toKilograms(raw, g_load_cell.calibration());
       printReading("peso", weight.ok ? meliponet::Reading::ok(weight.kilograms)
                                      : meliponet::Reading::fault(),
-                   "kg", meliponet::Scale::Weight, meliponet::kMinWeightKg,
-                   meliponet::kMaxWeightKg);
+                   "kg", meliponet::kWeight);
     } else {
       Serial.printf("  %-9s sem resposta -- confira alimentacao e os fios DT/SCK\n", "hx711");
     }
 
-    printReading("bateria", readBattery(), "V", meliponet::Scale::Voltage,
-                 meliponet::kMinVoltageV, meliponet::kMaxVoltageV);
+    printReading("bateria", readBattery(), "V", meliponet::kVoltage);
 
     if (i < repetitions) {
       delay(1000);

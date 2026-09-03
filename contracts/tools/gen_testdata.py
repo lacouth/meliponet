@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from canonical import (
     ARRAYS,
+    DECIMALS,
     SCHEMA_ID,
     STRINGS,
     canonical_dumps,
@@ -216,18 +217,6 @@ def _cpp_literal(field: str, value) -> str:
     return str(value)
 
 
-#: Nome do enum C++ correspondente a cada campo escalado.
-SCALE_ENUM = {
-    "temp_in_c": "Scale::Temperature",
-    "temp_out_c": "Scale::Temperature",
-    "rh_in_pct": "Scale::Humidity",
-    "rh_out_pct": "Scale::Humidity",
-    "weight_kg": "Scale::Weight",
-    "vbat_v": "Scale::Voltage",
-    "sound_rms": "Scale::Sound",
-}
-
-
 def render_header() -> str:
     """Monta ``testdata/vectors.h`` com os casos validos para o teste nativo C++."""
     lines = [
@@ -278,9 +267,12 @@ def render_header() -> str:
         "",
         "// Conversao leitura fisica -> inteiro escalado. O `expected` vem de",
         "// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::scale.",
+        "//",
+        "// As casas decimais vem de canonical.DECIMALS, a mesma tabela que o lado",
+        "// Python usa -- nao ha aqui uma segunda copia para sair de sincronia.",
         "struct ScalingVector {",
         "  double reading;",
-        "  Scale unit;",
+        "  int decimals;",
         "  int32_t expected;",
         "  const char *field;",
         "};",
@@ -289,7 +281,7 @@ def render_header() -> str:
     ]
     for field, reading in SCALING:
         lines.append(
-            f'    {{{reading!r}, {SCALE_ENUM[field]}, {quantize(field, reading)}, "{field}"}},'
+            f'    {{{reading!r}, {DECIMALS[field]}, {quantize(field, reading)}, "{field}"}},'
         )
     lines += [
         "};",
