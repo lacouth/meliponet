@@ -10,11 +10,8 @@
 #include "TelemetryCodec.h"
 #include "vectors.h"
 
-using meliponet::Field;
-using meliponet::Flag;
-using meliponet::Telemetry;
-using meliponet::testdata::kVectorCount;
-using meliponet::testdata::kVectors;
+using namespace meliponet;
+using namespace meliponet::testdata;
 
 namespace {
 

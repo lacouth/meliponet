@@ -10,12 +10,7 @@
 #include "Sample.h"
 #include "TelemetryCodec.h"
 
-using meliponet::Field;
-using meliponet::Flag;
-using meliponet::Reading;
-using meliponet::SampleContext;
-using meliponet::SensorSnapshot;
-using meliponet::Telemetry;
+using namespace meliponet;
 
 namespace {
 
