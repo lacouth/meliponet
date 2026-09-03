@@ -27,7 +27,7 @@ As demais regras:
 4. Flags em ordem canonica (:data:`FLAG_ORDER`), para que a comparacao nao dependa da
    ordem em que o firmware detectou cada condicao.
 
-O lado C++ espelha estas regras em ``firmware/lib/MelipoNet/TelemetryCodec``.
+O lado C++ espelha estas regras em ``firmware/lib/MelipoCore/Telemetria``.
 """
 
 from __future__ import annotations

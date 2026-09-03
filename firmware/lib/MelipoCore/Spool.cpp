@@ -2,52 +2,52 @@
 
 namespace meliponet {
 
-bool Spool::push(const char *payload, size_t length) {
-  if (payload == nullptr || length == 0) {
+bool Spool::guardar(const char *conteudo, size_t tamanho) {
+  if (conteudo == nullptr || tamanho == 0) {
     return false;
   }
 
-  if (full()) {
-    // Descarta a mais antiga para abrir espaco. A perda fica visivel na `seq` do lado
-    // da plataforma, e contada aqui em `dropped_`.
-    if (!storage_.erase(head_)) {
+  if (cheio()) {
+    // Descarta a mais antiga para abrir espaco. A perda fica visivel na `seq` do lado da
+    // plataforma, e contada aqui em `descartadas_`.
+    if (!armazenamento_.apagar(inicio_)) {
       return false;
     }
-    head_ = static_cast<uint32_t>((head_ + 1) % kSpoolCapacity);
-    --count_;
-    ++dropped_;
+    inicio_ = static_cast<uint32_t>((inicio_ + 1) % kCapacidadeDoSpool);
+    --quantidade_;
+    ++descartadas_;
   }
 
-  const uint32_t slot = slotAt(count_);
-  if (!storage_.write(slot, payload, length)) {
+  const uint32_t posicao = posicaoEm(quantidade_);
+  if (!armazenamento_.escrever(posicao, conteudo, tamanho)) {
     return false;
   }
-  ++count_;
+  ++quantidade_;
   return true;
 }
 
-size_t Spool::peek(char *out, size_t capacity) {
-  if (empty() || out == nullptr || capacity == 0) {
+size_t Spool::espiar(char *saida, size_t capacidade) {
+  if (vazio() || saida == nullptr || capacidade == 0) {
     return 0;
   }
-  return storage_.read(head_, out, capacity);
+  return armazenamento_.ler(inicio_, saida, capacidade);
 }
 
-bool Spool::pop() {
-  if (empty()) {
+bool Spool::remover() {
+  if (vazio()) {
     return false;
   }
-  if (!storage_.erase(head_)) {
+  if (!armazenamento_.apagar(inicio_)) {
     return false;
   }
-  head_ = static_cast<uint32_t>((head_ + 1) % kSpoolCapacity);
-  --count_;
+  inicio_ = static_cast<uint32_t>((inicio_ + 1) % kCapacidadeDoSpool);
+  --quantidade_;
   return true;
 }
 
-void Spool::restore(uint32_t head, uint32_t count) {
-  head_ = head % kSpoolCapacity;
-  count_ = count > kSpoolCapacity ? kSpoolCapacity : count;
+void Spool::restaurar(uint32_t inicio, uint32_t quantidade) {
+  inicio_ = inicio % kCapacidadeDoSpool;
+  quantidade_ = quantidade > kCapacidadeDoSpool ? kCapacidadeDoSpool : quantidade;
 }
 
 }  // namespace meliponet

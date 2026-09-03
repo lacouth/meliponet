@@ -5,22 +5,22 @@
 // Rode `python3 contracts/tools/gen_testdata.py` apos alterar o contrato.
 #pragma once
 
-#include "Scaling.h"
-#include "TelemetryCodec.h"
+#include "Escala.h"
+#include "Telemetria.h"
 
 namespace meliponet {
 namespace testdata {
 
-struct Vector {
-  const char *name;
-  Telemetry telemetry;
-  const char *expected_json;
+struct Vetor {
+  const char *nome;
+  Telemetria telemetria;
+  const char *json_esperado;
 };
 
-inline const Vector kVectors[] = {
+inline const Vetor kVetores[] = {
     {
         "01_nominal",
-        Telemetry{
+        Telemetria{
             .node_id = "A4C1380F",
             .seq = 10432,
             .ts = "2027-03-14T12:05:00Z",
@@ -31,13 +31,13 @@ inline const Vector kVectors[] = {
             .weight_kg = 12483,
             .vbat_v = 392,
             .rssi = -58,
-            .present = Field::temp_in_c | Field::temp_out_c | Field::rh_in_pct | Field::rh_out_pct | Field::weight_kg | Field::vbat_v | Field::rssi,
+            .presentes = Campo::temp_in_c | Campo::temp_out_c | Campo::rh_in_pct | Campo::rh_out_pct | Campo::weight_kg | Campo::vbat_v | Campo::rssi,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"A4C1380F\",\"seq\":10432,\"ts\":\"2027-03-14T12:05:00Z\",\"temp_in_c\":30.12,\"temp_out_c\":34.80,\"rh_in_pct\":68.40,\"rh_out_pct\":41.20,\"weight_kg\":12.483,\"vbat_v\":3.92,\"rssi\":-58}",
     },
     {
         "02_arredondamento",
-        Telemetry{
+        Telemetria{
             .node_id = "A4C1380F",
             .seq = 10433,
             .ts = "2027-03-14T12:10:00Z",
@@ -48,13 +48,13 @@ inline const Vector kVectors[] = {
             .weight_kg = 12500,
             .vbat_v = 400,
             .rssi = -58,
-            .present = Field::temp_in_c | Field::temp_out_c | Field::rh_in_pct | Field::rh_out_pct | Field::weight_kg | Field::vbat_v | Field::rssi,
+            .presentes = Campo::temp_in_c | Campo::temp_out_c | Campo::rh_in_pct | Campo::rh_out_pct | Campo::weight_kg | Campo::vbat_v | Campo::rssi,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"A4C1380F\",\"seq\":10433,\"ts\":\"2027-03-14T12:10:00Z\",\"temp_in_c\":30.13,\"temp_out_c\":0.00,\"rh_in_pct\":100.00,\"rh_out_pct\":0.00,\"weight_kg\":12.500,\"vbat_v\":4.00,\"rssi\":-58}",
     },
     {
         "03_sht_externo_ausente",
-        Telemetry{
+        Telemetria{
             .node_id = "A4C1380F",
             .seq = 10434,
             .ts = "2027-03-14T12:15:00Z",
@@ -64,13 +64,13 @@ inline const Vector kVectors[] = {
             .vbat_v = 391,
             .rssi = -61,
             .flags = Flag::sht_out_fault,
-            .present = Field::temp_in_c | Field::rh_in_pct | Field::weight_kg | Field::vbat_v | Field::rssi,
+            .presentes = Campo::temp_in_c | Campo::rh_in_pct | Campo::weight_kg | Campo::vbat_v | Campo::rssi,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"A4C1380F\",\"seq\":10434,\"ts\":\"2027-03-14T12:15:00Z\",\"temp_in_c\":29.87,\"rh_in_pct\":70.10,\"weight_kg\":12.481,\"vbat_v\":3.91,\"rssi\":-61,\"flags\":[\"sht_out_fault\"]}",
     },
     {
         "04_spool_relogio_bateria",
-        Telemetry{
+        Telemetria{
             .node_id = "7B21C904",
             .seq = 512,
             .ts = "2027-03-14T03:40:00Z",
@@ -81,25 +81,25 @@ inline const Vector kVectors[] = {
             .weight_kg = 11902,
             .vbat_v = 341,
             .flags = Flag::spooled | Flag::low_batt | Flag::clock_unsynced,
-            .present = Field::temp_in_c | Field::temp_out_c | Field::rh_in_pct | Field::rh_out_pct | Field::weight_kg | Field::vbat_v,
+            .presentes = Campo::temp_in_c | Campo::temp_out_c | Campo::rh_in_pct | Campo::rh_out_pct | Campo::weight_kg | Campo::vbat_v,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"7B21C904\",\"seq\":512,\"ts\":\"2027-03-14T03:40:00Z\",\"temp_in_c\":28.40,\"temp_out_c\":22.15,\"rh_in_pct\":74.00,\"rh_out_pct\":88.60,\"weight_kg\":11.902,\"vbat_v\":3.41,\"flags\":[\"low_batt\",\"clock_unsynced\",\"spooled\"]}",
     },
     {
         "05_somente_peso",
-        Telemetry{
+        Telemetria{
             .node_id = "7B21C904",
             .seq = 513,
             .ts = "2027-03-14T03:45:00Z",
             .weight_kg = 11900,
             .flags = Flag::sht_in_fault | Flag::sht_out_fault,
-            .present = Field::weight_kg,
+            .presentes = Campo::weight_kg,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"7B21C904\",\"seq\":513,\"ts\":\"2027-03-14T03:45:00Z\",\"weight_kg\":11.900,\"flags\":[\"sht_in_fault\",\"sht_out_fault\"]}",
     },
     {
         "06_tara_negativa",
-        Telemetry{
+        Telemetria{
             .node_id = "7B21C904",
             .seq = 514,
             .ts = "2027-03-14T03:50:00Z",
@@ -107,13 +107,13 @@ inline const Vector kVectors[] = {
             .weight_kg = -12,
             .vbat_v = 340,
             .flags = Flag::low_batt,
-            .present = Field::temp_in_c | Field::weight_kg | Field::vbat_v,
+            .presentes = Campo::temp_in_c | Campo::weight_kg | Campo::vbat_v,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"7B21C904\",\"seq\":514,\"ts\":\"2027-03-14T03:50:00Z\",\"temp_in_c\":28.31,\"weight_kg\":-0.012,\"vbat_v\":3.40,\"flags\":[\"low_batt\"]}",
     },
     {
         "07_no_completo_lora",
-        Telemetry{
+        Telemetria{
             .node_id = "C1090E22",
             .seq = 88291,
             .ts = "2027-06-02T15:00:00Z",
@@ -128,27 +128,27 @@ inline const Vector kVectors[] = {
             .sound_rms = 18200,
             .sound_bands = {4120, 9805, 2333, 610},
             .gateway_id = "gw-jp-01",
-            .present = Field::temp_in_c | Field::temp_out_c | Field::rh_in_pct | Field::rh_out_pct | Field::weight_kg | Field::vbat_v | Field::rssi | Field::snr | Field::sound_rms | Field::sound_bands | Field::gateway_id,
+            .presentes = Campo::temp_in_c | Campo::temp_out_c | Campo::rh_in_pct | Campo::rh_out_pct | Campo::weight_kg | Campo::vbat_v | Campo::rssi | Campo::snr | Campo::sound_rms | Campo::sound_bands | Campo::gateway_id,
         },
         "{\"schema\":\"meliponet.telemetry.v1\",\"node_id\":\"C1090E22\",\"seq\":88291,\"ts\":\"2027-06-02T15:00:00Z\",\"temp_in_c\":31.44,\"temp_out_c\":38.90,\"rh_in_pct\":62.75,\"rh_out_pct\":28.30,\"weight_kg\":18.207,\"vbat_v\":4.05,\"rssi\":-104,\"snr\":7.5,\"sound_rms\":1820.0,\"sound_bands\":[412.0,980.5,233.3,61.0],\"gateway_id\":\"gw-jp-01\"}",
     },
 };
 
-inline constexpr size_t kVectorCount = sizeof(kVectors) / sizeof(kVectors[0]);
+inline constexpr size_t kQuantidadeDeVetores = sizeof(kVetores) / sizeof(kVetores[0]);
 
-// Conversao leitura fisica -> inteiro escalado. O `expected` vem de
-// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::scale.
+// Conversao leitura fisica -> inteiro escalado. O `esperado` vem de
+// canonical.quantize; o C++ precisa reproduzi-lo com meliponet::escalar.
 //
 // As casas decimais vem de canonical.DECIMALS, a mesma tabela que o lado
 // Python usa -- nao ha aqui uma segunda copia para sair de sincronia.
-struct ScalingVector {
-  double reading;
-  int decimals;
-  int32_t expected;
-  const char *field;
+struct VetorDeEscala {
+  double leitura;
+  int casas;
+  int32_t esperado;
+  const char *campo;
 };
 
-inline const ScalingVector kScalingVectors[] = {
+inline const VetorDeEscala kVetoresDeEscala[] = {
     {30.125, 2, 3013, "temp_in_c"},
     {8.615, 2, 862, "temp_in_c"},
     {-9.985, 2, -999, "temp_in_c"},
@@ -170,8 +170,8 @@ inline const ScalingVector kScalingVectors[] = {
     {3.415, 2, 342, "vbat_v"},
 };
 
-inline constexpr size_t kScalingVectorCount =
-    sizeof(kScalingVectors) / sizeof(kScalingVectors[0]);
+inline constexpr size_t kQuantidadeDeVetoresDeEscala =
+    sizeof(kVetoresDeEscala) / sizeof(kVetoresDeEscala[0]);
 
 }  // namespace testdata
 }  // namespace meliponet
