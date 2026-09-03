@@ -150,6 +150,8 @@ void emitirSePresente(EscritorDeObjeto &objeto, Escritor &escritor, uint32_t pre
 
 }  // namespace
 
+// O parametro se chama `t` aqui, e nao `telemetria` como no cabecalho, porque aparece
+// em vinte linhas seguidas -- com o nome inteiro cada uma delas quebraria em duas.
 size_t serializar(const Telemetria &t, char *saida, size_t capacidade) {
   Escritor escritor(saida, capacidade);
   EscritorDeObjeto objeto(escritor);
