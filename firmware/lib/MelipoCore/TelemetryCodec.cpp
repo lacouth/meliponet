@@ -126,7 +126,7 @@ class ObjectWriter {
 };
 
 struct FlagName {
-  Flag flag;
+  uint32_t flag;
   const char *name;
 };
 
@@ -138,27 +138,21 @@ constexpr FlagName kFlagNames[] = {
     {Flag::spooled, "spooled"},
 };
 
-struct NumericField {
-  Field field;
-  const char *name;
-  int decimals;
-  int32_t Telemetry::*member;
-};
-
-// Ordem canonica de emissao dos campos numericos escalares, com a escala de cada um.
-constexpr NumericField kNumericFields[] = {
-    {Field::temp_in_c, "temp_in_c", 2, &Telemetry::temp_in_c},
-    {Field::temp_out_c, "temp_out_c", 2, &Telemetry::temp_out_c},
-    {Field::rh_in_pct, "rh_in_pct", 2, &Telemetry::rh_in_pct},
-    {Field::rh_out_pct, "rh_out_pct", 2, &Telemetry::rh_out_pct},
-    {Field::weight_kg, "weight_kg", 3, &Telemetry::weight_kg},
-    {Field::vbat_v, "vbat_v", 2, &Telemetry::vbat_v},
-    {Field::rssi, "rssi", 0, &Telemetry::rssi},
-    {Field::snr, "snr", 1, &Telemetry::snr},
-    {Field::sound_rms, "sound_rms", 1, &Telemetry::sound_rms},
-};
-
 constexpr int kSoundBandDecimals = 1;
+
+// Emite `"nome":valor` se o campo estiver presente; se nao estiver, nao escreve nada --
+// campo ausente e omitido, nunca vira zero.
+//
+// Cada chamada em `encode` diz, numa linha so, tudo o que aquele campo precisa: qual bit
+// o liga, como ele se chama no JSON e quantas casas decimais tem.
+void emitIfPresent(ObjectWriter &object, Writer &writer, uint32_t present, uint32_t field,
+                   const char *name, int32_t value, int decimals) {
+  if (!has(present, field)) {
+    return;
+  }
+  object.key(name);
+  writer.scaled(value, decimals);
+}
 
 }  // namespace
 
@@ -178,13 +172,18 @@ size_t encode(const Telemetry &telemetry, char *out, size_t capacity) {
   object.key("ts");
   writer.quoted(telemetry.ts);
 
-  for (const NumericField &field : kNumericFields) {
-    if (!has(telemetry.present, field.field)) {
-      continue;
-    }
-    object.key(field.name);
-    writer.scaled(telemetry.*(field.member), field.decimals);
-  }
+  // Ordem canonica dos campos numericos. Trocar duas linhas de lugar aqui muda a ordem
+  // das chaves no JSON, e o teste dos vetores dourados acusa na hora.
+  const uint32_t present = telemetry.present;
+  emitIfPresent(object, writer, present, Field::temp_in_c, "temp_in_c", telemetry.temp_in_c, 2);
+  emitIfPresent(object, writer, present, Field::temp_out_c, "temp_out_c", telemetry.temp_out_c, 2);
+  emitIfPresent(object, writer, present, Field::rh_in_pct, "rh_in_pct", telemetry.rh_in_pct, 2);
+  emitIfPresent(object, writer, present, Field::rh_out_pct, "rh_out_pct", telemetry.rh_out_pct, 2);
+  emitIfPresent(object, writer, present, Field::weight_kg, "weight_kg", telemetry.weight_kg, 3);
+  emitIfPresent(object, writer, present, Field::vbat_v, "vbat_v", telemetry.vbat_v, 2);
+  emitIfPresent(object, writer, present, Field::rssi, "rssi", telemetry.rssi, 0);
+  emitIfPresent(object, writer, present, Field::snr, "snr", telemetry.snr, 1);
+  emitIfPresent(object, writer, present, Field::sound_rms, "sound_rms", telemetry.sound_rms, 1);
 
   if (has(telemetry.present, Field::sound_bands)) {
     object.key("sound_bands");

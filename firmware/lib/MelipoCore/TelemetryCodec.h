@@ -22,52 +22,53 @@
 
 namespace meliponet {
 
-// Bitmask dos campos opcionais efetivamente presentes na mensagem. Campos ausentes
-// sao omitidos do JSON, nunca emitidos como null ou como zero -- um sensor com falha
-// precisa ser distinguivel de um sensor que leu zero.
-enum class Field : uint32_t {
-  none = 0,
-  temp_in_c = 1u << 0,
-  temp_out_c = 1u << 1,
-  rh_in_pct = 1u << 2,
-  rh_out_pct = 1u << 3,
-  weight_kg = 1u << 4,
-  vbat_v = 1u << 5,
-  rssi = 1u << 6,
-  snr = 1u << 7,
-  sound_rms = 1u << 8,
-  sound_bands = 1u << 9,
-  gateway_id = 1u << 10,
-};
+// Os campos opcionais e as condicoes detectadas pelo no viajam como **bits dentro de um
+// numero**: cada constante abaixo acende um bit, e juntar varias e so um `|`.
+//
+//     telemetry.present = Field::temp_in_c | Field::weight_kg;
+//     if (has(telemetry.present, Field::rssi)) { ... }
+//
+// Sao `uint32_t` simples de proposito. A versao anterior usava `enum class`, que e mais
+// seguro contra trocar um conjunto pelo outro, mas obrigava a sobrecarregar `|`, `|=` e
+// a escrever `static_cast<uint32_t>` em toda comparacao -- catorze linhas de maquinaria
+// antes da primeira linha util.
 
-// Condicoes detectadas pelo proprio no. A ordem dos bits e a ordem canonica de
+// Campos opcionais efetivamente presentes na mensagem. Campo ausente e **omitido** do
+// JSON, nunca emitido como null ou como zero: um sensor com falha precisa ser
+// distinguivel de um sensor que leu zero.
+//
+// Os nomes sao os do contrato, iguais as chaves do JSON, para que a correspondencia
+// entre o campo aqui e a chave la seja obvia.
+namespace Field {
+constexpr uint32_t none = 0;
+constexpr uint32_t temp_in_c = 1u << 0;
+constexpr uint32_t temp_out_c = 1u << 1;
+constexpr uint32_t rh_in_pct = 1u << 2;
+constexpr uint32_t rh_out_pct = 1u << 3;
+constexpr uint32_t weight_kg = 1u << 4;
+constexpr uint32_t vbat_v = 1u << 5;
+constexpr uint32_t rssi = 1u << 6;
+constexpr uint32_t snr = 1u << 7;
+constexpr uint32_t sound_rms = 1u << 8;
+constexpr uint32_t sound_bands = 1u << 9;
+constexpr uint32_t gateway_id = 1u << 10;
+}  // namespace Field
+
+// Condicoes detectadas pelo proprio no. A ordem das constantes e a ordem canonica de
 // emissao no JSON, para que a saida nao dependa da ordem de deteccao.
-enum class Flag : uint32_t {
-  none = 0,
-  sht_in_fault = 1u << 0,
-  sht_out_fault = 1u << 1,
-  hx711_fault = 1u << 2,
-  mic_fault = 1u << 3,
-  low_batt = 1u << 4,
-  clock_unsynced = 1u << 5,
-  spooled = 1u << 6,
-};
+namespace Flag {
+constexpr uint32_t none = 0;
+constexpr uint32_t sht_in_fault = 1u << 0;
+constexpr uint32_t sht_out_fault = 1u << 1;
+constexpr uint32_t hx711_fault = 1u << 2;
+constexpr uint32_t mic_fault = 1u << 3;
+constexpr uint32_t low_batt = 1u << 4;
+constexpr uint32_t clock_unsynced = 1u << 5;
+constexpr uint32_t spooled = 1u << 6;
+}  // namespace Flag
 
-constexpr Field operator|(Field a, Field b) {
-  return static_cast<Field>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-}
-constexpr Field &operator|=(Field &a, Field b) { return a = a | b; }
-constexpr bool has(Field set, Field member) {
-  return (static_cast<uint32_t>(set) & static_cast<uint32_t>(member)) != 0;
-}
-
-constexpr Flag operator|(Flag a, Flag b) {
-  return static_cast<Flag>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-}
-constexpr Flag &operator|=(Flag &a, Flag b) { return a = a | b; }
-constexpr bool has(Flag set, Flag member) {
-  return (static_cast<uint32_t>(set) & static_cast<uint32_t>(member)) != 0;
-}
+// Verdadeiro se `member` esta aceso dentro de `set`.
+constexpr bool has(uint32_t set, uint32_t member) { return (set & member) != 0; }
 
 constexpr size_t kSoundBandCount = 4;
 
@@ -93,8 +94,8 @@ struct Telemetry {
   int32_t sound_rms = 0;    // decimos de unidade RMS
   int32_t sound_bands[kSoundBandCount] = {0, 0, 0, 0};  // decimos de unidade
   const char *gateway_id = "";
-  Flag flags = Flag::none;
-  Field present = Field::none;
+  uint32_t flags = Flag::none;
+  uint32_t present = Field::none;
 };
 
 // Serializa `telemetry` na forma canonica em `out`.

@@ -5,8 +5,8 @@ namespace {
 
 // Aplica a escala e, se der certo, marca o campo como presente. Se nao der, o campo
 // simplesmente nao entra na mensagem -- e o chamador liga a flag.
-bool assign(int32_t &destination, Field &present, Field field, const Reading &reading,
-            Scale unit, double minimum, double maximum) {
+bool assign(int32_t &destination, uint32_t &present, uint32_t field,
+            const Reading &reading, Scale unit, double minimum, double maximum) {
   if (!reading.valid) {
     return false;
   }
