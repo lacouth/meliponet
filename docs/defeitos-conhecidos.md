@@ -42,7 +42,6 @@ corrigir agora, escrita para que a próxima pessoa não tropece.
 | [D-17](#d-17) | média | plataforma | Nó e vínculo não podem ser corrigidos depois de criados |
 | [D-07](#d-07) | baixa | plataforma | Os agregados contínuos são criados e nunca consultados |
 | [D-08](#d-08) | baixa | firmware | `Flag::spooled` é código morto |
-| [D-09](#d-09) | baixa | contrato | `canonical.py` aponta para um caminho que não existe mais |
 | [D-10](#d-10) | baixa | firmware | `MELIPO_SAMPLE_INTERVAL_S` é um flag de compilação sem uso |
 | [D-18](#d-18) | baixa | plataforma | O admin não cadastra meliponário para outra organização |
 | [D-19](#d-19) | baixa | plataforma | Calibrações e alertas existem no modelo e não têm tela |
@@ -53,7 +52,7 @@ corrigir agora, escrita para que a próxima pessoa não tropece.
 
 **A telemetria é publicada em QoS 0, não em QoS 1.**
 
-*Onde:* `firmware/lib/MelipoHardware/MqttPublisher.cpp`, `MqttPublisher::publish`.
+*Onde:* `firmware/lib/MelipoHardware/PublicadorMqtt.cpp`, `PublicadorMqtt::publicar`.
 
 *Sintoma:* enquanto o ingestor estiver fora do ar — um deploy da plataforma, um reinício
 do contêiner —, as mensagens publicadas nesse intervalo se perdem. Aparecem como lacuna
@@ -66,7 +65,7 @@ nada hoje**. O spool do nó cobre o trecho nó→broker; o trecho broker→inges
 descoberto.
 
 *Agravante:* vários documentos afirmam QoS 1 — `contracts/README.md`, o cabeçalho de
-`MqttPublisher.h`, o comentário do `deploy/mosquitto.conf`. Quem ler acredita estar
+`PublicadorMqtt.h`, o comentário do `deploy/mosquitto.conf`. Quem ler acredita estar
 protegido.
 
 *Como corrigir:* trocar a biblioteca. A `esp-mqtt`, do próprio ESP-IDF, publica em
@@ -106,8 +105,8 @@ as duas aparecem em `series()`. Corrigir o texto da interface faz parte da corre
 
 **O buffer do MQTT não tem folga para o cabeçalho e o tópico.**
 
-*Onde:* `firmware/lib/MelipoHardware/MqttPublisher.cpp`, `kBufferSize = 512`, contra
-`kMaxTelemetryJson = 512` em `TelemetryCodec.h`.
+*Onde:* `firmware/lib/MelipoHardware/PublicadorMqtt.cpp`, `kTamanhoDoBuffer = 512`, contra
+`kTamanhoMaximoDoJson = 512` em `Telemetria.h`.
 
 *Sintoma:* uma mensagem que ocupe o tamanho máximo previsto pelo codec é recusada pelo
 `PubSubClient` sem sair da placa. Ela vai para o spool, é drenada, é recusada de novo — e
@@ -121,9 +120,9 @@ cabeçalho, uns 7 — o teto real do payload fica perto de 475 bytes, não 512.
 *Por que ainda não mordeu:* a mensagem do protótipo tem cerca de 350 bytes. A margem
 existe, mas some quando a Fase 5 acrescentar `sound_bands`.
 
-*Como corrigir:* dimensionar `kBufferSize` como `kMaxTelemetryJson` mais a folga do
+*Como corrigir:* dimensionar `kTamanhoDoBuffer` como `kTamanhoMaximoDoJson` mais a folga do
 cabeçalho e do tópico, com um `static_assert` que quebre o build se as duas constantes
-voltarem a se aproximar. E, independentemente disso, `drainSpool` deveria descartar (com
+voltarem a se aproximar. E, independentemente disso, `drenarSpool` deveria descartar (com
 contador) uma mensagem recusada mais de N vezes, em vez de tentar a mesma para sempre.
 
 ---
@@ -132,7 +131,7 @@ contador) uma mensagem recusada mais de N vezes, em vez de tentar a mesma para s
 
 **A presença dos sensores é decidida no boot e nunca revista.**
 
-*Onde:* `firmware/lib/MelipoHardware/ShtPair.cpp` (`begin()`) e `LoadCell`.
+*Onde:* `firmware/lib/MelipoHardware/SensoresSht.cpp` (`iniciar()`) e `CelulaDeCarga`.
 
 *Sintoma:* um sensor com mau contato no instante do boot fica marcado como ausente até
 alguém reiniciar a placa, mesmo que o contato volte um minuto depois. As leituras dele
@@ -155,7 +154,7 @@ re-sondar é pura e cabe em `MelipoCore`, com teste nativo.
 **O Last Will é publicado e ninguém o assina.**
 
 *Onde:* o nó publica em `meliponet/v1/<node_id>/status`
-(`firmware/lib/MelipoHardware/MqttPublisher.cpp`); nada em
+(`firmware/lib/MelipoHardware/PublicadorMqtt.cpp`); nada em
 `platform/meliponet/ingest/` assina esse tópico.
 
 *Sintoma:* um nó que morre em campo não gera aviso nenhum. "O nó parou de enviar" segue
@@ -189,16 +188,16 @@ reamostragem continuam valendo e são a rede de segurança da mudança.
 
 **`Flag::spooled` é código morto.**
 
-*Onde:* `firmware/lib/MelipoCore/Sample.cpp` liga a flag quando
-`SampleContext::from_spool` é verdadeiro, mas `firmware/src/main.cpp` nunca define esse
-campo.
+*Onde:* `firmware/lib/MelipoCore/Amostra.cpp` liga a flag quando
+`ContextoDaAmostra::veio_do_spool` é verdadeiro, mas `firmware/src/main.cpp` nunca
+define esse campo.
 
 *Sintoma:* nenhuma mensagem reenviada do spool chega marcada como tal. Perde-se a
 distinção entre "medição que chegou na hora" e "medição represada por horas", que é
 justamente um dos indicadores de qualidade que o Edital 17 promete reportar.
 
 *Por que acontece:* o spool guarda a mensagem **já serializada**, então no momento do
-reenvio não há mais um `SampleContext` para marcar. A flag teria de ser decidida na
+reenvio não há mais um `ContextoDaAmostra` para marcar. A flag teria de ser decidida na
 montagem, quando ainda não se sabe se a mensagem vai ou não para o spool.
 
 *Como corrigir:* decidir o que a flag significa antes de implementá-la. Uma saída é
@@ -206,22 +205,6 @@ marcar no reenvio, reescrevendo o campo `flags` da mensagem guardada — o que e
 spool saiba um pouco do formato. A outra é remover a flag e derivar o atraso na
 plataforma, comparando `ts` com `received_at`, que já estão os dois no banco. **A segunda
 é provavelmente a certa**, e aí a correção é apagar código.
-
----
-
-### D-09
-
-**`canonical.py` aponta para um caminho que não existe mais.**
-
-*Onde:* `contracts/canonical.py`, no docstring do módulo: cita
-`firmware/lib/MelipoNet/TelemetryCodec`. A pasta hoje é `firmware/lib/MelipoCore/`.
-
-*Sintoma:* quem seguir a referência não encontra o arquivo. É o menor item desta lista,
-e está aqui porque o `canonical.py` é a primeira coisa que alguém lê ao mexer no
-contrato — mandar essa pessoa para um caminho inexistente na primeira página é um começo
-ruim.
-
-*Como corrigir:* trocar o caminho.
 
 ---
 
@@ -234,11 +217,11 @@ firmware o referencia.
 
 *Sintoma:* quem quiser mudar o intervalo de amostragem provavelmente vai editar esse
 flag, recompilar, gravar — e o nó continuará amostrando a cada 5 minutos, porque o valor
-real vem da NVS (`interval_s`, lido em `Config.cpp`). Um flag que parece configurar algo
+real vem da NVS (`interval_s`, lido em `Configuracao.cpp`). Um flag que parece configurar algo
 e não configura é pior do que nenhum.
 
 *Como corrigir:* remover o flag. Se um padrão de compilação for desejável no futuro, ele
-deve ser o valor usado pelo `loadConfig()` quando a chave da NVS está ausente, não uma
+deve ser o valor usado pelo `carregarConfiguracao()` quando a chave da NVS está ausente, não uma
 constante paralela.
 
 ---
@@ -377,6 +360,7 @@ ninguém. Quando a Fase 4 chegar, as telas entram e esta entrada sai.
 
 | # | Defeito | Corrigido em |
 |---|---|---|
+| D-09 | O docstring do `contracts/canonical.py` apontava para `firmware/lib/MelipoNet/TelemetryCodec`, pasta que nunca existiu — e o `canonical.py` é a primeira coisa que alguém lê ao mexer no contrato | 2026-09-03 — corrigido para `firmware/lib/MelipoCore/Telemetria`, junto com a renomeação dos arquivos do firmware |
 | D-12 | O administrador recebia 403 ao vincular ou desvincular um nó de outra organização, embora a tela lhe mostrasse o nó e o botão: duas views comparavam `organization_id` na mão em vez de passar pelo módulo de escopo. Junto ia um defeito mais silencioso — o vínculo carimbava no nó a organização de quem estava logado, então um admin que adotasse um nó para a colmeia de outra organização levava o nó consigo, e o dono legítimo deixava de enxergá-lo | 2026-09-02 — `manageable_nodes_for` e `can_manage_node` em `services/scope.py`, e a organização do nó passa a ser a da colmeia |
 | D-04 | `tara` gravava o novo zero na NVS mas não o passava para o objeto da célula: a leitura logo após a tara saía com o offset antigo, e só um reinício fazia a tara valer — o que leva a pessoa a repetir a tara achando que não pegou | 2026-09-02 — `setCalibration()` no comando `tara`, como o `calibrar` já fazia |
 | D-11 | O CI da plataforma quebrado desde a Fase 2: `pip install -e platform[dev]` falhava com "Multiple top-level packages discovered in a flat-layout", porque `pyproject.toml` não declarava o que empacotar e o Alembic trouxe `migrations/` para o lado de `meliponet/`. Passou despercebido por doze commits porque um ambiente virtual criado antes de `migrations/` existir continua funcionando — só instalação limpa falha | 2026-09-02 — `[tool.setuptools.packages.find]` em `platform/pyproject.toml` |

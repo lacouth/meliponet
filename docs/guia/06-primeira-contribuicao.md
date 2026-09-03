@@ -158,10 +158,17 @@ Escolhidas por serem pequenas, reais e por te fazerem passar pelo caminho inteir
 
 **Firmware**
 
-- Implementar `ShtPair` lendo os dois SHT30 (0x44 e 0x45), com teste nativo da conversão
-  para inteiro escalado.
-- Implementar a rotina de calibração do HX711 por comando serial.
-- Escrever o teste nativo do `Spool` (grava, reinicia, drena na ordem certa).
+- **Acrescentar um comando ao console.** É a menor contribuição que passa pelo caminho
+  inteiro: uma função pequena e uma linha numa tabela. O passo a passo está em
+  [O firmware](04-o-firmware.md#acrescentar-um-comando-ao-console) — e um comando
+  `intervalo <segundos>` já resolveria [D-10](../defeitos-conhecidos.md#d-10), porque hoje
+  o período entre amostras só muda recompilando.
+- **Dar folga ao buffer do MQTT** ([D-03](../defeitos-conhecidos.md#d-03)): o buffer do
+  `PubSubClient` tem exatamente o mesmo tamanho do maior JSON possível, sem contar o
+  cabeçalho MQTT nem o tópico. Uma linha, mais o comentário explicando a conta.
+- **Decidir o que fazer com `Flag::spooled`** ([D-08](../defeitos-conhecidos.md#d-08)): a
+  flag existe, é serializada e nunca é ligada. A correção pode muito bem ser *apagar
+  código*, e essa é uma resposta legítima — leia o defeito e defenda a sua escolha no PR.
 
 **Contrato e documentação**
 

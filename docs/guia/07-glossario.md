@@ -69,6 +69,10 @@ SQLAlchemy.
 
 **Pull request (PR)** — pedido para juntar uma branch à `main`, revisado antes.
 
+**Recuo exponencial** *(backoff)* — esperar cada vez mais entre tentativas de
+reconexão, até um teto. Um nó que tenta sem pausa num meliponário sem sinal gasta bateria
+à toa e não reconecta mais rápido por isso.
+
 **Refatorar** — mudar a estrutura do código sem mudar o comportamento.
 
 **Regressão** — algo que funcionava e parou de funcionar.

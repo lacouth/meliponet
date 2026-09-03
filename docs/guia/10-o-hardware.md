@@ -15,9 +15,9 @@ que existiam.
 | Peça | O quê | Onde no código |
 |---|---|---|
 | Placa | ESP32-C6-DevKitC-1, 8 MB de flash | `firmware/platformio.ini:32,40` |
-| Temperatura e umidade | 2× SHT30, I²C, endereços 0x44 e 0x45 | `lib/MelipoHardware/ShtPair.h:17` |
-| Peso | célula de carga de 50 kg + módulo HX711 | `lib/MelipoHardware/LoadCell.h:1` |
-| Energia | célula 18650 + divisor resistivo 2× 100 kΩ | `src/main.cpp:37`, `lib/MelipoCore/Sample.h:35` |
+| Temperatura e umidade | 2× SHT30, I²C, endereços 0x44 e 0x45 | `lib/MelipoHardware/SensoresSht.h:17` |
+| Peso | célula de carga de 50 kg + módulo HX711 | `lib/MelipoHardware/CelulaDeCarga.h:1` |
+| Energia | célula 18650 + divisor resistivo 2× 100 kΩ | `src/main.cpp:41`, `lib/MelipoCore/Amostra.h:25` |
 
 É só isso. Não há rádio LoRa, microfone, painel solar nem invólucro — o que entra depois
 está na [seção da Fase 5](#o-que-ainda-vai-entrar-fase-5), no fim deste documento.
@@ -62,7 +62,7 @@ GPIO6**. É por isso que a medição de bateria está no GPIO0 e não em qualque
 
 ## Como ligar
 
-Os pinos estão em `firmware/src/main.cpp:31-35`, sob o comentário "Ajuste conforme a
+Os pinos estão em `firmware/src/main.cpp:34-38`, sob o comentário "Ajuste conforme a
 placa do lote" — ou seja, são **provisórios** e mudam num lugar só:
 
 ```cpp
@@ -120,13 +120,13 @@ primeira hipótese — e mudar os dois pinos custa uma linha.
 
 **`Wire.begin()` sem argumentos não vai para o GPIO6/7.** O variant do C6 define
 `SDA = 23` e `SCL = 22`. O firmware sempre passa os pinos explicitamente
-(`ShtPair.cpp:31`); quem escrever código novo e esquecer os argumentos vai depurar um
+(`SensoresSht.cpp:31`); quem escrever código novo e esquecer os argumentos vai depurar um
 barramento mudo com a fiação perfeitamente correta.
 
 **O que distingue o SHT30 interno do externo é só o pino `ADDR`**: em GND o sensor
 responde em 0x44 (interno), em VDD responde em 0x45 (externo). Os dois dividem o mesmo
 barramento, sem multiplexador — foi por isso que este sensor foi escolhido
-(`ShtPair.h:1-5`). Trocar os dois de lugar **não dá erro nenhum**: dá uma série inteira
+(`SensoresSht.h:1-5`). Trocar os dois de lugar **não dá erro nenhum**: dá uma série inteira
 com a temperatura de fora rotulada como interna, e o diferencial térmico com o sinal
 invertido. Confira com `ler` antes de fechar a caixa. Sobre pull-ups: a maioria dos
 módulos já traz os seus, e dois módulos em paralelo deixam a resistência equivalente
@@ -155,12 +155,12 @@ omitido e uma flag acende.
 elétrico: aperte a plataforma com a mão e veja a contagem se mover. Se ela não se move,
 o problema é de ligação, e nenhuma calibração conserta. Só depois disso vêm `tara` (com a
 colmeia montada e vazia) e `calibrar <kg>` (com massa-padrão conhecida). Cada amostra
-publicada é a média de 10 leituras (`LoadCell.h:15`).
+publicada é a média de 10 leituras (`CelulaDeCarga.h:15`).
 
 **Bateria** — `ler` mostra a tensão já multiplicada pelo divisor. **Confira com um
 multímetro antes de confiar no alerta de bateria fraca.** O firmware assume 12 bits de
-resolução e 3,3 V de fundo de escala (`main.cpp:38-40`) e não faz nenhuma calibração do
-ADC; o limiar de `low_batt` é 3,50 V, escolhido para o 18650 (`Sample.h:35-36`). Meça a
+resolução e 3,3 V de fundo de escala (`main.cpp:41-43`) e não faz nenhuma calibração do
+ADC; o limiar de `low_batt` é 3,50 V, escolhido para o 18650 (`Amostra.h:25`). Meça a
 tensão real da célula e compare com o que o `ler` informa, em pelo menos dois pontos da
 faixa, antes de acreditar no número.
 

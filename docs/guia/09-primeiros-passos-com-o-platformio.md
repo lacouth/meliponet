@@ -333,7 +333,7 @@ São **61 testes**, e rodam em menos de cinco segundos. Nenhum deles precisa de 
 O `-d firmware` diz onde está o `platformio.ini` — é o que permite rodar de dentro da
 raiz do repositório em vez de entrar na pasta.
 
-Agora abra `firmware/lib/MelipoCore/Scaling.cpp` e ache a função `scale()`. É a sua
+Agora abra `firmware/lib/MelipoCore/Escala.cpp` e ache a função `escalar()`. É a sua
 `centesimosDeGrau`, generalizada: em vez de fixar 100, ela recebe quantas casas decimais
 a métrica usa — temperatura em centésimos, peso em gramas. E o comentário do arquivo
 explica, com mais detalhe do que aqui, por que a regra é multiplicar em `double` e
