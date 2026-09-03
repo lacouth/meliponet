@@ -3,23 +3,34 @@
 #include <string.h>
 
 namespace meliponet {
+namespace {
 
-bool Arg::equals(const char *other) const {
-  if (text == nullptr || other == nullptr) {
-    return false;
-  }
-  return strlen(other) == length && strncmp(text, other, length) == 0;
+// Copia ate `capacity - 1` caracteres de `text` (parando antes de `end`) e termina em
+// nulo. Devolve verdadeiro se coube inteiro.
+bool copyPiece(char *dest, size_t capacity, const char *text, const char *end) {
+  const size_t length = static_cast<size_t>(end - text);
+  const bool fits = length + 1 <= capacity;
+  const size_t copied = fits ? length : capacity - 1;
+
+  memcpy(dest, text, copied);
+  dest[copied] = '\0';
+  return fits;
 }
 
-size_t splitArgs(const char *line, Arg *out, size_t max_args) {
-  if (line == nullptr || out == nullptr || max_args == 0) {
-    return 0;
+}  // namespace
+
+bool Command::is(const char *name) const {
+  return name != nullptr && count > 0 && strcmp(arg[0], name) == 0;
+}
+
+Command splitLine(const char *line) {
+  Command command;
+  if (line == nullptr) {
+    return command;
   }
 
-  size_t found = 0;
   const char *cursor = line;
-
-  while (found < max_args) {
+  while (command.count < kMaxArgs) {
     while (*cursor == ' ') {
       ++cursor;
     }
@@ -27,50 +38,50 @@ size_t splitArgs(const char *line, Arg *out, size_t max_args) {
       break;
     }
 
-    if (found + 1 == max_args) {
-      // O ultimo pedido leva o resto da linha, espacos inclusive.
-      out[found].text = cursor;
-      out[found].length = strlen(cursor);
-      ++found;
-      break;
+    // Onde este argumento termina: no proximo espaco -- ou no fim da linha, se este for
+    // o ultimo, que e como uma senha com espaco chega inteira.
+    const char *end = cursor;
+    if (command.count + 1 == kMaxArgs) {
+      end = cursor + strlen(cursor);
+    } else {
+      while (*end != '\0' && *end != ' ') {
+        ++end;
+      }
     }
 
-    const char *end = cursor;
-    while (*end != '\0' && *end != ' ') {
-      ++end;
+    if (!copyPiece(command.arg[command.count], kMaxArgLength, cursor, end)) {
+      command.truncated = true;
     }
-    out[found].text = cursor;
-    out[found].length = static_cast<size_t>(end - cursor);
-    ++found;
+    ++command.count;
     cursor = end;
   }
 
-  return found;
+  return command;
 }
 
-bool copyArg(const Arg &arg, char *dest, size_t capacity) {
-  if (dest == nullptr || !fits(arg, capacity)) {
+bool fitsIn(const char *text, size_t capacity) {
+  return text != nullptr && strlen(text) + 1 <= capacity;
+}
+
+bool copyText(char *dest, size_t capacity, const char *text) {
+  if (dest == nullptr || !fitsIn(text, capacity)) {
     return false;
   }
-  if (arg.length > 0) {
-    memcpy(dest, arg.text, arg.length);
-  }
-  dest[arg.length] = '\0';
+  strcpy(dest, text);
   return true;
 }
 
-bool parseCount(const Arg &arg, uint32_t maximum, uint32_t &out) {
-  if (arg.empty()) {
+bool parseCount(const char *text, uint32_t maximum, uint32_t &out) {
+  if (text == nullptr || text[0] == '\0') {
     return false;
   }
 
   uint32_t value = 0;
-  for (size_t i = 0; i < arg.length; ++i) {
-    const char digit = arg.text[i];
-    if (digit < '0' || digit > '9') {
+  for (const char *p = text; *p != '\0'; ++p) {
+    if (*p < '0' || *p > '9') {
       return false;
     }
-    value = value * 10 + static_cast<uint32_t>(digit - '0');
+    value = value * 10 + static_cast<uint32_t>(*p - '0');
     // Compara a cada digito, e nao so no fim: assim uma entrada absurdamente longa e
     // recusada em vez de dar a volta no inteiro e virar um numero pequeno e plausivel.
     if (value > maximum) {
@@ -86,10 +97,10 @@ bool parseCount(const Arg &arg, uint32_t maximum, uint32_t &out) {
   return true;
 }
 
-bool parsePort(const Arg &arg, uint16_t &port) {
+bool parsePort(const char *text, uint16_t &port) {
   uint32_t value = 0;
   // Porta 0 e reservada, e o teto de 65535 sai do proprio protocolo.
-  if (!parseCount(arg, 65535, value)) {
+  if (!parseCount(text, 65535, value)) {
     return false;
   }
   port = static_cast<uint16_t>(value);
