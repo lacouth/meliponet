@@ -58,16 +58,17 @@ como `A4C1380F`. Ele aparece no tópico MQTT, na mensagem, na tabela `nodes`, em
 de `measurements` e na chave que impede duplicatas.
 
 Esse identificador **não é gravado em lugar nenhum**. Ele é derivado do endereço MAC do
-próprio chip, em `firmware/lib/MelipoHardware/Config.cpp:68`:
+próprio chip, em `firmware/lib/MelipoHardware/Configuracao.cpp:71`:
 
 ```cpp
-const char *nodeId() {
-  if (g_node_id[0] == '\0') {
+const char *idDoNo() {
+  if (g_id_do_no[0] == '\0') {
     uint8_t mac[6] = {0};
     WiFi.macAddress(mac);
-    snprintf(g_node_id, sizeof(g_node_id), "%02X%02X%02X%02X", mac[2], mac[3], mac[4], mac[5]);
+    snprintf(g_id_do_no, sizeof(g_id_do_no), "%02X%02X%02X%02X", mac[2], mac[3], mac[4],
+             mac[5]);
   }
-  return g_node_id;
+  return g_id_do_no;
 }
 ```
 
@@ -102,7 +103,7 @@ O formato é cobrado dos dois lados: o schema exige `^[0-9A-F]{8}$`
 ### O que fica na NVS
 
 O `node_id` não; **tudo o mais que é específico daquela unidade, sim** — na partição de
-memória não-volátil, namespace `meliponet` (`Config.cpp`):
+memória não-volátil, namespace `meliponet` (`Configuracao.cpp`):
 
 | Chave | O que é |
 |---|---|
