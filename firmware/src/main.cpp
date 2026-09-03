@@ -220,33 +220,37 @@ void handleSerial() {
   String line = Serial.readStringUntil('\n');
   line.trim();
 
-  // Tres fatias bastam para todos os comandos, e a terceira leva o resto da linha --
-  // e assim que uma senha com espaco chega inteira.
-  meliponet::Arg args[3];
-  const size_t count = meliponet::splitArgs(line.c_str(), args, 3);
+  const meliponet::Command cmd = meliponet::splitLine(line.c_str());
+  const size_t count = cmd.count;
   if (count == 0) {
     return;
   }
-  const meliponet::Arg &command = args[0];
+  // Um argumento maior do que cabe derruba a linha inteira, e nao so aquele argumento:
+  // gravar meia senha produz um no que tenta autenticar para sempre sem que nada no
+  // serial explique o motivo.
+  if (cmd.truncated) {
+    Serial.println("argumento longo demais; nada foi gravado");
+    return;
+  }
 
-  if (command.equals("wifi")) {
+  if (cmd.is("wifi")) {
     if (count < 3) {
       Serial.println("uso: wifi <ssid> <senha>");
       return;
     }
     // Os dois tamanhos sao conferidos **antes** de copiar qualquer um: gravar o ssid e
     // recusar a senha deixaria a configuracao pela metade.
-    if (!meliponet::fits(args[1], meliponet::kMaxSsidLength) ||
-        !meliponet::fits(args[2], meliponet::kMaxPasswordLength)) {
+    if (!meliponet::fitsIn(cmd.arg[1], meliponet::kMaxSsidLength) ||
+        !meliponet::fitsIn(cmd.arg[2], meliponet::kMaxPasswordLength)) {
       Serial.println("ssid ou senha longos demais; nada foi gravado");
       return;
     }
-    meliponet::copyArg(args[1], g_config.wifi_ssid, meliponet::kMaxSsidLength);
-    meliponet::copyArg(args[2], g_config.wifi_password, meliponet::kMaxPasswordLength);
+    meliponet::copyText(g_config.wifi_ssid, meliponet::kMaxSsidLength, cmd.arg[1]);
+    meliponet::copyText(g_config.wifi_password, meliponet::kMaxPasswordLength, cmd.arg[2]);
     meliponet::saveConfig(g_config);
     Serial.println("wifi gravado; reinicie");
 
-  } else if (command.equals("broker")) {
+  } else if (cmd.is("broker")) {
     if (count < 2) {
       Serial.println("uso: broker <host> [porta]");
       return;
@@ -254,11 +258,11 @@ void handleSerial() {
     // Sem porta explicita, mantem a que ja estava gravada -- trocar so o host nao pode
     // devolver a porta ao padrao sem avisar.
     uint16_t port = g_config.mqtt_port;
-    if (count >= 3 && !meliponet::parsePort(args[2], port)) {
+    if (count >= 3 && !meliponet::parsePort(cmd.arg[2], port)) {
       Serial.println("porta invalida (1..65535); nada foi gravado");
       return;
     }
-    if (!meliponet::copyArg(args[1], g_config.mqtt_host, meliponet::kMaxHostLength)) {
+    if (!meliponet::copyText(g_config.mqtt_host, meliponet::kMaxHostLength, cmd.arg[1])) {
       Serial.println("host longo demais; nada foi gravado");
       return;
     }
@@ -267,7 +271,7 @@ void handleSerial() {
     Serial.printf("broker gravado (%s:%u); reinicie\n", g_config.mqtt_host,
                   static_cast<unsigned>(g_config.mqtt_port));
 
-  } else if (command.equals("mqtt")) {
+  } else if (cmd.is("mqtt")) {
     // Sem argumentos, apaga: e o caminho para um broker de desenvolvimento com
     // `allow_anonymous true`, e a unica forma de tirar uma credencial errada da NVS sem
     // apagar a particao inteira.
@@ -282,19 +286,19 @@ void handleSerial() {
       Serial.println("uso: mqtt <usuario> <senha>   (sem argumentos, apaga)");
       return;
     }
-    if (!meliponet::fits(args[1], meliponet::kMaxUsernameLength) ||
-        !meliponet::fits(args[2], meliponet::kMaxPasswordLength)) {
+    if (!meliponet::fitsIn(cmd.arg[1], meliponet::kMaxUsernameLength) ||
+        !meliponet::fitsIn(cmd.arg[2], meliponet::kMaxPasswordLength)) {
       Serial.println("usuario ou senha longos demais; nada foi gravado");
       return;
     }
-    meliponet::copyArg(args[1], g_config.mqtt_username, meliponet::kMaxUsernameLength);
-    meliponet::copyArg(args[2], g_config.mqtt_password, meliponet::kMaxPasswordLength);
+    meliponet::copyText(g_config.mqtt_username, meliponet::kMaxUsernameLength, cmd.arg[1]);
+    meliponet::copyText(g_config.mqtt_password, meliponet::kMaxPasswordLength, cmd.arg[2]);
     meliponet::saveConfig(g_config);
     // A senha nunca e ecoada: o monitor serial vai para o log do terminal de quem
     // preparou o no, e de la para um print numa conversa.
     Serial.printf("credenciais gravadas para %s; reinicie\n", g_config.mqtt_username);
 
-  } else if (command.equals("tara")) {
+  } else if (cmd.is("tara")) {
     int32_t raw = 0;
     if (!g_load_cell.readRaw(raw)) {
       Serial.println("HX711 nao respondeu");
@@ -310,7 +314,7 @@ void handleSerial() {
     meliponet::saveConfig(g_config);
     Serial.printf("tara = %ld\n", static_cast<long>(raw));
 
-  } else if (command.equals("calibrar")) {
+  } else if (cmd.is("calibrar")) {
     // Uso: coloque uma massa-padrao conhecida e mande `calibrar <kg>`.
     // Verifique depois em varios pontos da faixa, e nao so neste: um ponto so ajusta a
     // escala e esconde a nao-linearidade da celula.
@@ -318,7 +322,8 @@ void handleSerial() {
       Serial.println("uso: calibrar <kg>");
       return;
     }
-    const double known_kg = line.substring(line.indexOf(' ') + 1).toDouble();
+    // `atof` devolve 0.0 para texto nao numerico, e `calibrate` recusa massa <= 0.
+    const double known_kg = atof(cmd.arg[1]);
     int32_t raw = 0;
     if (!g_load_cell.readRaw(raw)) {
       Serial.println("HX711 nao respondeu");
@@ -335,17 +340,17 @@ void handleSerial() {
     meliponet::saveConfig(g_config);
     Serial.printf("escala = %.2f contagens/kg\n", cal.counts_per_kg);
 
-  } else if (command.equals("ler")) {
+  } else if (cmd.is("ler")) {
     // Repeticoes opcionais: `ler 30` acompanha meia hora de deriva, ou mostra o peso
     // mudando enquanto se poe massa na plataforma. Sem argumento, uma leitura so.
     uint32_t repetitions = 1;
-    if (count >= 2 && !meliponet::parseCount(args[1], kMaxBenchReadings, repetitions)) {
+    if (count >= 2 && !meliponet::parseCount(cmd.arg[1], kMaxBenchReadings, repetitions)) {
       Serial.printf("uso: ler [n]   (1 a %lu)\n", static_cast<unsigned long>(kMaxBenchReadings));
       return;
     }
     benchRead(repetitions);
 
-  } else if (command.equals("sondar")) {
+  } else if (cmd.is("sondar")) {
     // Os sensores sao detectados uma vez, no boot. Na bancada isso atrapalha: ligar um
     // SHT30 depois de a placa subir deixa o sensor marcado como ausente ate alguem
     // reiniciar. Este comando refaz a deteccao sem reiniciar.
@@ -358,7 +363,7 @@ void handleSerial() {
       Serial.println("nenhum sensor respondeu: confira alimentacao, fios e enderecos I2C");
     }
 
-  } else if (command.equals("estado")) {
+  } else if (cmd.is("estado")) {
     Serial.printf("no        %s\n", meliponet::nodeId());
     Serial.printf("wifi      %s\n", g_wifi.connected() ? "conectado" : "desconectado");
     Serial.printf("broker    %s em %s:%u\n", g_mqtt.connected() ? "conectado" : "desconectado",
@@ -374,7 +379,7 @@ void handleSerial() {
                   static_cast<unsigned>(g_spool->size()),
                   static_cast<unsigned>(g_spool->dropped()));
 
-  } else if (command.equals("ajuda") || command.equals("?")) {
+  } else if (cmd.is("ajuda") || cmd.is("?")) {
     Serial.println("wifi <ssid> <senha>          credenciais da rede");
     Serial.println("broker <host> [porta]        endereco do broker MQTT");
     Serial.println("mqtt <usuario> <senha>       credenciais do broker (sem argumentos, apaga)");
