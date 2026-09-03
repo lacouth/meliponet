@@ -64,7 +64,8 @@ void test_extremos_da_faixa_nao_estouram(void) {
 }
 
 void test_agendamento(void) {
-  Scheduler scheduler(300000, 1000);  // 5 min, iniciado em t=1s
+  Scheduler scheduler;
+  scheduler.begin(300000, 1000);  // 5 min, iniciada em t=1s
 
   TEST_ASSERT_FALSE(scheduler.due(1000));
   TEST_ASSERT_FALSE(scheduler.due(300999));
@@ -80,7 +81,8 @@ void test_agendamento(void) {
 // sempre; a subtração sem sinal atravessa a volta.
 void test_volta_do_contador_de_millis(void) {
   const uint32_t quase_no_fim = 0xFFFFFF00u;
-  Scheduler scheduler(1000, quase_no_fim);
+  Scheduler scheduler;
+  scheduler.begin(1000, quase_no_fim);
 
   TEST_ASSERT_FALSE(scheduler.due(quase_no_fim + 500));
   // 0xFFFFFF00 + 1000 dá a volta e vira 0x000002E8.
