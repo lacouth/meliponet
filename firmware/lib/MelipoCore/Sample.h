@@ -19,18 +19,8 @@
 
 namespace meliponet {
 
-// Faixas fisicas dos sensores usados. Nao sao faixas biologicas: o que e plausivel
-// para *aquela colmeia naquele horario* e julgado pela validacao semantica da
-// plataforma, que tem o historico. O firmware so recusa o que nenhum sensor sao
-// poderia ter produzido.
-constexpr double kSht30MinTempC = -40.0;
-constexpr double kSht30MaxTempC = 85.0;
-constexpr double kSht30MinRhPct = 0.0;
-constexpr double kSht30MaxRhPct = 100.0;
-constexpr double kMinWeightKg = -5.0;   // deriva de tara produz peso levemente negativo
-constexpr double kMaxWeightKg = 100.0;  // celula de 50 kg, com folga
-constexpr double kMinVoltageV = 0.0;
-constexpr double kMaxVoltageV = 6.0;
+// As casas decimais e a faixa plausivel de cada grandeza estao em Scaling.h, nas
+// constantes `kTemperature`, `kHumidity`, `kWeight` e `kVoltage`.
 
 // Tensao abaixo da qual a flag `low_batt` acende. O 18650 entrega pouco abaixo disso.
 constexpr double kLowBatteryV = 3.50;

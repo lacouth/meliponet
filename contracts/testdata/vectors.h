@@ -138,33 +138,36 @@ inline constexpr size_t kVectorCount = sizeof(kVectors) / sizeof(kVectors[0]);
 
 // Conversao leitura fisica -> inteiro escalado. O `expected` vem de
 // canonical.quantize; o C++ precisa reproduzi-lo com meliponet::scale.
+//
+// As casas decimais vem de canonical.DECIMALS, a mesma tabela que o lado
+// Python usa -- nao ha aqui uma segunda copia para sair de sincronia.
 struct ScalingVector {
   double reading;
-  Scale unit;
+  int decimals;
   int32_t expected;
   const char *field;
 };
 
 inline const ScalingVector kScalingVectors[] = {
-    {30.125, Scale::Temperature, 3013, "temp_in_c"},
-    {8.615, Scale::Temperature, 862, "temp_in_c"},
-    {-9.985, Scale::Temperature, -999, "temp_in_c"},
-    {-0.004, Scale::Temperature, 0, "temp_in_c"},
-    {30.12, Scale::Temperature, 3012, "temp_in_c"},
-    {68.4, Scale::Temperature, 6840, "temp_in_c"},
-    {-40.0, Scale::Temperature, -4000, "temp_in_c"},
-    {85.0, Scale::Temperature, 8500, "temp_in_c"},
-    {99.999, Scale::Humidity, 10000, "rh_in_pct"},
-    {0.0, Scale::Humidity, 0, "rh_in_pct"},
-    {33.335, Scale::Humidity, 3334, "rh_in_pct"},
-    {12.5, Scale::Weight, 12500, "weight_kg"},
-    {12.483, Scale::Weight, 12483, "weight_kg"},
-    {-0.012, Scale::Weight, -12, "weight_kg"},
-    {0.0005, Scale::Weight, 1, "weight_kg"},
-    {49.9995, Scale::Weight, 50000, "weight_kg"},
-    {3.925, Scale::Voltage, 393, "vbat_v"},
-    {4.0, Scale::Voltage, 400, "vbat_v"},
-    {3.415, Scale::Voltage, 342, "vbat_v"},
+    {30.125, 2, 3013, "temp_in_c"},
+    {8.615, 2, 862, "temp_in_c"},
+    {-9.985, 2, -999, "temp_in_c"},
+    {-0.004, 2, 0, "temp_in_c"},
+    {30.12, 2, 3012, "temp_in_c"},
+    {68.4, 2, 6840, "temp_in_c"},
+    {-40.0, 2, -4000, "temp_in_c"},
+    {85.0, 2, 8500, "temp_in_c"},
+    {99.999, 2, 10000, "rh_in_pct"},
+    {0.0, 2, 0, "rh_in_pct"},
+    {33.335, 2, 3334, "rh_in_pct"},
+    {12.5, 3, 12500, "weight_kg"},
+    {12.483, 3, 12483, "weight_kg"},
+    {-0.012, 3, -12, "weight_kg"},
+    {0.0005, 3, 1, "weight_kg"},
+    {49.9995, 3, 50000, "weight_kg"},
+    {3.925, 2, 393, "vbat_v"},
+    {4.0, 2, 400, "vbat_v"},
+    {3.415, 2, 342, "vbat_v"},
 };
 
 inline constexpr size_t kScalingVectorCount =
