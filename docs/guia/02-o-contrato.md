@@ -133,7 +133,8 @@ pytest platform/tests/test_contract.py      # o ingestor lê os mesmos vetores
 python3 contracts/tools/gen_testdata.py --check   # os vetores estão atualizados
 ```
 
-Enquanto os três passarem, firmware e plataforma **não podem** ter divergido.
+Enquanto os três passarem, firmware e plataforma **não podem** ter divergido. (Da raiz,
+`./verificar` roda os três de uma vez.)
 
 ## O modo de falha dos vetores dourados
 

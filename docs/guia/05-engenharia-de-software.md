@@ -129,6 +129,19 @@ cd platform && .venv/bin/pytest        # plataforma
 pio test -e native -d firmware         # firmware, no PC
 ```
 
+Ou, da raiz, `./verificar` — que roda os dois mais o `ruff` e a checagem dos vetores
+dourados, exatamente como o CI.
+
+### Descobrindo o que cada teste protege
+
+Uma suíte verde é um número, e número não ensina nada. A forma mais rápida de descobrir o
+que aqueles testes afirmam é **quebrar o código de propósito e ver quem reclama** — é o
+assunto do bloco de mutantes da [trilha de exercícios](11-trilha-de-exercicios.md).
+
+Ele também mostra o outro lado: mutações que **nenhum** teste pega. Elas existem, são
+defeitos de verdade, e encontrá-las é uma das contribuições mais úteis que alguém novo
+pode fazer aqui.
+
 ## Integração contínua
 
 Todo push dispara o GitHub Actions, que roda os mesmos comandos numa máquina limpa.

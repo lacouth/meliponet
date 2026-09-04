@@ -98,6 +98,14 @@ comportamento sob reconexão — para isso, use a pilha completa abaixo.
 ### Testes
 
 ```bash
+./verificar          # tudo: contrato, ruff, pytest e os testes nativos do firmware
+```
+
+Restringe com um argumento: `./verificar plataforma`, `firmware`, `contrato`, ou `alvo`
+(compila para o ESP32-C6, sem precisar de placa). São as mesmas verificações do CI. Ou, só
+a plataforma:
+
+```bash
 cd platform && .venv/bin/pytest
 ```
 
@@ -163,6 +171,12 @@ Comece por **[`docs/guia/`](docs/guia/README.md)** — um guia de onboarding esc
 estudantes de Engenharia Elétrica que vão trabalhar no projeto: o contrato, a estrutura
 da plataforma Flask, a do firmware, e as práticas de engenharia de software (git,
 ambientes, testes, revisão) que o projeto usa e por quê.
+
+E faça a **[trilha de exercícios](docs/guia/11-trilha-de-exercicios.md)**: quinze
+exercícios em `docs/exercicios/`, do ambiente montado ao primeiro pull request, cada um com
+um critério de pronto que o próprio aluno confere — a saída de `./verificar`, um teste que
+precisa falhar antes e passar depois, ou uma resposta dobrável para comparar. Foi escrita
+para quem vai aprender sozinho, sem alguém do lado para corrigir.
 
 Antes de depurar qualquer comportamento estranho, confira
 **[`docs/defeitos-conhecidos.md`](docs/defeitos-conhecidos.md)**: é o registro dos
