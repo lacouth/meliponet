@@ -1,0 +1,129 @@
+#!/bin/sh
+# Roda, de uma vez, as mesmas verificacoes que o CI roda a cada push.
+#
+# Existe porque as quatro verificacoes viviam espalhadas por tres documentos do guia, e
+# quem esquecia uma so descobria no CI -- depois de abrir o PR. Aqui elas rodam na ordem
+# que falha mais rapido: primeiro o contrato (segundos), por ultimo o firmware.
+#
+# Uso:
+#   ./verificar              tudo
+#   ./verificar contrato     so os vetores dourados
+#   ./verificar plataforma   so ruff e pytest
+#   ./verificar firmware     so os testes nativos, no PC
+#   ./verificar alvo         compila para o ESP32-C6 (baixa o toolchain na 1a vez)
+#
+# O `alvo` fica de fora do padrao de proposito: ele baixa centenas de megabytes na
+# primeira execucao, e nada do que ele pega e alcancavel sem placa. O CI o roda a cada
+# push, entao esquece-lo aqui nao deixa nada passar despercebido.
+#
+# O espelho deste arquivo e .github/workflows/ci.yml: mudou um, mude o outro.
+
+set -eu
+
+RAIZ=$(cd "$(dirname "$0")" && pwd)
+cd "$RAIZ"
+
+VENV="$RAIZ/platform/.venv"
+ALVO=${1:-tudo}
+
+falhou=0
+
+# Cada etapa anuncia o que vai fazer antes de fazer. Numa saida longa, saber qual das
+# quatro quebrou vale mais do que a economia de tres linhas.
+etapa() {
+  printf '\n=== %s\n' "$1"
+}
+
+executar() {
+  if "$@"; then
+    return 0
+  fi
+  falhou=1
+  return 0
+}
+
+# Falta de ferramenta nao e a mesma coisa que teste vermelho, e a mensagem precisa
+# ensinar o proximo passo em vez de so dizer "nao encontrado".
+exigir_venv() {
+  if [ -x "$VENV/bin/python" ]; then
+    return 0
+  fi
+  cat >&2 <<'FIM'
+[erro] o ambiente virtual da plataforma nao existe.
+
+    cd platform
+    python3 -m venv .venv
+    .venv/bin/pip install -e ".[dev]"
+
+O porque de nao instalar direto no Python do sistema esta em
+docs/guia/05-engenharia-de-software.md.
+FIM
+  exit 2
+}
+
+exigir_pio() {
+  if command -v pio >/dev/null 2>&1; then
+    return 0
+  fi
+  cat >&2 <<'FIM'
+[erro] o PlatformIO nao esta no PATH.
+
+    uv tool install platformio      # ou: pipx install platformio
+
+Nao use `pip install platformio`: as distribuicoes recentes recusam a instalacao no
+Python do sistema (PEP 668). Se voce ja instalou e o `pio` nao aparece, confira que
+~/.local/bin esta no seu PATH. Detalhes em docs/guia/06-primeira-contribuicao.md.
+FIM
+  exit 2
+}
+
+verificar_contrato() {
+  etapa "contrato: os vetores dourados estao atualizados?"
+  # --check falha em vez de regravar: regerar um vetor e uma decisao, e precisa aparecer
+  # no diff do commit. Ver docs/guia/02-o-contrato.md.
+  executar python3 contracts/tools/gen_testdata.py --check
+}
+
+verificar_plataforma() {
+  exigir_venv
+  etapa "plataforma: ruff"
+  executar "$VENV/bin/ruff" check platform contracts simulator
+  etapa "plataforma: pytest"
+  executar "$VENV/bin/pytest" platform/tests -q
+}
+
+verificar_firmware() {
+  exigir_pio
+  etapa "firmware: pio test -e native (roda no PC, sem placa)"
+  executar pio test -e native -d firmware
+}
+
+verificar_alvo() {
+  exigir_pio
+  etapa "firmware: pio run -e esp32c6 (compila para a placa)"
+  executar pio run -e esp32c6 -d firmware
+}
+
+case "$ALVO" in
+  tudo)
+    verificar_contrato
+    verificar_plataforma
+    verificar_firmware
+    ;;
+  contrato) verificar_contrato ;;
+  plataforma) verificar_plataforma ;;
+  firmware) verificar_firmware ;;
+  alvo) verificar_alvo ;;
+  *)
+    echo "uso: ./verificar [tudo|contrato|plataforma|firmware|alvo]" >&2
+    exit 2
+    ;;
+esac
+
+if [ "$falhou" -eq 0 ]; then
+  printf '\n=== tudo verde\n'
+  exit 0
+fi
+
+printf '\n=== ALGUMA VERIFICACAO FALHOU -- role para cima e leia a primeira que quebrou\n' >&2
+exit 1

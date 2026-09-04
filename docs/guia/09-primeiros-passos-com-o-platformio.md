@@ -142,7 +142,7 @@ int main(int, char **) {
 ```
 
 É o mesmo formato dos testes reais do projeto — compare depois com
-`firmware/test/native/test_core/test_core.cpp`. Cada teste é uma função `void`, e o
+`firmware/test/native/test_escala/test_escala.cpp`. Cada teste é uma função `void`, e o
 `main` lista as que devem rodar. `setUp` e `tearDown` rodam antes e depois de cada
 teste; aqui não precisamos delas, mas o Unity exige que existam.
 
@@ -328,7 +328,9 @@ cd meliponet
 pio test -e native -d firmware
 ```
 
-São **61 testes**, e rodam em menos de cinco segundos. Nenhum deles precisa de hardware.
+São **mais de sessenta testes**, e rodam em menos de cinco segundos. Nenhum deles precisa
+de hardware. O número exato aparece no fim da saída do `pio test` — e cresce, porque cada
+defeito corrigido no projeto deixa para trás o teste que o pega.
 
 O `-d firmware` diz onde está o `platformio.ini` — é o que permite rodar de dentro da
 raiz do repositório em vez de entrar na pasta.
