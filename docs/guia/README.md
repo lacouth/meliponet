@@ -22,12 +22,17 @@ Leia os quatro primeiros na ordem. Depois siga a trilha do que você vai fazer.
 | 2 | [O contrato](02-o-contrato.md) — a peça que permite hardware e software andarem em paralelo | todos |
 | 3 | [Do nó ao gráfico](08-do-no-ao-grafico.md) — o sistema hoje, ponta a ponta: identidade do nó, cadastro, visualização, e o que ainda falta | todos |
 | 4 | [Engenharia de software](05-engenharia-de-software.md) — git, ambientes, testes, revisão | todos |
+| **4b** | **[Trilha de exercícios](11-trilha-de-exercicios.md)** — quinze exercícios práticos, cada um com critério de pronto que você mesmo confere | todos, **fazendo enquanto lê os de baixo** |
 | 5a | [A plataforma Flask](03-a-plataforma-flask.md) | quem mexe em `platform/` |
 | 5b | [Primeiros passos com o PlatformIO](09-primeiros-passos-com-o-platformio.md) — prática guiada | quem mexe em `firmware/` e nunca usou PlatformIO |
 | 5c | [O firmware](04-o-firmware.md) | quem mexe em `firmware/` |
 | 5d | [O hardware](10-o-hardware.md) — peças, ligação e primeira energização | quem monta ou liga um nó |
 | 6 | [Primeira contribuição](06-primeira-contribuicao.md) — do clone ao pull request | todos |
 | — | [Glossário](07-glossario.md) — consulta rápida | todos |
+
+**Ler não basta, e a trilha existe por isso.** Ela começa no ambiente montado, passa por
+quebrar o código de propósito para descobrir o que cada teste protege, e termina no seu
+primeiro pull request. Não é leitura opcional depois do guia: é a parte em que o guia gruda.
 
 Fora do guia, mas na mesma estante:
 [defeitos conhecidos](../defeitos-conhecidos.md) — o registro dos defeitos que já

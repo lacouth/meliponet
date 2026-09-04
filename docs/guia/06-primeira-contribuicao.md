@@ -117,11 +117,25 @@ falhar — um teste que passa mesmo com o bug presente não testa nada.
 ### 4. Verifique tudo
 
 ```bash
-cd platform && .venv/bin/pytest
-cd .. && platform/.venv/bin/python -m ruff check platform contracts simulator
-pio test -e native -d firmware                      # se mexeu no firmware
-python3 contracts/tools/gen_testdata.py --check     # se mexeu no contrato
+./verificar
 ```
+
+Um comando, as quatro verificações que o CI roda — na ordem que falha mais rápido. Ele
+aceita um argumento para restringir (`./verificar plataforma`, `firmware`, `contrato`), e
+`./verificar alvo` compila para o ESP32-C6, o que não precisa de placa e pega erro que o
+ambiente `native` não vê.
+
+Por baixo, são estes:
+
+```bash
+python3 contracts/tools/gen_testdata.py --check     # se mexeu no contrato
+platform/.venv/bin/ruff check platform contracts simulator
+platform/.venv/bin/pytest platform/tests
+pio test -e native -d firmware                      # se mexeu no firmware
+```
+
+Vale saber rodar cada um separado — na hora de depurar uma falha, você vai querer repetir
+só aquele.
 
 ### 5. Commit
 
@@ -148,6 +162,12 @@ Espere o CI ficar verde e peça revisão.
 ## Tarefas boas para começar
 
 Escolhidas por serem pequenas, reais e por te fazerem passar pelo caminho inteiro.
+
+> **Várias delas já têm roteiro.** A [trilha de exercícios](11-trilha-de-exercicios.md)
+> pega as tarefas desta lista — o comando `intervalo`, a folga no buffer do MQTT, o RSSI no
+> painel, a exportação em CSV — e as transforma em exercícios passo a passo, com o teste a
+> escrever antes e o critério de pronto no fim. Se você nunca contribuiu aqui, comece por
+> ela em vez de escolher uma tarefa solta.
 
 **Plataforma**
 
