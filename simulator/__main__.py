@@ -187,7 +187,15 @@ def seed_database(hives: list[HiveSimulator], organization: str, history_hours: 
 
         apiaries = []
         for name, municipality, lat, lon in APIARIES:
-            apiary = session.scalar(select(Apiary).where(Apiary.name == name))
+            # O nome do meliponario so e unico dentro de uma organizacao: duas
+            # organizacoes podem ter um "Meliponario Campina" cada uma. Sem o filtro
+            # por organizacao, um seed pedido para a organizacao B encontraria o
+            # meliponario da organizacao A e penduraria as colmeias dela la.
+            apiary = session.scalar(
+                select(Apiary).where(
+                    Apiary.name == name, Apiary.organization_id == org.id
+                )
+            )
             if apiary is None:
                 apiary = Apiary(
                     organization_id=org.id,
