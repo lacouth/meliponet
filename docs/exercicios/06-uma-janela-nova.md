@@ -1,6 +1,6 @@
-# 08. Uma janela nova
+# 06. Uma janela nova
 
-**Área:** plataforma · **Tempo:** ~1 h · **Treino**
+**Tempo:** ~1 h · **Treino**
 
 ## Por que este exercício existe
 
@@ -14,9 +14,9 @@ passar.
 
 ## Antes de começar
 
-- Bloco B feito (exercícios [04](04-mutantes-do-firmware.md) a
-  [07](07-o-mutante-que-ninguem-pega.md)).
-- Leia [A plataforma Flask](../guia/03-a-plataforma-flask.md#as-camadas-e-por-que-existem).
+- Bloco B feito (exercícios [04](04-mutantes-da-plataforma.md) e
+  [05](05-o-mutante-que-ninguem-pega.md)).
+- Leia [A plataforma](../guia/03-a-plataforma.md#as-camadas-e-por-que-existem).
 - Banco populado pelo simulador, para ver o resultado no navegador.
 
 ```bash
@@ -71,7 +71,7 @@ platform/.venv/bin/pytest platform/tests/test_series.py -q
 ```
 
 **Não pule este passo.** Um teste que nunca falhou é uma suposição, não uma verificação —
-e você viu isso três vezes no exercício [07](07-o-mutante-que-ninguem-pega.md).
+e você viu isso duas vezes no exercício [05](05-o-mutante-que-ninguem-pega.md).
 
 Repare *como* ele falha. Se `WINDOWS.get("90d")` cai no `DEFAULT_WINDOW`, o teste não vai
 estourar com `KeyError`: ele vai receber a série de 24 h e falhar na contagem. Ler a
@@ -171,4 +171,4 @@ precisa ser escrito em dois lugares para funcionar, um dos dois vai ser esquecid
 **Ver o teste falhar é parte do teste.** E ler *como* ele falha ensina tanto quanto vê-lo
 passar.
 
-→ Próximo: [Desativar usuário encerra a sessão](09-desativar-usuario-encerra-a-sessao.md)
+→ Próximo: [Exportar CSV](07-exportar-csv.md)

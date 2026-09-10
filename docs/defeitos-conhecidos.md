@@ -30,50 +30,19 @@ corrigir agora, escrita para que a próxima pessoa não tropece.
 
 | # | Gravidade | Onde | Defeito |
 |---|---|---|---|
-| [D-01](#d-01) | alta | firmware | A telemetria é publicada em QoS 0, não em QoS 1 |
 | [D-02](#d-02) | alta | plataforma | Medições anteriores ao vínculo ficam órfãs para sempre |
 | [D-13](#d-13) | alta | plataforma | O registro fotográfico do vínculo não tem como ser anexado |
-| [D-03](#d-03) | média | firmware | O buffer do MQTT não tem folga para cabeçalho e tópico |
-| [D-05](#d-05) | média | firmware | A presença dos sensores é decidida no boot e nunca revista |
 | [D-06](#d-06) | média | plataforma | O Last Will é publicado e ninguém o assina |
 | [D-14](#d-14) | média | plataforma | Não há administração de usuários, apesar de o perfil admin prometê-la |
 | [D-15](#d-15) | média | plataforma | Desativar um usuário no banco não encerra a sessão dele |
 | [D-16](#d-16) | média | plataforma | Os formulários não têm proteção contra CSRF |
 | [D-17](#d-17) | média | plataforma | Nó e vínculo não podem ser corrigidos depois de criados |
 | [D-07](#d-07) | baixa | plataforma | Os agregados contínuos são criados e nunca consultados |
-| [D-08](#d-08) | baixa | firmware | `Flag::spooled` é código morto |
-| [D-10](#d-10) | baixa | firmware | `MELIPO_SAMPLE_INTERVAL_S` é um flag de compilação sem uso |
 | [D-18](#d-18) | baixa | plataforma | O admin não cadastra meliponário para outra organização |
 | [D-19](#d-19) | baixa | plataforma | Calibrações e alertas existem no modelo e não têm tela |
 
 ---
 
-### D-01
-
-**A telemetria é publicada em QoS 0, não em QoS 1.**
-
-*Onde:* `firmware/lib/MelipoHardware/PublicadorMqtt.cpp`, `PublicadorMqtt::publicar`.
-
-*Sintoma:* enquanto o ingestor estiver fora do ar — um deploy da plataforma, um reinício
-do contêiner —, as mensagens publicadas nesse intervalo se perdem. Aparecem como lacuna
-na série, sem que nada acuse: o nó publicou, o broker aceitou, e ninguém guardou.
-
-*Por que acontece:* a biblioteca `PubSubClient` só implementa QoS 0 na publicação. Como
-o QoS efetivo de uma entrega é o menor entre o da publicação e o da assinatura, o
-`clean_session=False` do ingestor e o `persistence true` do Mosquitto **não protegem
-nada hoje**. O spool do nó cobre o trecho nó→broker; o trecho broker→ingestor está
-descoberto.
-
-*Agravante:* vários documentos afirmam QoS 1 — `contracts/README.md`, o cabeçalho de
-`PublicadorMqtt.h`, o comentário do `deploy/mosquitto.conf`. Quem ler acredita estar
-protegido.
-
-*Como corrigir:* trocar a biblioteca. A `esp-mqtt`, do próprio ESP-IDF, publica em
-QoS 1 e está disponível sob o Arduino core 3.x. Mexe na única parte do firmware que os
-testes nativos não cobrem, então planeje a verificação em bancada: derrube o ingestor,
-publique, suba o ingestor, confira se a mensagem chegou.
-
----
 
 ### D-02
 
@@ -91,8 +60,7 @@ depois não reprocessa o passado. A interface promete o contrário: o texto de "
 aguardando vínculo" diz que as leituras "passam a aparecer nos gráficos assim que o
 vínculo existir", o que só vale para o que chegar depois.
 
-*Contorno hoje:* vincule antes de deixar o nó publicando. Está documentado em
-[docs/guia/08-do-no-ao-grafico.md](guia/08-do-no-ao-grafico.md).
+*Contorno hoje:* vincule o nó à colmeia **antes** de deixá-lo publicando.
 
 *Como corrigir:* ao criar um `NodeAssignment`, reatribuir as medições daquele nó que
 caem dentro do período e ainda estão com `hive_id IS NULL`. São poucas linhas em
@@ -101,69 +69,22 @@ as duas aparecem em `series()`. Corrigir o texto da interface faz parte da corre
 
 ---
 
-### D-03
 
-**O buffer do MQTT não tem folga para o cabeçalho e o tópico.**
-
-*Onde:* `firmware/lib/MelipoHardware/PublicadorMqtt.cpp`, `kTamanhoDoBuffer = 512`, contra
-`kTamanhoMaximoDoJson = 512` em `Telemetria.h`.
-
-*Sintoma:* uma mensagem que ocupe o tamanho máximo previsto pelo codec é recusada pelo
-`PubSubClient` sem sair da placa. Ela vai para o spool, é drenada, é recusada de novo — e
-**trava a cabeça da fila para sempre**, bloqueando todas as mensagens atrás dela. O nó
-fica mudo com o spool cheio.
-
-*Por que acontece:* o buffer do `PubSubClient` precisa acomodar o cabeçalho MQTT e o
-tópico além do payload. O tópico `meliponet/v1/XXXXXXXX/telemetry` tem 30 bytes, e o
-cabeçalho, uns 7 — o teto real do payload fica perto de 475 bytes, não 512.
-
-*Por que ainda não mordeu:* a mensagem do protótipo tem cerca de 350 bytes. A margem
-existe, mas some quando a Fase 5 acrescentar `sound_bands`.
-
-*Como corrigir:* dimensionar `kTamanhoDoBuffer` como `kTamanhoMaximoDoJson` mais a folga do
-cabeçalho e do tópico, com um `static_assert` que quebre o build se as duas constantes
-voltarem a se aproximar. E, independentemente disso, `drenarSpool` deveria descartar (com
-contador) uma mensagem recusada mais de N vezes, em vez de tentar a mesma para sempre.
-
----
-
-### D-05
-
-**A presença dos sensores é decidida no boot e nunca revista.**
-
-*Onde:* `firmware/lib/MelipoHardware/SensoresSht.cpp` (`iniciar()`) e `CelulaDeCarga`.
-
-*Sintoma:* um sensor com mau contato no instante do boot fica marcado como ausente até
-alguém reiniciar a placa, mesmo que o contato volte um minuto depois. As leituras dele
-saem omitidas com a flag de falha por dias, e o `estado` continua dizendo `ausente` com
-o sensor funcionando. O inverso também vale: um sensor que se solta depois do boot
-continua marcado como presente.
-
-*Contorno hoje:* o comando serial `sondar` refaz a detecção sem reiniciar. Resolve na
-bancada, onde alguém está na frente da placa; não resolve em campo, que é onde o defeito
-importa.
-
-*Como corrigir:* tentar reconectar periodicamente — a cada N amostras, ou sempre que uma
-leitura falhar —, em vez de confiar num teste feito uma vez. A lógica de quando
-re-sondar é pura e cabe em `MelipoCore`, com teste nativo.
-
----
 
 ### D-06
 
 **O Last Will é publicado e ninguém o assina.**
 
-*Onde:* o nó publica em `meliponet/v1/<node_id>/status`
-(`firmware/lib/MelipoHardware/PublicadorMqtt.cpp`); nada em
-`platform/meliponet/ingest/` assina esse tópico.
+*Onde:* o contrato reserva o tópico `meliponet/v1/<node_id>/status` para o Last Will do
+nó, e nada em `platform/meliponet/ingest/` assina esse tópico.
 
 *Sintoma:* um nó que morre em campo não gera aviso nenhum. "O nó parou de enviar" segue
 indistinguível de "ainda não chegou a hora de enviar", que é exatamente o problema que o
 Last Will existe para resolver.
 
 *Como corrigir:* assinar `meliponet/v1/+/status` no ingestor e registrar a transição em
-`nodes`. O alerta de nó mudo em si é da Fase 4, mas guardar a transição pode ser feito
-antes e barato.
+`nodes`. O alerta de nó mudo em si é assunto maior, mas guardar a transição pode ser feito
+antes e barato — e dá sentido à etapa de MQTT do roteiro do nó.
 
 ---
 
@@ -184,47 +105,7 @@ reamostragem continuam valendo e são a rede de segurança da mudança.
 
 ---
 
-### D-08
 
-**`Flag::spooled` é código morto.**
-
-*Onde:* `firmware/lib/MelipoCore/Amostra.cpp` liga a flag quando
-`ContextoDaAmostra::veio_do_spool` é verdadeiro, mas `firmware/src/main.cpp` nunca
-define esse campo.
-
-*Sintoma:* nenhuma mensagem reenviada do spool chega marcada como tal. Perde-se a
-distinção entre "medição que chegou na hora" e "medição represada por horas", que é
-justamente um dos indicadores de qualidade que o Edital 17 promete reportar.
-
-*Por que acontece:* o spool guarda a mensagem **já serializada**, então no momento do
-reenvio não há mais um `ContextoDaAmostra` para marcar. A flag teria de ser decidida na
-montagem, quando ainda não se sabe se a mensagem vai ou não para o spool.
-
-*Como corrigir:* decidir o que a flag significa antes de implementá-la. Uma saída é
-marcar no reenvio, reescrevendo o campo `flags` da mensagem guardada — o que exige que o
-spool saiba um pouco do formato. A outra é remover a flag e derivar o atraso na
-plataforma, comparando `ts` com `received_at`, que já estão os dois no banco. **A segunda
-é provavelmente a certa**, e aí a correção é apagar código.
-
----
-
-### D-10
-
-**`MELIPO_SAMPLE_INTERVAL_S` é um flag de compilação sem uso.**
-
-*Onde:* `firmware/platformio.ini`, `-DMELIPO_SAMPLE_INTERVAL_S=300`. Nenhum arquivo do
-firmware o referencia.
-
-*Sintoma:* quem quiser mudar o intervalo de amostragem provavelmente vai editar esse
-flag, recompilar, gravar — e o nó continuará amostrando a cada 5 minutos, porque o valor
-real vem da NVS (`interval_s`, lido em `Configuracao.cpp`). Um flag que parece configurar algo
-e não configura é pior do que nenhum.
-
-*Como corrigir:* remover o flag. Se um padrão de compilação for desejável no futuro, ele
-deve ser o valor usado pelo `carregarConfiguracao()` quando a chave da NVS está ausente, não uma
-constante paralela.
-
----
 
 ### D-13
 
@@ -357,6 +238,13 @@ ninguém. Quando a Fase 4 chegar, as telas entram e esta entrada sai.
 ---
 
 ## Resolvidos
+
+> **D-01, D-03, D-05, D-08 e D-10 saíram desta lista sem terem sido corrigidos.** Eram
+> defeitos do firmware C++ que o repositório mantinha, e esse código deixou de existir
+> aqui quando o nó virou exercício (ver [`firmware/ROTEIRO.md`](../firmware/ROTEIRO.md));
+> ele está preservado na tag `firmware-referencia-v1`. Os números continuam queimados,
+> como manda a regra acima.
+
 
 | # | Defeito | Corrigido em |
 |---|---|---|

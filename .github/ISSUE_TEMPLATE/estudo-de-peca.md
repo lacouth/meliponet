@@ -5,20 +5,21 @@ title: "hardware: "
 labels: estudo, hardware
 ---
 
-**Guia:** docs/guia/10-o-hardware.md
+**Guia:** docs/guia/04-o-no-sensor.md
 **Entrega:** as linhas correspondentes em docs/lista-de-compras.md
 
 ## O que estudar
 
 A seção do guia e a peça.
 
-## O que conferir no código
+## O que conferir na documentação
 
-O guia descreve o nó; o firmware é o nó. Confira um contra o outro — pinos, endereços,
-constantes — e diga o que bateu e o que não bateu. Divergência é achado, e vira issue.
+O guia descreve a peça e o roteiro em firmware/ROTEIRO.md diz como ligá-la. Confira um
+contra o outro — pinos, endereços, faixas — e diga o que bateu e o que não bateu.
+Divergência é achado, e vira issue.
 
-- [ ] arquivo do firmware que usa a peça, lido
-- [ ] pinos e endereços conferem com o guia
+- [ ] a seção do guia sobre a peça, lida
+- [ ] pinos e endereços conferem entre o guia e o roteiro
 
 ## O que entra na lista de compras
 
