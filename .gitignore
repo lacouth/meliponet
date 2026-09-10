@@ -6,9 +6,12 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# PlatformIO
-firmware/.pio/
-firmware/.vscode/
+# O firmware do no e exercicio: firmware/ guarda so o roteiro, e o projeto que cada
+# aluno escreve ali fica na maquina dele. Sem isto, o primeiro `git add -A` de quem
+# estiver seguindo o roteiro empurraria o sketch pessoal -- e o gabarito -- para o
+# repositorio que os proximos alunos vao clonar.
+firmware/*
+!firmware/ROTEIRO.md
 
 # Propostas ainda nao submetidas aos editais de 2026. Sao a fonte de requisitos de
 # todo o codigo, mas ficam apenas na maquina local, fora do controle de versao.

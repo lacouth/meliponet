@@ -1,7 +1,9 @@
-# O CI existe sobretudo por um motivo: garantir que o firmware C++ e a plataforma
-# Python continuem falando o mesmo contrato. Os tres jobs abaixo verificam isso de
-# angulos diferentes, e qualquer um deles falhando significa que os dois lados
-# divergiram.
+# O espelho do ./verificar. Roda a cada push e em cada pull request as mesmas duas
+# verificacoes que se roda na maquina antes de commitar.
+#
+# O firmware do no nao entra aqui: ele e exercicio do aluno (firmware/ROTEIRO.md),
+# escrito fora deste repositorio. Quem o confere e a propria plataforma, quando a
+# leitura chega -- ou nao chega.
 
 name: CI
 
@@ -11,7 +13,7 @@ on:
 
 jobs:
   plataforma:
-    name: pytest
+    name: ruff e pytest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,23 +23,3 @@ jobs:
       - run: pip install -e "platform[dev]"
       - run: ruff check platform contracts simulator
       - run: pytest platform/tests
-
-  firmware:
-    name: pio test -e native
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install platformio
-      # Roda no PC, sem hardware. Cobre o codec, a escala, a montagem da mensagem, a
-      # calibracao, o agendamento e o spool -- toda a logica do firmware que nao depende
-      # de sensor. Os testes de codec e de escala comparam com os mesmos vetores que o
-      # job `plataforma` consome pelo lado Python.
-      - run: pio test -e native -d firmware
-
-      # Compila para o alvo. Nao prova que funciona em campo, mas pega erro de
-      # compilacao especifico do ESP32 que o ambiente `native` nao veria -- e o CI e o
-      # unico lugar onde isso e checado a cada commit.
-      - run: pio run -e esp32c6 -d firmware

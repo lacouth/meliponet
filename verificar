@@ -1,19 +1,15 @@
 #!/bin/sh
 # Roda, de uma vez, as mesmas verificacoes que o CI roda a cada push.
 #
-# Existe porque as quatro verificacoes viviam espalhadas por tres documentos do guia, e
-# quem esquecia uma so descobria no CI -- depois de abrir o PR. Aqui elas rodam na ordem
-# que falha mais rapido: primeiro a plataforma (segundos), por ultimo o firmware.
+# Existe porque as verificacoes viviam espalhadas por tres documentos do guia, e quem
+# esquecia uma so descobria no CI -- depois de abrir o PR.
 #
 # Uso:
-#   ./verificar              tudo
-#   ./verificar plataforma   so ruff e pytest
-#   ./verificar firmware     so os testes nativos, no PC
-#   ./verificar alvo         compila para o ESP32-C6 (baixa o toolchain na 1a vez)
+#   ./verificar              tudo: ruff e pytest
+#   ./verificar plataforma   o mesmo; o nome existe para quem procura por ele
 #
-# O `alvo` fica de fora do padrao de proposito: ele baixa centenas de megabytes na
-# primeira execucao, e nada do que ele pega e alcancavel sem placa. O CI o roda a cada
-# push, entao esquece-lo aqui nao deixa nada passar despercebido.
+# O firmware do no nao entra aqui: ele e exercicio do aluno, escrito fora deste
+# repositorio, e quem o confere e a propria plataforma -- ver firmware/ROTEIRO.md.
 #
 # O espelho deste arquivo e .github/workflows/ci.yml: mudou um, mude o outro.
 
@@ -27,8 +23,8 @@ ALVO=${1:-tudo}
 
 falhou=0
 
-# Cada etapa anuncia o que vai fazer antes de fazer. Numa saida longa, saber qual das
-# quatro quebrou vale mais do que a economia de tres linhas.
+# Cada etapa anuncia o que vai fazer antes de fazer. Numa saida longa, saber qual delas
+# quebrou vale mais do que a economia de duas linhas.
 etapa() {
   printf '\n=== %s\n' "$1"
 }
@@ -44,18 +40,15 @@ executar() {
 # Falta de ferramenta nao e a mesma coisa que teste vermelho, e a mensagem precisa
 # ensinar o proximo passo em vez de so dizer "nao encontrado".
 #
-# As duas checagens acontecem antes da primeira etapa rodar, nunca no meio do caminho:
-# quem esta no exercicio 01 e ainda nao instalou o PlatformIO veria o script morrer
-# depois do contrato, sem o veredito final, e concluiria que o resto estava verde.
+# Nao basta o venv existir: o passo chama ruff e pytest, e um `pip install -e ".[dev]"`
+# que falhou pela metade deixa o python no lugar e os dois de fora. Sem esta checagem o
+# erro sairia como "No such file or directory" -- teste vermelho, quando na verdade e
+# ferramenta faltando.
 exigir_venv() {
-  # Nao basta o venv existir: o passo chama ruff e pytest, e um `pip install -e ".[dev]"`
-  # que falhou pela metade deixa o python no lugar e os dois de fora. Sem esta checagem o
-  # erro sairia como "No such file or directory" -- teste vermelho, quando na verdade e
-  # ferramenta faltando.
   if [ -x "$VENV/bin/python" ] && [ -x "$VENV/bin/ruff" ] && [ -x "$VENV/bin/pytest" ]; then
     return 0
   fi
-  cat >&2 <<'FIM'
+  cat >&2 <<'FIMDAAJUDA'
 [erro] o ambiente virtual da plataforma nao existe, ou esta incompleto.
 
     cd platform
@@ -64,68 +57,31 @@ exigir_venv() {
 
 O segundo comando e o que traz o ruff e o pytest: se ele falhou, o .venv existe mas as
 ferramentas nao. O porque de nao instalar direto no Python do sistema esta em
-docs/guia/05-engenharia-de-software.md.
-FIM
-  exit 2
-}
-
-exigir_pio() {
-  if command -v pio >/dev/null 2>&1; then
-    return 0
-  fi
-  cat >&2 <<'FIM'
-[erro] o PlatformIO nao esta no PATH.
-
-    uv tool install platformio      # ou: pipx install platformio
-
-Nao use `pip install platformio`: as distribuicoes recentes recusam a instalacao no
-Python do sistema (PEP 668). Se voce ja instalou e o `pio` nao aparece, confira que
-~/.local/bin esta no seu PATH. Detalhes em docs/guia/06-primeira-contribuicao.md.
-FIM
+docs/guia/05-como-trabalhamos.md.
+FIMDAAJUDA
   exit 2
 }
 
 verificar_plataforma() {
-  etapa "plataforma: ruff"
+  etapa "ruff"
   executar "$VENV/bin/ruff" check platform contracts simulator
-  etapa "plataforma: pytest"
+  etapa "pytest"
   executar "$VENV/bin/pytest" platform/tests -q
 }
 
-verificar_firmware() {
-  etapa "firmware: pio test -e native (roda no PC, sem placa)"
-  executar pio test -e native -d firmware
-}
-
-verificar_alvo() {
-  etapa "firmware: pio run -e esp32c6 (compila para a placa)"
-  executar pio run -e esp32c6 -d firmware
-}
-
 case "$ALVO" in
-  tudo)
+  tudo|plataforma)
     exigir_venv
-    exigir_pio
     verificar_plataforma
-    verificar_firmware
     ;;
-  plataforma) exigir_venv; verificar_plataforma ;;
-  firmware) exigir_pio; verificar_firmware ;;
-  alvo) exigir_pio; verificar_alvo ;;
   *)
-    echo "uso: ./verificar [tudo|plataforma|firmware|alvo]" >&2
+    echo "uso: ./verificar [tudo|plataforma]" >&2
     exit 2
     ;;
 esac
 
 if [ "$falhou" -eq 0 ]; then
-  # O veredito diz o que rodou. `./verificar plataforma` terminando em "tudo verde"
-  # deixaria marcar o exercicio 01 como pronto sem nunca ter compilado o firmware.
-  if [ "$ALVO" = tudo ]; then
-    printf '\n=== tudo verde\n'
-  else
-    printf '\n=== %s: verde (as outras verificacoes nao rodaram)\n' "$ALVO"
-  fi
+  printf '\n=== tudo verde\n'
   exit 0
 fi
 
