@@ -22,6 +22,9 @@ class Config:
     mqtt_port: int
     mqtt_username: str | None
     mqtt_password: str | None
+    #: Token que a rota HTTP de telemetria exige. Vazio (o padrao) libera a rota, que e
+    #: o que permite ao aluno testar com `curl` sem configurar nada.
+    token_ingestao: str | None = None
 
     @classmethod
     def from_env(cls) -> Config:
@@ -35,4 +38,5 @@ class Config:
             mqtt_port=int(os.environ.get("MQTT_PORT", "1883")),
             mqtt_username=os.environ.get("MQTT_USERNAME") or None,
             mqtt_password=os.environ.get("MQTT_PASSWORD") or None,
+            token_ingestao=os.environ.get("TOKEN_INGESTAO") or None,
         )
