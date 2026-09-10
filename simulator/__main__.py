@@ -293,6 +293,42 @@ class MqttPublisher:
         self._client.disconnect()
 
 
+def run_realtime(
+    hives: list[HiveSimulator],
+    faults: set[str],
+    publisher: DirectPublisher | MqttPublisher,
+    period_s: float,
+    emitted: int = 0,
+    rounds: int | None = None,
+) -> int:
+    """Emite indefinidamente, uma rodada de amostras por vez.
+
+    ``rounds`` limita o numero de rodadas; e o que permite um teste rodar a funcao sem
+    ficar preso no laco. Em uso normal fica ``None``, e so o Ctrl+C interrompe.
+    """
+    LOGGER.info("tempo real: uma amostra a cada %.1f s (Ctrl+C para parar)", period_s)
+    completed = 0
+    try:
+        while rounds is None or completed < rounds:
+            # O instante vem do relogio a cada rodada. Somar `--intervalo` aqui faria o
+            # tempo simulado correr mais rapido que o real (5 min a cada 3 s, nos
+            # padroes) e as leituras cairiam no futuro, onde o painel -- que so olha
+            # ate agora -- nao as mostra. O `--intervalo` governa so o historico.
+            when = datetime.now(UTC)
+            for hive in hives:
+                message = make_message(hive, when, faults)
+                if message is None:
+                    continue
+                publisher.publish(hive.node_id, canonical_dumps(message))
+                emitted += 1
+            LOGGER.info("%d medições emitidas", emitted)
+            completed += 1
+            time.sleep(period_s)
+    except KeyboardInterrupt:
+        LOGGER.info("interrompido; %d medições emitidas", emitted)
+    return emitted
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="simulator", description=__doc__)
     parser.add_argument("--colmeias", type=int, default=4, help="quantas colmeias simular")
@@ -306,7 +342,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--intervalo", type=int, default=300,
-        help="segundos entre amostras na série gerada (padrão: 5 min, como o nó real)",
+        help="segundos entre amostras no histórico (padrão: 5 min, como o nó real); "
+             "no tempo real quem espaça as amostras é --periodo",
     )
     parser.add_argument(
         "--periodo", type=float, default=3.0,
@@ -390,18 +427,7 @@ def main(argv: list[str] | None = None) -> int:
             LOGGER.info("histórico pronto: %d medições, %d lacunas injetadas", emitted, skipped)
 
         if args.tempo_real:
-            LOGGER.info("tempo real: uma amostra a cada %.1f s (Ctrl+C para parar)", args.periodo)
-            when = datetime.now(UTC)
-            while True:
-                for hive in hives:
-                    message = make_message(hive, when, faults)
-                    if message is None:
-                        continue
-                    publisher.publish(hive.node_id, canonical_dumps(message))
-                    emitted += 1
-                LOGGER.info("%d medições emitidas", emitted)
-                when += step
-                time.sleep(args.periodo)
+            emitted = run_realtime(hives, faults, publisher, args.periodo, emitted)
     except KeyboardInterrupt:
         LOGGER.info("interrompido; %d medições emitidas", emitted)
     finally:

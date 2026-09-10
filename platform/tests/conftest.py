@@ -1,8 +1,8 @@
 """Configuracao e fixtures comuns dos testes da plataforma.
 
-Poe a raiz do monorepo e ``contracts/`` no ``sys.path`` para que os testes importem
-tanto o pacote ``meliponet`` quanto o modulo ``canonical`` do contrato, compartilhado
-com o gerador de vetores dourados.
+Poe a raiz do monorepo, ``platform/`` e ``contracts/`` no ``sys.path`` para que os
+testes importem o pacote ``meliponet``, o pacote ``simulator`` e o modulo ``canonical``
+do contrato, compartilhado com o gerador de vetores dourados.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_DIR = REPO_ROOT / "contracts"
 TESTDATA_DIR = CONTRACTS_DIR / "testdata"
 
-for path in (REPO_ROOT / "platform", CONTRACTS_DIR):
+for path in (REPO_ROOT, REPO_ROOT / "platform", CONTRACTS_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
