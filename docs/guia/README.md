@@ -28,6 +28,7 @@ Leia os quatro primeiros na ordem. Depois siga a trilha do que você vai fazer.
 | 5c | [O firmware](04-o-firmware.md) | quem mexe em `firmware/` |
 | 5d | [O hardware](10-o-hardware.md) — peças, ligação e primeira energização | quem monta ou liga um nó |
 | 6 | [Primeira contribuição](06-primeira-contribuicao.md) — do clone ao pull request | todos |
+| 7 | [Como nós nos organizamos](12-como-nos-organizamos.md) — o quadro de tarefas, as frentes e as duas primeiras semanas | todos |
 | — | [Glossário](07-glossario.md) — consulta rápida | todos |
 
 **Ler não basta, e a trilha existe por isso.** Ela começa no ambiente montado, passa por
