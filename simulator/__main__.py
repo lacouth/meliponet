@@ -5,15 +5,20 @@ a mesma mensagem que o no sensor emite -- montada pelo mesmo ``contracts/mensage
 --, de modo que tudo rio abaixo (validacao, persistencia, graficos, alertas) e
 exercitado pelo caminho real, antes de existir placa.
 
-Dois transportes:
+Tres transportes:
 
 ``--transporte mqtt`` (padrao)
-    Publica no broker, como um no de verdade. E o caminho completo.
+    Publica no broker, como um no de campo. E o caminho completo.
+
+``--transporte http``
+    Faz o mesmo POST que o no do aluno faz (``/api/v1/telemetria``), contra um servidor
+    ja no ar. Serve para exercitar a rota ponta a ponta -- e para ter, ao lado do
+    firmware que nao envia, um remetente que sabidamente funciona.
 
 ``--transporte direto``
-    Chama o mesmo pipeline de ingestao sem passar pelo broker. Serve para testar a
-    plataforma numa maquina sem Mosquitto instalado. O codigo exercitado e o mesmo,
-    menos o transporte -- o que ele **nao** testa e a reentrega do broker e o
+    Chama o mesmo pipeline de ingestao sem passar por rede nenhuma. Serve para testar a
+    plataforma numa maquina sem Mosquitto e sem servidor no ar. O codigo exercitado e o
+    mesmo, menos o transporte -- o que ele **nao** testa e a reentrega do broker e o
     comportamento sob reconexao.
 
 E injeta falhas de proposito (``--falhas``), porque a plataforma precisa ser
@@ -270,6 +275,38 @@ class DirectPublisher:
         pass
 
 
+class HttpPublisher:
+    """Faz o mesmo POST que o no do aluno faz, contra um servidor ja no ar."""
+
+    def __init__(self, url: str, token: str | None) -> None:
+        self._url = url
+        self._token = token
+        LOGGER.info("publicando em %s", url)
+
+    def publish(self, node_id: str, payload: str) -> None:
+        import urllib.error
+        import urllib.request
+
+        pedido = urllib.request.Request(
+            self._url,
+            data=payload.encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        if self._token:
+            pedido.add_header("Authorization", f"Bearer {self._token}")
+        try:
+            with urllib.request.urlopen(pedido, timeout=10) as resposta:
+                resposta.read()
+        except urllib.error.HTTPError as erro:
+            # Recusa da plataforma nao e motivo para parar: o simulador injeta falhas de
+            # proposito, e ver o motivo passar no log e parte do que ele serve.
+            LOGGER.warning("no %s recusado (%s): %s", node_id, erro.code, erro.read().decode())
+
+    def close(self) -> None:
+        pass
+
+
 class MqttPublisher:
     """Publica no broker, como um no de verdade."""
 
@@ -333,8 +370,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="simulator", description=__doc__)
     parser.add_argument("--colmeias", type=int, default=4, help="quantas colmeias simular")
     parser.add_argument(
-        "--transporte", choices=("mqtt", "direto"), default="mqtt",
-        help="mqtt publica no broker; direto chama a ingestão sem broker",
+        "--transporte", choices=("mqtt", "http", "direto"), default="mqtt",
+        help="mqtt publica no broker; http faz POST na rota de telemetria; "
+             "direto chama a ingestão sem rede",
+    )
+    parser.add_argument(
+        "--url", default="http://127.0.0.1:5000/api/v1/telemetria",
+        help="endereço da rota de telemetria, usado por --transporte http",
     )
     parser.add_argument(
         "--historico", type=int, default=48,
@@ -391,7 +433,15 @@ def main(argv: list[str] | None = None) -> int:
         create_all(engine)
         seed_database(hives, args.organizacao, args.historico)
         resume_state(hives)
-        publisher: DirectPublisher | MqttPublisher = DirectPublisher()
+        publisher: DirectPublisher | HttpPublisher | MqttPublisher = DirectPublisher()
+    elif args.transporte == "http":
+        # O cadastro precisa existir para a telemetria pousar numa colmeia; a gravacao
+        # da telemetria em si e do servidor que atende o POST.
+        engine = init_engine(config.database_url)
+        create_all(engine)
+        seed_database(hives, args.organizacao, args.historico)
+        resume_state(hives)
+        publisher = HttpPublisher(args.url, config.token_ingestao)
     else:
         # No modo MQTT o simulador nao toca no banco: quem grava e o ingestor, como em
         # producao. Mas o cadastro precisa existir para a telemetria pousar numa

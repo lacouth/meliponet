@@ -15,6 +15,7 @@ def create_app(config: Config | None = None) -> Flask:
     explicito, o que permite aos testes criarem instancias isoladas com bancos proprios
     em vez de compartilharem um singleton.
     """
+    from meliponet.blueprints.api import bp as api_bp
     from meliponet.blueprints.auth import bp as auth_bp
     from meliponet.blueprints.dashboard import bp as dashboard_bp
     from meliponet.blueprints.manage import bp as manage_bp
@@ -54,6 +55,7 @@ def create_app(config: Config | None = None) -> Flask:
 
     cli.register(app)
 
+    app.register_blueprint(api_bp)
     app.register_blueprint(public_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
