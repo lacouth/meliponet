@@ -5,18 +5,18 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from canonical import SCHEMA_ID, canonical_dumps
 from meliponet.db import session_scope
 from meliponet.ingest.store import record_reject, store
 from meliponet.ingest.telemetry import decode
 from meliponet.models import IngestReject, Measurement, Node, NodeAssignment
+from mensagem import ESQUEMA, serializar
 from sqlalchemy import select
 
 
 def message(seq: int, *, ts: datetime | None = None, node_id: str = "A4C13800", **extra) -> str:
     when = ts or datetime.now(UTC) - timedelta(minutes=seq)
     payload = {
-        "schema": SCHEMA_ID,
+        "schema": ESQUEMA,
         "node_id": node_id,
         "seq": seq,
         "ts": when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -25,7 +25,7 @@ def message(seq: int, *, ts: datetime | None = None, node_id: str = "A4C13800", 
         "weight_kg": 12.4,
         **extra,
     }
-    return canonical_dumps(payload)
+    return serializar(payload)
 
 
 def test_grava_leitura(scenario) -> None:
@@ -79,7 +79,8 @@ def test_no_desconhecido_e_autocadastrado(db) -> None:
 
 def test_sensor_ausente_grava_null_e_nao_zero(scenario) -> None:
     """A distinção entre "sem sensor" e "leu zero" é o insumo da curadoria."""
-    payload = message(1, flags=["sht_out_fault"]).replace('"temp_out_c":34.20,', "")
+    # O campo nao vem com zero nem com null: ele simplesmente nao e montado.
+    payload = message(1, flags=["sht_out_fault"], temp_out_c=None)
 
     with session_scope() as session:
         store(session, decode(payload))

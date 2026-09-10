@@ -1,9 +1,13 @@
-"""Verifica que a plataforma le exatamente o contrato que o firmware escreve.
+"""Verifica que a plataforma aceita exatamente a mensagem que o roteiro pede.
 
-O par deste arquivo e ``firmware/test/native/test_codec/``, que faz o caminho oposto:
-serializa em C++ e compara com os mesmos vetores. Enquanto os dois passarem, firmware
-e plataforma nao podem ter divergido -- e essa e a unica garantia disso, ja que as
-duas implementacoes sao escritas em linguagens diferentes por pessoas diferentes.
+Os arquivos em ``contracts/exemplos/`` sao o que o aluno le em
+``firmware/ROTEIRO.md`` e copia para o firmware dele. Se um deles deixasse de ser
+aceito, o roteiro passaria a ensinar uma mensagem que a plataforma recusa -- e o aluno
+levaria horas para descobrir que o erro nao era dele. Estes testes existem para que isso
+quebre aqui, e nao na bancada.
+
+Os ``invalidas/`` fazem o caminho oposto: garantem que a plataforma recusa, com um
+motivo legivel, cada erro que o aluno tem chance de cometer.
 """
 
 from __future__ import annotations
@@ -13,99 +17,79 @@ from datetime import UTC
 from pathlib import Path
 
 import pytest
-from canonical import canonical_dumps, quantize, render_scaled
-from meliponet.ingest.telemetry import SCHEMA_ID, TelemetryError, decode
+from meliponet.ingest.telemetry import TelemetryError, decode
+from mensagem import ESQUEMA, serializar
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TESTDATA = REPO_ROOT / "contracts" / "testdata"
+EXEMPLOS = REPO_ROOT / "contracts" / "exemplos"
 
-VALID_VECTORS = sorted(TESTDATA.glob("telemetry_*.json"))
-INVALID_VECTORS = sorted((TESTDATA / "invalid").glob("*.json"))
+VALIDAS = sorted(EXEMPLOS.glob("*.json"))
+INVALIDAS = sorted((EXEMPLOS / "invalidas").glob("*.json"))
 
 
-def test_ha_vetores_para_testar() -> None:
+def test_ha_exemplos_para_testar() -> None:
     # Um glob vazio faria todos os testes parametrizados passarem por vacuidade, que
     # e exatamente o modo como esta protecao poderia falhar silenciosamente.
-    assert len(VALID_VECTORS) >= 5
-    assert len(INVALID_VECTORS) >= 5
+    assert len(VALIDAS) >= 5
+    assert len(INVALIDAS) >= 5
 
 
-@pytest.mark.parametrize("vector", VALID_VECTORS, ids=lambda p: p.stem)
-def test_vetor_valido_e_aceito(vector: Path) -> None:
-    telemetry = decode(vector.read_bytes().strip())
+@pytest.mark.parametrize("exemplo", VALIDAS, ids=lambda p: p.stem)
+def test_exemplo_valido_e_aceito(exemplo: Path) -> None:
+    telemetry = decode(exemplo.read_bytes())
 
     assert telemetry.node_id
     assert telemetry.ts.tzinfo == UTC
-    assert telemetry.metrics, "todo vetor valido carrega ao menos uma metrica"
+    assert telemetry.metrics, "todo exemplo valido carrega ao menos uma metrica"
 
 
-@pytest.mark.parametrize("vector", INVALID_VECTORS, ids=lambda p: p.stem)
-def test_vetor_invalido_e_rejeitado_com_motivo(vector: Path) -> None:
-    expected_reason = vector.with_suffix(".reason").read_text().strip()
+@pytest.mark.parametrize("exemplo", INVALIDAS, ids=lambda p: p.stem)
+def test_exemplo_invalido_e_recusado_com_motivo(exemplo: Path) -> None:
+    esperado = exemplo.with_suffix(".motivo").read_text().strip()
 
     with pytest.raises(TelemetryError) as excinfo:
-        decode(vector.read_bytes().strip())
+        decode(exemplo.read_bytes())
 
-    # A razao registrada precisa ser util para quem for ler `ingest_rejects` meses
-    # depois, entao o teste exige uma mensagem nao vazia e anota a esperada.
-    assert excinfo.value.reason, f"rejeicao sem motivo (esperado algo como: {expected_reason})"
+    # O motivo precisa ser util para quem for ler `ingest_rejects` meses depois, e para
+    # o aluno que so tem a resposta do POST para se guiar.
+    assert excinfo.value.reason, f"recusa sem motivo (esperado algo como: {esperado})"
 
 
-@pytest.mark.parametrize("vector", VALID_VECTORS, ids=lambda p: p.stem)
-def test_vetor_esta_na_forma_canonica(vector: Path) -> None:
-    """Reserializar um vetor tem de devolver os mesmos bytes.
+@pytest.mark.parametrize("exemplo", VALIDAS, ids=lambda p: p.stem)
+def test_exemplo_sobrevive_a_montagem_em_python(exemplo: Path) -> None:
+    """O simulador monta a mesma mensagem que esta no arquivo.
 
-    Isto e o que garante que os arquivos em ``testdata/`` de fato representam o que o
-    firmware produz, e nao um JSON equivalente porem diferente byte a byte -- que
-    passaria neste conjunto de testes mas falharia no teste nativo em C++.
+    Nao se exige igualdade byte a byte -- so que os campos e os valores cheguem
+    iguais depois de passar por ``mensagem.serializar``. E a garantia de que o
+    simulador e os exemplos nao vao divergir sem ninguem notar.
     """
-    raw = vector.read_text().strip()
-    message = json.loads(raw)
+    original = json.loads(exemplo.read_text())
 
-    assert canonical_dumps(message) == raw
+    assert json.loads(serializar(original)) == original
 
 
-def test_reserializacao_preserva_ordem_das_chaves() -> None:
-    # Ordem embaralhada na entrada precisa sair na ordem canonica.
-    embaralhado = {
-        "weight_kg": 12.483,
-        "ts": "2027-03-14T12:05:00Z",
-        "node_id": "A4C1380F",
-        "schema": SCHEMA_ID,
-        "seq": 10432,
-    }
-
-    assert canonical_dumps(embaralhado) == (
-        '{"schema":"meliponet.telemetry.v1","node_id":"A4C1380F","seq":10432,'
-        '"ts":"2027-03-14T12:05:00Z","weight_kg":12.483}'
+def test_campo_ausente_nao_vira_nulo_nem_zero() -> None:
+    montada = json.loads(
+        serializar(
+            {
+                "schema": ESQUEMA,
+                "node_id": "A4C1380F",
+                "seq": 1,
+                "ts": "2027-03-14T12:05:00Z",
+                "temp_in_c": 30.12,
+                "temp_out_c": None,
+            }
+        )
     )
 
-
-@pytest.mark.parametrize(
-    ("field", "value", "expected"),
-    [
-        # Empate exato: a regra canonica e ROUND_HALF_UP, e nao o modo de
-        # arredondamento da biblioteca C de cada plataforma.
-        ("temp_in_c", 30.125, "30.13"),
-        ("temp_in_c", 68.4, "68.40"),
-        # Casas fixas: 12,5 kg nao pode sair como "12.5".
-        ("weight_kg", 12.5, "12.500"),
-        # Deriva de tara: peso negativo pequeno preserva o sinal.
-        ("weight_kg", -0.012, "-0.012"),
-        # ...mas um valor que arredonda para zero nao vira "-0.00".
-        ("temp_out_c", -0.004, "0.00"),
-        ("rh_in_pct", 99.999, "100.00"),
-    ],
-)
-def test_regra_de_arredondamento(field: str, value: float, expected: str) -> None:
-    assert render_scaled(field, quantize(field, value)) == expected
+    assert "temp_out_c" not in montada
 
 
 def test_diferencial_termico() -> None:
     telemetry = decode(
-        canonical_dumps(
+        serializar(
             {
-                "schema": SCHEMA_ID,
+                "schema": ESQUEMA,
                 "node_id": "A4C1380F",
                 "seq": 1,
                 "ts": "2027-03-14T12:05:00Z",
@@ -120,9 +104,9 @@ def test_diferencial_termico() -> None:
 
 def test_diferencial_termico_ausente_sem_sensor_externo() -> None:
     telemetry = decode(
-        canonical_dumps(
+        serializar(
             {
-                "schema": SCHEMA_ID,
+                "schema": ESQUEMA,
                 "node_id": "A4C1380F",
                 "seq": 1,
                 "ts": "2027-03-14T12:05:00Z",
@@ -136,18 +120,6 @@ def test_diferencial_termico_ausente_sem_sensor_externo() -> None:
     assert telemetry.flags == ("sht_out_fault",)
 
 
-def test_payload_gigante_e_rejeitado_sem_parsear() -> None:
+def test_payload_gigante_e_recusado_sem_parsear() -> None:
     with pytest.raises(TelemetryError, match="excede o limite"):
-        decode(b"{" + b"x" * 8192)
-
-
-def test_ts_sem_fuso_e_rejeitado() -> None:
-    # O contrato exige UTC explicito: sem isso, uma leitura de campo entraria no banco
-    # com tres horas de erro sem que nada acusasse.
-    payload = (
-        '{"schema":"meliponet.telemetry.v1","node_id":"A4C1380F","seq":1,'
-        '"ts":"2027-03-14T12:05:00","temp_in_c":30.12}'
-    )
-
-    with pytest.raises(TelemetryError, match="fuso"):
-        decode(payload)
+        decode(b"x" * 5000)

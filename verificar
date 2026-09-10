@@ -3,11 +3,10 @@
 #
 # Existe porque as quatro verificacoes viviam espalhadas por tres documentos do guia, e
 # quem esquecia uma so descobria no CI -- depois de abrir o PR. Aqui elas rodam na ordem
-# que falha mais rapido: primeiro o contrato (segundos), por ultimo o firmware.
+# que falha mais rapido: primeiro a plataforma (segundos), por ultimo o firmware.
 #
 # Uso:
 #   ./verificar              tudo
-#   ./verificar contrato     so os vetores dourados
 #   ./verificar plataforma   so ruff e pytest
 #   ./verificar firmware     so os testes nativos, no PC
 #   ./verificar alvo         compila para o ESP32-C6 (baixa o toolchain na 1a vez)
@@ -86,13 +85,6 @@ FIM
   exit 2
 }
 
-verificar_contrato() {
-  etapa "contrato: os vetores dourados estao atualizados?"
-  # --check falha em vez de regravar: regerar um vetor e uma decisao, e precisa aparecer
-  # no diff do commit. Ver docs/guia/02-o-contrato.md.
-  executar python3 contracts/tools/gen_testdata.py --check
-}
-
 verificar_plataforma() {
   etapa "plataforma: ruff"
   executar "$VENV/bin/ruff" check platform contracts simulator
@@ -114,16 +106,14 @@ case "$ALVO" in
   tudo)
     exigir_venv
     exigir_pio
-    verificar_contrato
     verificar_plataforma
     verificar_firmware
     ;;
-  contrato) verificar_contrato ;;
   plataforma) exigir_venv; verificar_plataforma ;;
   firmware) exigir_pio; verificar_firmware ;;
   alvo) exigir_pio; verificar_alvo ;;
   *)
-    echo "uso: ./verificar [tudo|contrato|plataforma|firmware|alvo]" >&2
+    echo "uso: ./verificar [tudo|plataforma|firmware|alvo]" >&2
     exit 2
     ;;
 esac

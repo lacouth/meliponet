@@ -1,8 +1,8 @@
 """Configuracao e fixtures comuns dos testes da plataforma.
 
 Poe a raiz do monorepo, ``platform/`` e ``contracts/`` no ``sys.path`` para que os
-testes importem o pacote ``meliponet``, o pacote ``simulator`` e o modulo ``canonical``
-do contrato, compartilhado com o gerador de vetores dourados.
+testes importem o pacote ``meliponet``, o pacote ``simulator`` e o modulo ``mensagem``
+do contrato, o mesmo que o simulador usa para montar telemetria.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_DIR = REPO_ROOT / "contracts"
-TESTDATA_DIR = CONTRACTS_DIR / "testdata"
+EXEMPLOS_DIR = CONTRACTS_DIR / "exemplos"
 
 for path in (REPO_ROOT, REPO_ROOT / "platform", CONTRACTS_DIR):
     if str(path) not in sys.path:
@@ -36,8 +36,8 @@ from meliponet.models import (  # noqa: E402
 
 
 @pytest.fixture(scope="session")
-def testdata_dir() -> Path:
-    return TESTDATA_DIR
+def exemplos_dir() -> Path:
+    return EXEMPLOS_DIR
 
 
 @pytest.fixture

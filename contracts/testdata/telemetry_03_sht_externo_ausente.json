@@ -1,1 +1,0 @@
-{"schema":"meliponet.telemetry.v1","node_id":"A4C1380F","seq":10434,"ts":"2027-03-14T12:15:00Z","temp_in_c":29.87,"rh_in_pct":70.10,"weight_kg":12.481,"vbat_v":3.91,"rssi":-61,"flags":["sht_out_fault"]}

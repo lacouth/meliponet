@@ -15,9 +15,8 @@ exclude = ["platform/migrations/versions"]
 select = ["E", "E402", "F", "I", "UP", "B", "RUF"]
 
 [lint.per-file-ignores]
-# Estes modulos precisam ajustar sys.path antes de importar do monorepo, o que obriga
-# o import a vir depois de codigo executavel.
-"contracts/tools/gen_testdata.py" = ["E402"]
+# Este modulo precisa ajustar sys.path antes de importar do monorepo, o que obriga o
+# import a vir depois de codigo executavel.
 "simulator/__main__.py" = ["E402"]
 # O env.py do Alembic precisa ajustar sys.path antes de importar o modelo.
 "platform/migrations/env.py" = ["E402"]
