@@ -44,18 +44,27 @@ executar() {
 
 # Falta de ferramenta nao e a mesma coisa que teste vermelho, e a mensagem precisa
 # ensinar o proximo passo em vez de so dizer "nao encontrado".
+#
+# As duas checagens acontecem antes da primeira etapa rodar, nunca no meio do caminho:
+# quem esta no exercicio 01 e ainda nao instalou o PlatformIO veria o script morrer
+# depois do contrato, sem o veredito final, e concluiria que o resto estava verde.
 exigir_venv() {
-  if [ -x "$VENV/bin/python" ]; then
+  # Nao basta o venv existir: o passo chama ruff e pytest, e um `pip install -e ".[dev]"`
+  # que falhou pela metade deixa o python no lugar e os dois de fora. Sem esta checagem o
+  # erro sairia como "No such file or directory" -- teste vermelho, quando na verdade e
+  # ferramenta faltando.
+  if [ -x "$VENV/bin/python" ] && [ -x "$VENV/bin/ruff" ] && [ -x "$VENV/bin/pytest" ]; then
     return 0
   fi
   cat >&2 <<'FIM'
-[erro] o ambiente virtual da plataforma nao existe.
+[erro] o ambiente virtual da plataforma nao existe, ou esta incompleto.
 
     cd platform
     python3 -m venv .venv
     .venv/bin/pip install -e ".[dev]"
 
-O porque de nao instalar direto no Python do sistema esta em
+O segundo comando e o que traz o ruff e o pytest: se ele falhou, o .venv existe mas as
+ferramentas nao. O porque de nao instalar direto no Python do sistema esta em
 docs/guia/05-engenharia-de-software.md.
 FIM
   exit 2
@@ -85,7 +94,6 @@ verificar_contrato() {
 }
 
 verificar_plataforma() {
-  exigir_venv
   etapa "plataforma: ruff"
   executar "$VENV/bin/ruff" check platform contracts simulator
   etapa "plataforma: pytest"
@@ -93,27 +101,27 @@ verificar_plataforma() {
 }
 
 verificar_firmware() {
-  exigir_pio
   etapa "firmware: pio test -e native (roda no PC, sem placa)"
   executar pio test -e native -d firmware
 }
 
 verificar_alvo() {
-  exigir_pio
   etapa "firmware: pio run -e esp32c6 (compila para a placa)"
   executar pio run -e esp32c6 -d firmware
 }
 
 case "$ALVO" in
   tudo)
+    exigir_venv
+    exigir_pio
     verificar_contrato
     verificar_plataforma
     verificar_firmware
     ;;
   contrato) verificar_contrato ;;
-  plataforma) verificar_plataforma ;;
-  firmware) verificar_firmware ;;
-  alvo) verificar_alvo ;;
+  plataforma) exigir_venv; verificar_plataforma ;;
+  firmware) exigir_pio; verificar_firmware ;;
+  alvo) exigir_pio; verificar_alvo ;;
   *)
     echo "uso: ./verificar [tudo|contrato|plataforma|firmware|alvo]" >&2
     exit 2
@@ -121,7 +129,13 @@ case "$ALVO" in
 esac
 
 if [ "$falhou" -eq 0 ]; then
-  printf '\n=== tudo verde\n'
+  # O veredito diz o que rodou. `./verificar plataforma` terminando em "tudo verde"
+  # deixaria marcar o exercicio 01 como pronto sem nunca ter compilado o firmware.
+  if [ "$ALVO" = tudo ]; then
+    printf '\n=== tudo verde\n'
+  else
+    printf '\n=== %s: verde (as outras verificacoes nao rodaram)\n' "$ALVO"
+  fi
   exit 0
 fi
 
