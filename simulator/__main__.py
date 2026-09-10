@@ -1,9 +1,9 @@
 """Gera telemetria sintetica conforme o contrato e a entrega a plataforma.
 
-E a Etapa 3 do PIBIC: o simulador desacopla o cronograma de software da entrega do
-hardware. Ele emite **exatamente** o mesmo JSON canonico que o firmware C++ emite --
-usando o mesmo ``contracts/canonical.py`` --, de modo que tudo rio abaixo (validacao,
-persistencia, graficos, alertas) e exercitado pelo caminho real.
+O simulador desacopla o desenvolvimento da plataforma da entrega do hardware: ele emite
+a mesma mensagem que o no sensor emite -- montada pelo mesmo ``contracts/mensagem.py``
+--, de modo que tudo rio abaixo (validacao, persistencia, graficos, alertas) e
+exercitado pelo caminho real, antes de existir placa.
 
 Dois transportes:
 
@@ -35,7 +35,7 @@ for path in (REPO_ROOT / "platform", REPO_ROOT / "contracts"):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from canonical import SCHEMA_ID, canonical_dumps
+from mensagem import ESQUEMA, serializar
 
 from simulator.model import HiveSimulator
 
@@ -96,7 +96,7 @@ def make_message(hive: HiveSimulator, when: datetime, faults: set[str]) -> dict 
         inside += rng.choice([-1, 1]) * rng.uniform(8, 15)
 
     message = {
-        "schema": SCHEMA_ID,
+        "schema": ESQUEMA,
         "node_id": hive.node_id,
         "seq": hive.seq,
         "ts": when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -319,7 +319,7 @@ def run_realtime(
                 message = make_message(hive, when, faults)
                 if message is None:
                     continue
-                publisher.publish(hive.node_id, canonical_dumps(message))
+                publisher.publish(hive.node_id, serializar(message))
                 emitted += 1
             LOGGER.info("%d medições emitidas", emitted)
             completed += 1
@@ -421,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
                     if message is None:
                         skipped += 1
                         continue
-                    publisher.publish(hive.node_id, canonical_dumps(message))
+                    publisher.publish(hive.node_id, serializar(message))
                     emitted += 1
                 when += step
             LOGGER.info("histórico pronto: %d medições, %d lacunas injetadas", emitted, skipped)

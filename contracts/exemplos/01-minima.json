@@ -1,0 +1,7 @@
+{
+  "schema": "meliponet.telemetry.v1",
+  "node_id": "A4C1380F",
+  "seq": 1,
+  "ts": "2027-03-14T12:05:00Z",
+  "temp_in_c": 30.12
+}
