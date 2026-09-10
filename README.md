@@ -117,5 +117,4 @@ para nada da trilha.
 Projeto do IFPB — Campus João Pessoa, em parceria com o LAHMP/UFPB (FAPESQ nº 72/2025). As
 propostas submetidas aos editais ficam em `propostas/`, fora do controle de versão.
 
-O firmware C++ que o repositório manteve até a virada para projeto de ensino está
-preservado na tag `firmware-referencia-v1`.
+O firmware C++ preservado na tag `firmware-referencia-v1`.
