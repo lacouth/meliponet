@@ -1,6 +1,6 @@
-# 14. Exportar CSV
+# 07. Exportar CSV
 
-**Área:** plataforma · **Tempo:** ~2 h · **Contribuição**
+**Tempo:** ~2 h · **Contribuição**
 
 > **Combine antes de começar.** Vira um PR; só uma pessoa deve fazê-lo.
 
@@ -16,9 +16,9 @@ suas colunas.
 
 ## Antes de começar
 
-- Exercícios [08](08-uma-janela-nova.md) e [13](13-rssi-no-painel.md) feitos.
-- Releia [As camadas](../guia/03-a-plataforma-flask.md#as-camadas-e-por-que-existem) e o
-  pedido 5 do exercício [03](03-onde-eu-mexo.md).
+- Exercício [06](06-uma-janela-nova.md) feito.
+- Releia [As camadas](../guia/03-a-plataforma.md#as-camadas-e-por-que-existem) e o
+  pedido 4 do exercício [03](03-onde-eu-mexo.md).
 
 ```bash
 git switch main && git pull
@@ -46,7 +46,7 @@ PR.
 balde já suavizou o ruído. Mas **não é dado bruto**: quem for escrever um artigo com isso
 está publicando médias que a plataforma calculou, com um passo que a plataforma escolheu.
 
-*Cru* é o que o nó mediu. É o que a curadoria do Edital 17 precisa, e o que permite a outra
+*Cru* é o que o nó mediu. É o que a curadoria dos dados precisa, e o que permite a outra
 pessoa reamostrar do jeito dela.
 
 Recomendação: comece pelo **cru**, e diga no CSV qual é. Se exportar reamostrado, o
@@ -55,7 +55,7 @@ anônima. Reaproveitar `series_service.series()` é conveniente; conveniência n
 aqui.
 
 **2.** Campo **vazio**, não `0`, não `NaN`, não `null`. É a mesma regra que atravessa o
-sistema (exercício [13](13-rssi-no-painel.md)) — e é a que o `pandas.read_csv` lê como
+sistema — e é a que o `pandas.read_csv` lê como
 `NaN` sem configuração nenhuma. Um `0` viraria uma medição falsa na análise de outra
 pessoa, longe de você e sem contexto para desconfiar.
 
@@ -99,7 +99,7 @@ Todos têm de falhar — a rota nem existe ainda.
 **No serviço** (`services/series.py` ou um `services/export.py` novo): a função que produz
 as linhas. Sem saber o que é HTTP, sem `request`, sem `current_user`.
 
-Assim ela pode ser chamada pelo relatório em PDF da Fase 4, por um script de curadoria e
+Assim ela pode ser chamada por um relatório em PDF, por um script de curadoria e
 pelo teste — que é a razão de as camadas existirem. E permite testar a formatação sem subir
 servidor.
 
@@ -207,4 +207,4 @@ organização, sem erro nenhum.
 **Um PR bom explica decisões, não só código.** As três perguntas do passo 1 são o conteúdo
 real desta contribuição.
 
-→ Próximo: [Sua primeira contribuição](15-sua-primeira-contribuicao.md)
+→ Próximo: [Sua primeira contribuição](08-sua-primeira-contribuicao.md)

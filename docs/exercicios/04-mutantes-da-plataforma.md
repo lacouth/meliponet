@@ -1,23 +1,24 @@
-# 05. Mutantes da plataforma
+# 04. Mutantes da plataforma
 
-**Área:** plataforma · **Tempo:** ~45 min · **Treino** — nada aqui é commitado
+**Tempo:** ~45 min · **Treino** — nada aqui é commitado
 
 ## Por que este exercício existe
 
-O mesmo método do exercício [04](04-mutantes-do-firmware.md), do outro lado. Mas aqui há
-um agravante que vale conhecer antes: **os defeitos da plataforma são mais silenciosos que
-os do firmware.**
+Uma suíte verde é um número, e número não ensina nada. A forma mais rápida de descobrir o
+que aqueles testes afirmam é **quebrar o código de propósito e ver quem reclama**: você
+prevê qual teste vai cair, roda, e compara com o que aconteceu.
 
-Um nó com firmware errado para de publicar, e cedo ou tarde alguém nota. Uma consulta que
-esqueceu o filtro de organização não quebra, não levanta erro e não aparece em teste de
-rota que só cheque o status HTTP — ela apenas mostra a um meliponicultor as colmeias de
-outro, e o sistema parece funcionar perfeitamente.
+E há um agravante que vale conhecer antes: **os defeitos da plataforma são silenciosos.**
+Um nó que para de publicar cedo ou tarde é notado. Uma consulta que esqueceu o filtro de
+organização não quebra, não levanta erro e não aparece em teste de rota que só cheque o
+status HTTP — ela apenas mostra a um meliponicultor as colmeias de outro, e o sistema
+parece funcionar perfeitamente.
 
 ## Antes de começar
 
-- Exercício [04](04-mutantes-do-firmware.md) feito.
-- `platform/.venv/bin/pytest platform/tests -q` verde agora.
-- Leia [A plataforma Flask](../guia/03-a-plataforma-flask.md#servicesscopepy--quem-vê-o-quê).
+- Exercício [03](03-onde-eu-mexo.md) feito.
+- `./verificar` verde agora.
+- Leia [A plataforma](../guia/03-a-plataforma.md#servicesscopepy--quem-vê-o-quê).
 
 **Mutante nunca é commitado.** `git restore` e `git status` depois de cada um.
 
@@ -123,7 +124,7 @@ a afirmar medições que ninguém fez — bem em cima do intervalo em que o sist
 
 É por isso que a `spanGaps` fica desligada no `_panel.html` e a reamostragem percorre
 todos os baldes: são as duas metades da mesma decisão. Quebrar qualquer uma esconde a
-perda, e a completude que o Edital 17 promete reportar vira ficção.
+perda, e a completude que o projeto promete medir vira ficção.
 </details>
 
 ---
@@ -219,4 +220,4 @@ segurou não foi o código que você apagou — foi a restrição do banco, duas
 **Nem toda mutação sobrevivente é um teste ruim.** Às vezes é defesa em profundidade
 funcionando. Distinguir os dois casos é o assunto do próximo exercício.
 
-→ Próximo: [O mutante do contrato](06-mutante-do-contrato.md)
+→ Próximo: [O mutante que ninguém pega](05-o-mutante-que-ninguem-pega.md)

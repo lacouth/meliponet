@@ -1,6 +1,7 @@
-# 3. A plataforma Flask
+# 3. A plataforma
 
-Para quem vai mexer em `platform/`.
+Para quem vai mexer em `platform/` — e, mesmo para quem só vai escrever o firmware, para
+saber o que acontece com a mensagem depois que ela sai do nó.
 
 ## O que é Flask
 
@@ -37,6 +38,7 @@ platform/
 │   ├── cli.py                  comandos de terminal (criar-usuario)
 │   │
 │   ├── blueprints/             ← AS ROTAS (o que o navegador acessa)
+│   │   ├── api.py                 POST /api/v1/telemetria: a porta do nó
 │   │   ├── auth.py                login e logout
 │   │   ├── dashboard.py           a tela das colmeias e os gráficos
 │   │   └── manage.py              cadastros e vínculo nó↔colmeia
@@ -236,9 +238,21 @@ E há uma segunda lição, sobre teste: nenhum teste exercitava o perfil `admin`
 fixtures nasciam meliponicultor. Um conjunto de testes que nunca constrói um dos casos
 não cobre aquele caso, por mais linhas que tenha.
 
-## `ingest/` — por que é um processo separado
+## As duas portas por onde a telemetria entra
 
-`ingest/__main__.py` roda como um programa próprio, não dentro do servidor web. Ele:
+O nó pode entregar a leitura de dois jeitos, e os dois terminam nas mesmas duas funções
+(`ingest.telemetry.decode` valida, `ingest.store.store` grava). Não existe uma segunda
+implementação da ingestão — se existisse, os dois caminhos divergiriam, e o nó que
+trocasse de transporte veria a plataforma se comportar de outro jeito.
+
+**`blueprints/api.py` — `POST /api/v1/telemetria`.** É a porta que o aluno usa enquanto
+escreve o firmware: nenhuma peça a mais para instalar, e a resposta HTTP diz na hora o
+que estava errado (`201` gravou, `200` já tinha, `400` com o motivo). O token de ingestão
+é opcional: sem `TOKEN_INGESTAO` no ambiente a rota aceita qualquer POST, o que permite
+testar com `curl` sem configurar nada.
+
+**`ingest/__main__.py` — o consumidor MQTT.** É a porta de campo, e roda como um programa
+próprio, não dentro do servidor web. Ele:
 
 1. conecta no broker MQTT e assina `meliponet/v1/+/telemetry`;
 2. para cada mensagem, valida contra o contrato;
@@ -274,4 +288,4 @@ Em desenvolvimento roda SQLite (um arquivo, zero infraestrutura); em produção,
 PostgreSQL + TimescaleDB. O código é o mesmo — o Timescale acrescenta desempenho de
 série temporal, não muda a semântica.
 
-→ Próximo: [Primeira contribuição](06-primeira-contribuicao.md)
+→ Próximo: [O nó sensor](04-o-no-sensor.md)

@@ -1,16 +1,9 @@
-# 7. Glossário
+# 6. Glossário
 
 ## Do projeto
 
 **Contrato** — a especificação do formato das mensagens de telemetria, em `contracts/`.
-A fonte da verdade compartilhada entre firmware e plataforma.
-
-**Vetor dourado** *(golden vector)* — par entrada→saída conhecidamente correto,
-congelado num arquivo, contra o qual as duas implementações se verificam. Ver
-[O contrato](02-o-contrato.md).
-
-**Inteiro escalado** — a forma como as métricas trafegam: temperatura em centésimos de
-grau, peso em gramas. Evita que o arredondamento de `float` difira entre ESP32 e PC.
+O acordo entre o nó e a plataforma. Ver [A mensagem](02-a-mensagem.md).
 
 **`seq`** — contador monotônico por nó, guardado na NVS. Permite detectar quantas
 mensagens se perderam contando os saltos.
@@ -27,16 +20,18 @@ que o Edital 17 se compromete a reportar.
 **Diferencial térmico** — temperatura interna menos externa. Estimativa do esforço
 termorregulatório da colônia.
 
-**Nó** *(node)* — um dispositivo MelipoSense instalado numa colmeia.
+**Nó** *(node)* — o dispositivo instalado numa colmeia: placa, sensores e o firmware que
+é o exercício do projeto (ver [`firmware/ROTEIRO.md`](../../firmware/ROTEIRO.md)).
 
 **Vínculo** (`NodeAssignment`) — o período em que um nó esteve numa colmeia, com
 `installed_at` e `removed_at`. A colmeia de uma medição é resolvida pelo instante da
 medição, não pelo estado atual.
 
-**Ingestor** — o processo que consome do broker MQTT, valida e grava no banco. Separado
-do servidor web.
+**Ingestor** — o código que valida a mensagem e a grava no banco. Alcançado por duas
+portas: a rota `POST /api/v1/telemetria` e o consumidor MQTT, que roda como processo
+separado do servidor web.
 
-**Simulador** — gerador de dados sintéticos que emite o mesmo formato que o firmware.
+**Simulador** — gerador de dados sintéticos que emite o mesmo formato que o nó.
 Desacopla o desenvolvimento da plataforma da entrega do hardware.
 
 ## Software
@@ -58,6 +53,9 @@ armazenamento de medições é idempotente: reenviar a mesma `seq` não duplica 
 
 **Lazy loading** — o ORM só busca uma relação no banco quando ela é usada. Causa o
 `DetachedInstanceError` quando o uso acontece depois de a sessão fechar.
+
+**Flag** — marca que o nó põe na mensagem para relatar uma condição que ele detectou, como
+`sht_out_fault` ou `low_batt`.
 
 **Migração** — script que transforma a estrutura do banco de uma versão para outra
 preservando os dados.
@@ -125,12 +123,11 @@ Paraíba acontece só na exibição.
 **I²C** — barramento serial de dois fios. Os dois SHT30 compartilham um, distinguidos
 pelos endereços 0x44 e 0x45.
 
-**INMP441** — microfone MEMS digital (Fase 5).
+**INMP441** — microfone MEMS digital, previsto para uma fase futura.
 
-**LoRa** — modulação de rádio de longo alcance e baixo consumo (Fase 5).
-
-**PlatformIO** — a ferramenta de build do firmware.
+**LoRa** — modulação de rádio de longo alcance e baixo consumo, prevista para uma fase
+futura.
 
 **SHT30** — sensor de temperatura e umidade.
 
-**Deep sleep** — modo de baixíssimo consumo do ESP32 (Fase 5).
+**Deep sleep** — modo de baixíssimo consumo do ESP32.

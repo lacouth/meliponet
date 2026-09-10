@@ -14,11 +14,11 @@ Como fazer o seu:
 
 Depois abra o pull request com os três blocos de sempre — o que muda, por quê, como
 verifiquei — e peça a revisão do orientador. O ciclo inteiro está em
-[Primeira contribuição](guia/06-primeira-contribuicao.md).
+[Como trabalhamos](guia/05-como-trabalhamos.md).
 
 | Nome | Papel | Frente | GitHub |
 |---|---|---|---|
 | Patric Lacouth | orientador | todas | [@lacouth](https://github.com/lacouth) |
 
 As frentes e o que cada uma faz estão em
-[Como nós nos organizamos](guia/12-como-nos-organizamos.md).
+[Como trabalhamos](guia/05-como-trabalhamos.md#como-o-trabalho-é-distribuído).

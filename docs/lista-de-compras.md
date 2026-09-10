@@ -1,6 +1,6 @@
 # Lista de compras — o nó de hoje
 
-Este documento é a ponte entre o que o [guia de hardware](guia/10-o-hardware.md) descreve e
+Este documento é a ponte entre o que o [guia do nó sensor](guia/04-o-no-sensor.md) descreve e
 o que precisa ser comprado para existir um nó de verdade. Ele cobre **apenas as peças do
 nó de hoje**: placa, os dois sensores de temperatura e umidade, a pesagem e a alimentação.
 Rádio LoRa, gateway, painel solar, microfone e invólucro são da Fase 5 e não entram aqui —
