@@ -169,7 +169,8 @@ Três camadas, uma decisão em cada:
 um pesquisador recebe todas. Sem os dois testes, o filtro pode estar ausente e nada acusa:
 o modo de falha do escopo é o silêncio.
 
-A versão de uma colmeia só é o exercício [07](07-exportar-csv.md).
+A versão de uma colmeia só são os exercícios [07](07-o-csv-na-camada-certa.md) e
+[08](08-a-rota-que-entrega-o-arquivo.md).
 </details>
 
 ---

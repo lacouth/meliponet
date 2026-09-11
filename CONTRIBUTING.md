@@ -43,7 +43,7 @@ verifiquei — porque são as três perguntas que qualquer revisor faria.
 
 ## Por onde começar
 
-- [A trilha](docs/trilha.md) — oito exercícios e o roteiro do nó, cada um com critério de
+- [A trilha](docs/trilha.md) — nove exercícios e o roteiro do nó, cada um com critério de
   pronto que você confere sozinho.
 - [Defeitos conhecidos](docs/defeitos-conhecidos.md) — o que está errado e ainda não foi
   corrigido.

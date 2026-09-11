@@ -1,10 +1,10 @@
-# 08. Sua primeira contribuição
+# 09. Sua primeira contribuição
 
 **Você escolhe o assunto** · **Contribuição** · **Sem gabarito**
 
 ## Por que este exercício existe
 
-Os sete anteriores tinham resposta em algum lugar — dobrada no fim da página, ou num teste
+Os oito anteriores tinham resposta em algum lugar — dobrada no fim da página, ou num teste
 que dizia se você chegou lá. Este não tem.
 
 É de propósito. A partir daqui, o que decide se o trabalho está bom é a revisão de outra

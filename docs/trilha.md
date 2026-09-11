@@ -13,7 +13,7 @@ sua. Nenhum exercício depende de alguém disponível para corrigir.
 flowchart LR
     A["A. Chegar<br/>ex. 01 e 02<br/>~1 h 15"] --> B["B. Mexer com segurança<br/>ex. 03 a 05<br/>~2 h"]
     B --> C["C. O nó, do zero<br/>firmware/ROTEIRO.md<br/>o coração do projeto"]
-    C --> D["D. Contribuir<br/>ex. 06 a 08<br/>seu primeiro PR"]
+    C --> D["D. Contribuir<br/>ex. 06 a 09<br/>seu primeiro PR"]
 ```
 
 **Faça na ordem.** O Bloco B só ensina alguma coisa depois que o A te deu o mapa, e o C
@@ -94,8 +94,13 @@ mensagem está errada. Agora é fazer o seu nó produzi-la.
 | # | Exercício | Tipo |
 |---|---|---|
 | 06 | [Uma janela nova](exercicios/06-uma-janela-nova.md) — a menor mudança que passa pelo caminho inteiro | treino |
-| 07 | [Exportar CSV](exercicios/07-exportar-csv.md) — teste primeiro, serviço, rota, caso vazio | contribuição |
-| 08 | [Sua primeira contribuição](exercicios/08-sua-primeira-contribuicao.md) — sem gabarito | contribuição |
+| 07 | [O CSV, na camada certa](exercicios/07-o-csv-na-camada-certa.md) — as decisões de formato e a função que produz as linhas | contribuição |
+| 08 | [A rota que entrega o arquivo](exercicios/08-a-rota-que-entrega-o-arquivo.md) — escopo, cabeçalhos, e o arquivo numa planilha | contribuição |
+| 09 | [Sua primeira contribuição](exercicios/09-sua-primeira-contribuicao.md) — sem gabarito | contribuição |
+
+Os exercícios 07 e 08 são **uma contribuição só, em duas partes**: mesma branch, mesmo PR.
+A divisão segue a divisão de camadas — primeiro o que não sabe o que é HTTP, depois o que
+só sabe HTTP.
 
 **Treino e contribuição não são a mesma coisa.** Treino todo mundo faz em paralelo, na
 própria máquina, e descarta no fim. Contribuição entra na `main`: é uma pessoa só,

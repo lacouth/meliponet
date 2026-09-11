@@ -196,4 +196,4 @@ precisa ser escrito em dois lugares para funcionar, um dos dois vai ser esquecid
 **Ver o teste falhar é parte do teste.** E ler *como* ele falha ensina tanto quanto vê-lo
 passar.
 
-→ Próximo: [Exportar CSV](07-exportar-csv.md)
+→ Próximo: [O CSV, na camada certa](07-o-csv-na-camada-certa.md)
