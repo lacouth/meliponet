@@ -11,6 +11,10 @@ Use a ferramenta que preferir: Arduino IDE, PlatformIO, ESP-IDF. O roteiro não 
 por você, porque o que está sendo cobrado é o comportamento do nó, não o formato do
 projeto.
 
+Este arquivo é o **índice**: as peças, a mensagem, como entregar, e a
+[tabela das etapas](#as-etapas). Os passos miúdos, com os "pronto quando", estão nos
+arquivos de `etapas/`.
+
 ## O que o nó faz
 
 ```mermaid
@@ -136,7 +140,10 @@ Um `201` com `"colmeia": null` quer dizer que a leitura foi gravada mas o seu n�
 não está vinculado a nenhuma colmeia no cadastro — os dados estão salvos e passam a
 aparecer no gráfico assim que alguém fizer o vínculo na tela de administração.
 
-Antes de escrever uma linha de C++, mande a mensagem à mão e veja a resposta:
+Antes de escrever uma linha de C++, mande a mensagem à mão e veja a resposta. É
+exatamente o que o exercício
+[02](../docs/exercicios/02-uma-mensagem-ate-o-grafico.md) faz — se você já o fez, essa
+parte você conhece:
 
 ```bash
 curl -i -X POST http://127.0.0.1:5000/api/v1/telemetria \
@@ -146,71 +153,34 @@ curl -i -X POST http://127.0.0.1:5000/api/v1/telemetria \
 
 ## As etapas
 
-Faça na ordem. Cada uma tem um **pronto quando** que você confere sozinho, e nenhuma
-depende da seguinte estar pronta.
+Faça na ordem. Cada etapa está dividida em passos pequenos, e **cada passo tem um "pronto
+quando" que você confere sozinho**. Nenhum passo depende do seguinte estar pronto, e
+nenhum deles deve levar mais de uma sentada — se estiver levando, pule para as Pistas da
+etapa.
 
-### E1 — a placa fala com você
-Programa mínimo que imprime alguma coisa no monitor serial a cada segundo.
-**Pronto quando:** você vê a contagem andando no monitor serial a 115200 bps.
+Os tempos são para quem está vendo aquilo pela primeira vez. Gastar o dobro é normal;
+gastar dez vezes é sinal de que você travou em algo que uma pista resolve.
 
-### E2 — o nó entra na rede
-Conecte no WiFi e imprima o IP e o `node_id` (os 4 últimos bytes do MAC, em hexadecimal
-maiúsculo). Não escreva a senha do WiFi no meio do código que você vai versionar.
-**Pronto quando:** o serial mostra um IP válido e um `node_id` de 8 dígitos.
+| Etapa | O quê | Tempo | Onde |
+|---|---|---|---|
+| **E1** | a placa fala com você | ~1 h | [E1-E3](etapas/E1-E3-a-placa-na-rede.md#e1--a-placa-fala-com-você) |
+| **E2** | o nó entra na rede | ~2 h | [E1-E3](etapas/E1-E3-a-placa-na-rede.md#e2--o-nó-entra-na-rede) |
+| **E3** | o nó sabe que horas são | ~2 h | [E1-E3](etapas/E1-E3-a-placa-na-rede.md#e3--o-nó-sabe-que-horas-são) |
+| **E4** | os sensores respondem | ~4 h | [E4-E6](etapas/E4-E6-a-primeira-mensagem.md#e4--os-sensores-respondem) |
+| **E5** | a mensagem existe | ~3 h | [E4-E6](etapas/E4-E6-a-primeira-mensagem.md#e5--a-mensagem-existe) |
+| **E6** | o primeiro ponto no gráfico | ~2 h | [E4-E6](etapas/E4-E6-a-primeira-mensagem.md#e6--o-primeiro-ponto-no-gráfico) |
+| **E7** | o peso | ~6 h | [E7](etapas/E7-o-peso.md) |
+| **E8** | o nó vira um nó | ~5 h | [E8](etapas/E8-o-no-completo.md) |
+| **E9** | sobreviver à queda da rede — opcional | ~4 h | [E9-E10](etapas/E9-E10-opcionais.md#e9--sobreviver-à-queda-da-rede) |
+| **E10** | MQTT, o caminho de campo — opcional | ~4 h | [E9-E10](etapas/E9-E10-opcionais.md#e10--mqtt-o-caminho-de-campo) |
 
-### E3 — o nó sabe que horas são
-Acerte o relógio por NTP e imprima o instante no formato do contrato
-(`2027-03-14T12:05:00Z`, em UTC). Se o NTP não responder, você ainda assim manda a
-mensagem — com a flag `clock_unsynced`, avisando que o horário é estimado.
-**Pronto quando:** o horário impresso bate com o horário real, em UTC.
-
-### E4 — os sensores respondem
-Leia os dois SHT30 (0x44 e 0x45) e imprima temperatura em °C e umidade em %. Um sensor
-que não responde precisa aparecer como **ausente**, e não como zero.
-**Pronto quando:** aquecendo um sensor com a mão, só o valor dele sobe — e assim você
-descobre qual é o interno. Desligando um deles, o programa diz "ausente" e continua
-rodando.
-
-### E5 — a mensagem existe
-Monte o JSON e imprima no serial. Compare, campo a campo, com
-`../contracts/exemplos/02-completa.json`.
-**Pronto quando:** você copia o JSON impresso pelo serial, cola num arquivo e o `curl`
-acima responde `201`.
-
-### E6 — o primeiro ponto no gráfico
-Agora faça o próprio nó enviar, por HTTP.
-**Pronto quando:** a resposta é `201` e a leitura aparece no painel da plataforma.
-É a etapa que fecha o circuito: daqui em diante você depura olhando a tela.
-
-### E7 — o peso
-Leia o HX711. Primeiro a **contagem bruta**: aperte a plataforma com a mão e veja o
-número se mover — se ele não se move, o problema é de ligação, e nenhuma calibração
-conserta. Só então implemente `tara` (com a colmeia montada e vazia) e a calibração com
-uma massa conhecida, e guarde os dois valores na NVS para não recalibrar a cada reinício.
-**Pronto quando:** uma massa conhecida de 1 kg lê 1,0 kg ± 20 g, e o valor continua certo
-depois de reiniciar a placa.
-
-### E8 — o nó vira um nó
-Junte tudo num laço que mede e envia a cada 5 minutos, com `seq` incrementando e
-persistido na NVS, `vbat_v` medido no divisor e a flag `low_batt` abaixo de 3,50 V.
-**Pronto quando:** o gráfico do painel ganha um ponto a cada 5 minutos, por uma hora
-seguida; e, depois de você desligar e religar a placa, a `seq` continua de onde parou.
-
-### E9 — sobreviver à queda da rede (opcional)
-Quando o envio falha, guarde a leitura (em memória ou no sistema de arquivos) e reenvie
-quando a rede voltar, com a flag `spooled`. Cuide para não encher a memória: decida
-quantas leituras cabem e o que fazer quando encher.
-**Pronto quando:** você desliga o WiFi por 15 minutos, liga de volta, e as leituras do
-período aparecem no gráfico com o horário em que foram **medidas**, não o da chegada.
-
-### E10 — MQTT, o caminho de campo (opcional)
-Troque o POST por uma publicação MQTT no tópico `meliponet/v1/<node_id>/telemetry`, com
-QoS 1. A mensagem é a mesma, byte por byte. É assim que o nó vai funcionar instalado na
-colmeia, porque o broker guarda a mensagem enquanto o servidor reinicia.
-**Pronto quando:** com o ingestor MQTT rodando, o gráfico continua ganhando pontos e
-você não mudou uma vírgula da mensagem.
+**E6 é o marco que muda tudo.** Até ele você depura olhando o monitor serial; a partir
+dele você depura olhando a tela da plataforma, que é bem mais informativa.
 
 ## Quando não funcionar
+
+Cada arquivo de etapa tem uma seção **Pistas** com os sintomas daquela etapa. Esta tabela
+é o índice dos erros que a plataforma devolve:
 
 | Sintoma | Primeira hipótese |
 |---|---|
@@ -222,11 +192,16 @@ você não mudou uma vírgula da mensagem.
 | `400 JSON malformado` | vírgula sobrando, aspas faltando, ou o buffer cortou a mensagem no meio |
 | `200` sempre, e nada muda no gráfico | a `seq` não está incrementando (ou reiniciou do zero) |
 | `201`, mas o gráfico está vazio | o nó ainda não foi vinculado a uma colmeia no cadastro |
-| I²C mudo com a fiação certa | `Wire.begin()` sem argumentos não usa o GPIO6/7 no C6 |
+| I²C mudo com a fiação certa | o barramento não foi iniciado nos GPIO6/7 |
 | tudo funciona na bancada e falha em campo | cabo do sensor externo longo demais |
 
-Uma mensagem recusada nunca some: a plataforma guarda o motivo. Se você tem acesso ao
-banco, a tabela `ingest_rejects` mostra o que o seu nó mandou e por que foi recusado.
+Uma mensagem recusada nunca some: a plataforma guarda o motivo na tabela
+`ingest_rejects`. O exercício
+[02](../docs/exercicios/02-uma-mensagem-ate-o-grafico.md) ensina a consulta — é a mesma
+aqui, trocando o `node_id` pelo seu.
+
+E a regra que vale para as dez etapas: **quando não souber, pergunte antes de adivinhar.**
+Ao perguntar, traga o que você mandou, a resposta inteira do servidor e o que já tentou.
 
 ## O que fica para depois
 
