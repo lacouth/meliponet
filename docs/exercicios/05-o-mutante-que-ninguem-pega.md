@@ -30,10 +30,18 @@ entender — todo mundo faz.
 Para cada mutante, o ciclo é:
 
 1. Aplique a mutação e rode a suíte. **Confirme que nada falha.**
-2. **Não reverta ainda.** Com o mutante aplicado, escreva um teste que o pegue — e veja-o
-   falhar.
-3. Reverta o mutante (`git restore`) e rode o teste de novo. Ele tem de **passar**.
-4. Só um teste que já falhou prova alguma coisa. É por isso que a ordem é esta.
+2. **Descubra sozinho qual caso nenhum teste constrói.** Abra o arquivo de teste, leia os
+   que já existem, e escreva numa linha o cenário que falta. Este passo é o exercício: o
+   resto é digitação.
+3. **Não reverta ainda.** Com o mutante aplicado, escreva o teste — e veja-o falhar.
+4. Reverta o mutante (`git restore`) e rode o teste de novo. Ele tem de **passar**.
+5. Só um teste que já falhou prova alguma coisa. É por isso que a ordem é esta.
+
+> **Por que a ordem importa.** Um teste que nunca falhou não provou nada: ele pode estar
+> afirmando algo trivialmente verdadeiro, testando o objeto errado, ou nem chegando à linha
+> que interessa. Vê-lo falhar com o defeito presente, e passar com o defeito ausente, é a
+> única evidência de que ele pega aquele defeito. É a mesma ideia de conferir a balança com
+> uma massa diferente da que você usou para calibrá-la.
 
 ---
 
@@ -76,6 +84,17 @@ cresce.
 
 ### O teste que falta
 
+**Primeiro, ache o buraco sozinho.** Abra `platform/tests/test_ingest.py` e responda por
+escrito, antes de abrir o gabarito:
+
+1. Que cenário nenhum teste do arquivo constrói? Descreva-o numa frase, em português.
+2. Que ajudantes o arquivo já oferece para construí-lo? (Procure `message` e `decode` —
+   os testes existentes os usam, e o seu vai usar os mesmos.)
+3. O que exatamente o seu teste vai afirmar?
+
+<details>
+<summary>O teste — abra depois de responder as três</summary>
+
 Em `platform/tests/test_ingest.py`:
 
 ```python
@@ -95,6 +114,10 @@ def test_seq_repetida_de_outro_no_nao_e_duplicata(scenario) -> None:
     assert outro.stored
     assert not outro.duplicate
 ```
+
+O `node_id` do segundo é diferente; a `seq` é a mesma. É o menor cenário que distingue
+"duplicata por `seq`" de "duplicata por (`node_id`, `seq`)".
+</details>
 
 ---
 
@@ -132,9 +155,37 @@ e registra o horário no formulário. Se o horário registrado coincidir com o d
 colmeia é a que se perde. Justamente a que alguém vai procurar para conferir se deu certo.
 </details>
 
-### O teste que falta
+### Os testes que faltam
 
-Ainda em `platform/tests/test_ingest.py`. Tem uma sutileza — leia a pista se travar:
+**De novo, ache o buraco antes de ler a resposta.** Responda por escrito:
+
+1. Os testes existentes usam instantes a que distância da fronteira? (Procure
+   `timedelta` no arquivo.)
+2. Qual é o instante que nenhum deles usa?
+3. Um teste de fronteira precisa de quantos casos? Pense no que um único caso **não**
+   consegue distinguir.
+
+> **O conceito: a resolução do `ts` importa aqui.** O contrato formata o horário com
+> resolução de **um segundo** (`2027-03-14T12:05:00Z`) — nenhuma mensagem real carrega
+> fração de segundo. Já um `datetime` do Python guarda microssegundos, e a fixture
+> `scenario` cria o vínculo com `datetime.now(UTC)`, que tem os seus. A consequência é que
+> "o instante exato da instalação" é **inalcançável** por uma mensagem de verdade enquanto
+> o `installed_at` tiver fração de segundo: o `ts`, truncado, sempre cai alguns
+> microssegundos antes. Por isso o teste precisa recuar o vínculo para um instante redondo
+> antes de afirmar qualquer coisa. Não é detalhe de teste — é o formato do contrato
+> aparecendo no banco.
+
+> **E um aparte que vale para o projeto inteiro:** todo `datetime` aqui é *aware*, isto é,
+> carrega o fuso junto (`datetime.now(UTC)`, e não `datetime.now()`). Um *naive*, sem fuso,
+> não é comparável com um *aware* — o Python levanta erro em algumas comparações e, pior,
+> aceita outras silenciosamente com o valor errado. É a mesma exigência que o contrato faz
+> ao nó com o `Z` no fim do `ts`, do outro lado do sistema. Ver
+> [A mensagem](../guia/02-a-mensagem.md).
+
+<details>
+<summary>Os dois testes — abra depois de responder as três</summary>
+
+Ainda em `platform/tests/test_ingest.py`:
 
 ```python
 def test_medicao_no_instante_exato_da_instalacao(scenario) -> None:
@@ -171,6 +222,7 @@ def test_um_segundo_antes_da_instalacao_fica_sem_colmeia(scenario) -> None:
 
 Repare no segundo teste: **um teste de fronteira precisa dos dois lados.** Só o primeiro
 passaria também numa implementação que atribuísse *tudo* à colmeia, ignorando o período.
+</details>
 
 ---
 
@@ -179,6 +231,7 @@ passaria também numa implementação que atribuísse *tudo* à colmeia, ignoran
 Para cada um dos dois:
 
 - [ ] Você confirmou que a suíte fica verde com o mutante aplicado
+- [ ] Você descreveu por escrito o cenário que falta **antes** de abrir o gabarito
 - [ ] Você escreveu o teste **com o mutante ainda aplicado** e o viu falhar
 - [ ] Você reverteu o mutante e viu o teste passar
 - [ ] `git status` não tem nenhum mutante — só, se for o caso, os testes novos

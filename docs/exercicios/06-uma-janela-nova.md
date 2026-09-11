@@ -28,10 +28,6 @@ git switch -c plataforma/janela-de-90-dias
 
 Acrescentar uma janela de **90 dias** ao dashboard, com passo de reamostragem de 2 horas.
 
-Antes de escrever qualquer coisa, abra `platform/meliponet/services/series.py` e leia o
-dicionário `WINDOWS` e o comentário acima dele. Ele explica por que **toda** janela tem
-passo, inclusive a de 24 h.
-
 > **Pergunta, antes de codar:** com passo de 2 h, 90 dias dão quantos pontos? E se o passo
 > fosse de 5 min, como o da janela de 24 h?
 
@@ -49,7 +45,32 @@ desenhar um gráfico de algumas centenas de pixels de largura.
 tabela bruta inteira antes de reduzir.
 </details>
 
+> **O conceito: reamostrar.** O nó mede a cada 5 minutos, mas o gráfico não desenha uma
+> medição por pixel. A plataforma divide a janela em **baldes** de tamanho fixo — o *passo*
+> — e produz um ponto por balde, com a média das medições que caíram nele. Trinta dias com
+> passo de 2 h viram 360 pontos em vez de 8 640.
+>
+> O que **não** acontece é o balde vazio sumir: ele vira um ponto sem valor, e o gráfico
+> mostra o buraco em vez de ligar os vizinhos por uma reta. Ligar esconderia a perda, e
+> completude é justamente o que o projeto se compromete a medir. É por isso que toda janela
+> tem passo, inclusive a de 24 h.
+
 ## Passos
+
+### 0. Leia antes de escrever
+
+Abra `platform/meliponet/services/series.py` e anote três coisas — sem elas o passo 1 é
+adivinhação:
+
+| Onde | O que anotar |
+|---|---|
+| `WINDOWS`, linha 31 | cada entrada é uma **tupla de três**: rótulo, duração total (`span`), passo (`step`). Todos os dois últimos são `timedelta` |
+| `DEFAULT_WINDOW`, logo abaixo | é `"24h"` — e é para ele que cai toda janela desconhecida |
+| `def series(...)`, linha 96 | a assinatura: `series(session, hive_id, window=DEFAULT_WINDOW)`, devolvendo uma lista de `Point` |
+
+**Confira:** você consegue dizer, sem olhar de novo, qual dos três elementos da tupla é o
+passo. Repare também no comentário acima de `WINDOWS` — ele explica a decisão do balde
+vazio da caixa acima.
 
 ### 1. O teste, primeiro
 
@@ -61,8 +82,11 @@ que inventar um jeito novo.
 O seu teste precisa afirmar duas coisas:
 
 - a janela `90d` existe em `WINDOWS`;
-- a série devolvida tem o número de pontos que você calculou (com a folga de um, para o
-  alinhamento das bordas).
+- a série devolvida por `series(session, hive_id, "90d")` tem o número de pontos que você
+  calculou (com a folga de um, para o alinhamento das bordas).
+
+A segunda é a que importa. Só a primeira passaria também com um passo errado — a janela
+existiria e devolveria a quantidade de pontos de outra coisa.
 
 ### 2. Veja falhar
 
@@ -129,6 +153,7 @@ passo**, que é a decisão real deste commit.
 
 ## Critério de pronto
 
+- [ ] Você anotou as três coisas do passo 0 e sabe qual elemento da tupla é o passo
 - [ ] O teste novo falhou antes da mudança e passa depois
 - [ ] `./verificar` verde
 - [ ] O botão apareceu na interface sem você tocar em nenhum template
@@ -171,4 +196,4 @@ precisa ser escrito em dois lugares para funcionar, um dos dois vai ser esquecid
 **Ver o teste falhar é parte do teste.** E ler *como* ele falha ensina tanto quanto vê-lo
 passar.
 
-→ Próximo: [Exportar CSV](07-exportar-csv.md)
+→ Próximo: [O CSV, na camada certa](07-o-csv-na-camada-certa.md)

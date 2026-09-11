@@ -21,7 +21,7 @@ deploy/      docker compose, Mosquitto, Caddy — operação, fora da trilha
 
 ## Para quem está começando
 
-Comece pela **[trilha](docs/trilha.md)**: oito exercícios curtos e o
+Comece pela **[trilha](docs/trilha.md)**: nove exercícios curtos e o
 **[roteiro do nó sensor](firmware/ROTEIRO.md)**, cada um com critério de pronto que você
 confere sozinho — a saída de um comando, um teste que precisa falhar antes e passar
 depois, ou uma resposta dobrável para comparar.

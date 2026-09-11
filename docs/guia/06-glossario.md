@@ -116,7 +116,20 @@ Paraíba acontece só na exibição.
 
 ## Hardware
 
+**Célula de carga** — a barra de metal que se deforma sob peso. Ela não mede quilos:
+mede deformação, e o HX711 traduz isso num número inteiro sem unidade.
+
+**Contagem bruta** — o número que o HX711 entrega, antes de qualquer conversão. Não é
+quilo nem grama; vira peso pela conta `(contagem − tara) / fator`.
+
+**Divisor resistivo** — dois resistores em série que reduzem a tensão da bateria à
+metade, para caber na entrada analógica de 3,3 V. A leitura precisa ser multiplicada por
+dois.
+
 **ESP32-C6** — o microcontrolador do nó.
+
+**Fator de calibração** — quantas contagens brutas correspondem a um quilo. É
+propriedade da célula com aquele módulo, e não muda quando muda o que está em cima.
 
 **HX711** — conversor analógico-digital para célula de carga.
 
@@ -129,5 +142,8 @@ pelos endereços 0x44 e 0x45.
 futura.
 
 **SHT30** — sensor de temperatura e umidade.
+
+**Tara** — a contagem bruta que corresponde a "zero de carga útil": o peso da própria
+caixa. Muda quando a colmeia é remontada, e não tem relação com o fator de calibração.
 
 **Deep sleep** — modo de baixíssimo consumo do ESP32.
