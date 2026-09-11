@@ -1,6 +1,6 @@
 # 01. A plataforma no ar
 
-**Tempo:** ~30 min · **Treino**
+**Tempo:** ~45 min · **Treino**
 
 ## Por que este exercício existe
 
@@ -40,15 +40,99 @@ histórico nó↔colmeia. Em poucos segundos.
 
 ### 2. Veja o sistema rodando
 
-Siga [Vendo o sistema rodar](../guia/05-como-trabalhamos.md#vendo-o-sistema-rodar): banco,
-usuário, 48 h de dados sintéticos, servidor.
+São quatro comandos, e cada um tem uma saída que você confere antes de passar ao próximo.
+A mesma sequência está em
+[Vendo o sistema rodar](../guia/05-como-trabalhamos.md#vendo-o-sistema-rodar).
 
-Abra `http://127.0.0.1:5000`, entre, e gaste dez minutos:
+> **O que é `DATABASE_URL`, e por que ela vem primeiro.**
+> A plataforma não decide sozinha em qual banco mexer: ela lê essa variável de ambiente.
+> Isso permite que a mesma plataforma rode sobre um arquivo SQLite na sua máquina e sobre
+> um PostgreSQL no servidor, sem trocar uma linha de código.
+>
+> A armadilha é que uma variável de ambiente **vale só no terminal onde você a exportou**.
+> Abriu um segundo terminal, precisa exportar de novo — e se esquecer, aquele terminal vai
+> criar um banco vazio novo em vez de usar o seu. É a causa mais comum de "o servidor não
+> acha os dados que eu acabei de gerar".
+
+#### 2.1 — aponte para o banco
+
+```bash
+cd platform
+export DATABASE_URL="sqlite:///$PWD/../meliponet-dev.sqlite3"
+echo $DATABASE_URL
+```
+
+**Confira:** o `echo` imprime um caminho absoluto terminando em `meliponet-dev.sqlite3`.
+Se imprimiu linha vazia, o `export` não pegou.
+
+#### 2.2 — crie o banco
+
+```bash
+.venv/bin/python -m alembic upgrade head
+```
+
+**Confira:** a última linha é `Running upgrade  -> c5015ea6a1fa, esquema inicial`, e o
+arquivo `meliponet-dev.sqlite3` passa a existir na raiz do repositório.
+
+> **O que acabou de acontecer.** As tabelas não são criadas pelo código que as descreve —
+> são criadas por **migrações**, arquivos versionados que registram cada mudança de
+> estrutura em ordem. É o que permite ao banco do servidor, cheio de dados reais, receber
+> uma coluna nova sem ser recriado do zero. [A
+> plataforma](../guia/03-a-plataforma.md) explica o mecanismo; você vai voltar a ele no
+> exercício [03](03-onde-eu-mexo.md).
+
+#### 2.3 — crie o seu usuário
+
+```bash
+.venv/bin/python -m flask --app "meliponet:create_app" criar-usuario \
+  --email voce@exemplo.br --nome "Seu Nome" --organizacao "Teste" --perfil admin
+```
+
+Ele pede a senha e a confirmação. Anote as duas coisas: o e-mail e a senha são como você
+vai entrar no painel.
+
+**Confira:** saem duas linhas —
+
+```
+Organização criada: Teste
+Usuário voce@exemplo.br criado como Administrador em Teste.
+```
+
+#### 2.4 — gere 48 h de dados
+
+```bash
+cd .. && platform/.venv/bin/python -m simulator --transporte direto --historico 48 \
+  --organizacao "Teste"
+```
+
+**Confira:** a última linha diz quantas medições e quantas lacunas foram criadas —
+algo como `historico pronto: 2212 medições, 96 lacunas injetadas`. Os números variam a
+cada execução; o que importa é que as duas contagens são maiores que zero.
+
+As **lacunas são de propósito**: o simulador finge que a rede caiu, para que você veja um
+gráfico com buraco antes de ver um gráfico perfeito. Colmeia real produz série com buraco.
+
+#### 2.5 — suba o servidor
+
+```bash
+cd platform && .venv/bin/python -m flask --app "meliponet:create_app" run
+```
+
+**Confira:** ele imprime `Running on http://127.0.0.1:5000`. Deixe este terminal ocupado —
+o servidor fica rodando nele. Daqui em diante, trabalhe em **outro** terminal (e lembre do
+`export` da variável, se for mexer no banco por lá).
+
+#### 2.6 — explore dez minutos
+
+Abra `http://127.0.0.1:5000` e entre com o e-mail e a senha de 2.3:
 
 - abra uma colmeia e alterne 24 h / 7 dias / 30 dias;
-- **procure os buracos nos gráficos** — são lacunas injetadas de propósito pelo simulador;
+- **procure os buracos nos gráficos** — são as lacunas de 2.4. Repare que o gráfico
+  **mostra** o buraco em vez de ligar os pontos vizinhos: esconder a perda seria mentir
+  sobre a completude dos dados;
 - veja a linha tracejada do diferencial térmico;
-- vá em **Cadastros** e olhe a tela de vínculo nó↔colmeia.
+- vá em **Cadastros** e olhe a tela de vínculo nó↔colmeia. É por ela que uma leitura
+  passa a aparecer no gráfico de uma colmeia.
 
 ### 3. Leia três commits
 
@@ -112,6 +196,8 @@ cobre.**
 ## Critério de pronto
 
 - [ ] `./verificar` termina com `=== tudo verde`
+- [ ] Cada um dos cinco comandos do passo 2 deu a saída que o exercício descreve
+- [ ] Você entrou no painel com o usuário que criou
 - [ ] Você abriu uma colmeia no navegador e localizou pelo menos um buraco num gráfico
 - [ ] Você escreveu as três respostas antes de abrir o gabarito
 

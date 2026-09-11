@@ -11,7 +11,7 @@ sua. Nenhum exercício depende de alguém disponível para corrigir.
 
 ```mermaid
 flowchart LR
-    A["A. Chegar<br/>ex. 01 e 02<br/>~1 h"] --> B["B. Mexer com segurança<br/>ex. 03 a 05<br/>~2 h"]
+    A["A. Chegar<br/>ex. 01 e 02<br/>~1 h 15"] --> B["B. Mexer com segurança<br/>ex. 03 a 05<br/>~2 h"]
     B --> C["C. O nó, do zero<br/>firmware/ROTEIRO.md<br/>o coração do projeto"]
     C --> D["D. Contribuir<br/>ex. 06 a 08<br/>seu primeiro PR"]
 ```
@@ -32,13 +32,13 @@ tudo no lugar é um comando só, na raiz do repositório:
 Duas verificações, as mesmas que o CI roda a cada push. Se as duas passarem, você está
 pronto. Se faltar alguma ferramenta, ele diz qual e como instalar.
 
-## Bloco A — Chegar (~1 h)
+## Bloco A — Chegar (~1 h 15)
 
 Leia antes: [O sistema](guia/01-o-sistema.md) e [A mensagem](guia/02-a-mensagem.md).
 
 | # | Exercício | Tempo |
 |---|---|---|
-| 01 | [A plataforma no ar](exercicios/01-plataforma-no-ar.md) — ambiente montado, painel aberto no navegador | 30 min |
+| 01 | [A plataforma no ar](exercicios/01-plataforma-no-ar.md) — ambiente montado, painel aberto no navegador | 45 min |
 | 02 | [Uma mensagem até o gráfico](exercicios/02-uma-mensagem-ate-o-grafico.md) — você manda uma leitura à mão e a encontra na tela | 30 min |
 
 ## Bloco B — Mexer com segurança (~2 h)
