@@ -72,6 +72,20 @@ Aqui não há exercício em `docs/`: há o
 imprime no serial até o nó publicando em MQTT. É a parte central do projeto e a mais
 longa — semanas, não horas.
 
+O `ROTEIRO.md` é o índice: as peças, a ligação, a mensagem e os códigos de resposta. Os
+passos ficam em `firmware/etapas/`, e cada um tem o seu **pronto quando**:
+
+| Etapas | O quê | Tempo |
+|---|---|---|
+| [E1 a E3](../firmware/etapas/E1-E3-a-placa-na-rede.md) | a placa fala, entra na rede e sabe que horas são | ~5 h |
+| [E4 a E6](../firmware/etapas/E4-E6-a-primeira-mensagem.md) | os sensores respondem, a mensagem existe, o primeiro ponto no gráfico | ~9 h |
+| [E7](../firmware/etapas/E7-o-peso.md) | o peso: contagem bruta, tara, calibração, NVS | ~6 h |
+| [E8](../firmware/etapas/E8-o-no-completo.md) | o laço de 5 min, a `seq` que sobrevive ao reset, a bateria | ~5 h |
+| [E9 e E10](../firmware/etapas/E9-E10-opcionais.md) | spool e MQTT — opcionais | ~8 h |
+
+**E6 é o marco que muda tudo.** Até ele você depura pelo monitor serial; a partir dele,
+pela tela da plataforma.
+
 Você já sabe, do Bloco A, qual mensagem a plataforma aceita e como ela responde quando a
 mensagem está errada. Agora é fazer o seu nó produzi-la.
 
@@ -102,10 +116,6 @@ legítima**. A próxima pessoa tropeçaria no mesmo lugar.
 
 ## O que ainda falta nesta trilha
 
-- **Exercícios de bancada, com a placa na mão** — provocar um sensor `ausente` desligando
-  o SHT30 externo, ver a contagem bruta do HX711 se mover ao apertar a plataforma, e o
-  mais instrutivo de todos: **trocar os dois SHT30 de lugar de propósito** e descobrir que
-  nada dá erro, só a série sai com o diferencial térmico invertido.
 - **Um exercício de revisão de código.** Hoje a trilha só treina o lado de quem escreve o
   PR. Revisar é a outra metade, e tem roteiro próprio: o que perguntar, o que é obrigatório
   e o que é opinião, quando aprovar.
