@@ -10,8 +10,12 @@ __pycache__/
 # aluno escreve ali fica na maquina dele. Sem isto, o primeiro `git add -A` de quem
 # estiver seguindo o roteiro empurraria o sketch pessoal -- e o gabarito -- para o
 # repositorio que os proximos alunos vao clonar.
+# A excecao sao os .md de firmware/etapas/, que sao o roteiro dividido por etapa.
 firmware/*
 !firmware/ROTEIRO.md
+!firmware/etapas/
+firmware/etapas/*
+!firmware/etapas/*.md
 
 # Propostas ainda nao submetidas aos editais de 2026. Sao a fonte de requisitos de
 # todo o codigo, mas ficam apenas na maquina local, fora do controle de versao.
