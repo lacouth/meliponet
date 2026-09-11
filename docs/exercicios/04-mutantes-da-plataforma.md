@@ -167,8 +167,20 @@ A restrição `UNIQUE (node_id, seq)` no banco é a **autoridade final**, e o `e
 pelo que ela é: um reenvio, não um erro. O `SELECT` que você apagou era a primeira linha de
 defesa; a segunda continuou lá e segurou o caso.
 
-Isso se chama defesa em profundidade, e a pergunta certa passa a ser: **então o `SELECT`
-serve para quê?** Duas coisas:
+> **O conceito: transação e rollback.** O banco não grava linha por linha assim que você
+> pede: ele acumula as mudanças numa **transação** e só as torna definitivas no fim. Se
+> alguma coisa dá errado no meio, o `rollback` desfaz **a transação inteira** — todas as
+> mudanças daquele bloco, não só a que falhou. É o que garante que nunca sobre metade de
+> uma operação gravada. E é também o que torna o rollback caro aqui: ele não é um "ignorei
+> essa linha", é um "descartei tudo o que estava em andamento".
+
+> **O conceito: defesa em profundidade.** Duas barreiras independentes contra o mesmo
+> problema, de modo que a falha de uma não vire um defeito. Aqui, o `SELECT` prévio e a
+> restrição `UNIQUE` verificam a mesma coisa por caminhos diferentes — e foi por isso que o
+> mutante passou. A leitura útil não é "o `SELECT` é redundante": é que as duas barreiras
+> **fazem coisas diferentes quando funcionam**, e é essa diferença que a suíte não cobre.
+
+A pergunta certa passa a ser: **então o `SELECT` serve para quê?** Duas coisas:
 
 1. `StoreResult.measurement_id` deixa de ser preenchido nos duplicados — informação
    perdida para quem chama.
