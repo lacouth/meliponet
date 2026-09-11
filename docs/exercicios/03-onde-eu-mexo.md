@@ -1,6 +1,6 @@
 # 03. Onde eu mexo?
 
-**Tempo:** ~30 min · **Treino**
+**Tempo:** ~40 min · **Treino**
 
 ## Por que este exercício existe
 
@@ -33,6 +33,34 @@ Para cada pedido abaixo, responda **três coisas**, por escrito, antes de abrir 
 3. **Que teste prova que funcionou?** — e onde ele mora.
 
 Não implemente nada. O exercício é de localização.
+
+### Passo 0 — o reconhecimento
+
+Localizar exige saber o que existe. Antes do primeiro pedido, abra estes cinco lugares e
+anote, numa linha cada, **o que cada um decide**. Leva dez minutos e é o que impede os
+gabaritos de serem a primeira vez que você vê esses nomes:
+
+| Abra | Procure | O que ele decide |
+|---|---|---|
+| `contracts/telemetry.v1.schema.json` | `required` e `additionalProperties` | quais campos a plataforma **aceita** |
+| `contracts/mensagem.py:29` | `ORDEM_DOS_CAMPOS` e `CASAS_DECIMAIS` | como o campo é **escrito** na mensagem |
+| `platform/meliponet/ingest/store.py:24` | `METRIC_FIELDS` | quais campos são **gravados** no banco |
+| `platform/meliponet/services/series.py:39` | `METRIC_COLUMNS` | quais campos viram **série** para o gráfico |
+| `platform/meliponet/models.py` | as colunas de `Measurement` | onde o campo **mora** |
+
+**Confira:** são quatro listas de nomes de campo, em quatro arquivos, e elas precisam
+concordar. Um campo que está no schema e falta em `METRIC_FIELDS` é aceito e descartado em
+silêncio — a mensagem responde `201` e a coluna fica `NULL` para sempre. Segure essa
+informação: ela é a resposta da armadilha do pedido 1.
+
+> **O conceito: migração.** Duas dessas listas descrevem o **formato** dos dados; a coluna
+> em `models.py` descreve a **tabela**. Mudar a classe em Python não muda o banco que já
+> existe — nenhum banco se reorganiza porque um programa passou a esperar outra coisa. Quem
+> muda a tabela é uma **migração**: um arquivo versionado em `platform/migrations/` que diz
+> o que fazer para sair da estrutura antiga e chegar na nova. É o `alembic upgrade head` do
+> exercício [01](01-plataforma-no-ar.md#22--crie-o-banco), e é assim que o servidor, cheio
+> de dados reais, recebe uma coluna nova sem ser recriado. Detalhes em
+> [A plataforma](../guia/03-a-plataforma.md).
 
 ---
 
@@ -158,10 +186,17 @@ em Python, o volume de JSON indo para o navegador, ou o Chart.js desenhando milh
 pontos. São quatro correções diferentes.
 
 O suspeito já está documentado: [D-07](../defeitos-conhecidos.md#d-07) — `db.py` cria os
-agregados contínuos `measurements_1h` e `measurements_1d` do TimescaleDB, e
-`services/series.py` **sempre** lê a tabela bruta e reamostra em Python. Trinta dias a
-cada 5 minutos são quase nove mil linhas por métrica para desenhar algumas centenas de
-pixels.
+**agregados contínuos** `measurements_1h` e `measurements_1d`, e `services/series.py`
+**sempre** lê a tabela bruta e reamostra em Python. Trinta dias a cada 5 minutos são quase
+nove mil linhas por métrica para desenhar algumas centenas de pixels.
+
+> **O conceito: agregado contínuo.** É uma tabela que o banco mantém sozinho, com o
+> resumo já calculado — a média de cada hora, a média de cada dia — e atualiza à medida que
+> chegam linhas novas. Ler trinta dias vira ler 720 linhas em vez de nove mil. É um recurso
+> do TimescaleDB, a extensão do PostgreSQL para séries temporais que o projeto usa em
+> produção; na sua máquina, rodando em SQLite, esses agregados não existem, e é por isso
+> que o defeito não aparece no desenvolvimento. Verbetes no
+> [glossário](../guia/06-glossario.md).
 
 *Onde:* `services/series.py`, escolhendo a fonte pela janela.
 
@@ -200,6 +235,7 @@ antes de adivinhar** — vale também para "o pedido faz sentido?".
 
 ## Critério de pronto
 
+- [ ] Você abriu os cinco lugares do passo 0 e anotou o que cada um decide
 - [ ] Você respondeu os seis antes de abrir os gabaritos
 - [ ] Você acertou que o pedido 1 **começa no contrato**
 - [ ] Você percebeu que o pedido 6 não é um pedido de código

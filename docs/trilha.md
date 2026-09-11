@@ -48,7 +48,7 @@ Leia antes: [A plataforma](guia/03-a-plataforma.md) e
 
 | # | Exercício | Tempo |
 |---|---|---|
-| 03 | [Onde eu mexo?](exercicios/03-onde-eu-mexo.md) — seis pedidos de mudança, e onde cada um começa | 30 min |
+| 03 | [Onde eu mexo?](exercicios/03-onde-eu-mexo.md) — seis pedidos de mudança, e onde cada um começa | 40 min |
 | 04 | [Mutantes da plataforma](exercicios/04-mutantes-da-plataforma.md) — quebre de propósito e veja quem reclama | 45 min |
 | 05 | [O mutante que ninguém pega](exercicios/05-o-mutante-que-ninguem-pega.md) — encontre o buraco na suíte e feche-o | 1 h |
 
