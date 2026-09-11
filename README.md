@@ -114,7 +114,8 @@ para nada da trilha.
 
 ## Licença e contexto
 
-Projeto do IFPB — Campus João Pessoa, em parceria com o LAHMP/UFPB (FAPESQ nº 72/2025). As
-propostas submetidas aos editais ficam em `propostas/`, fora do controle de versão.
+Projeto do **GTEMA/IFPB** — Campus João Pessoa, em parceria com o **LAHMP/UFPB**
+(FAPESQ nº 72/2025). As propostas submetidas aos editais ficam em `propostas/`, fora do
+controle de versão.
 
 O firmware C++ preservado na tag `firmware-referencia-v1`.
