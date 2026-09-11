@@ -14,8 +14,6 @@ acordo entre os dois. Contexto completo no `README.md`, em `docs/trilha.md` e em
 - **Não escreva o firmware do nó.** Se um pedido levar a implementar leitura de sensor,
   montagem da mensagem, envio para a plataforma ou spool em C++/Arduino, o entregável
   certo é o roteiro, o critério de pronto e a documentação — não a solução.
-- O código C++ que existiu aqui até a virada para projeto de ensino está preservado na tag
-  `firmware-referencia-v1`. Ele é gabarito do orientador, não material do aluno.
 - `.gitignore` ignora `firmware/` inteiro menos o `ROTEIRO.md`, para que o projeto pessoal
   de quem está fazendo o exercício não seja commitado por engano.
 
