@@ -20,6 +20,7 @@ verifiquei — e peça a revisão do orientador. O ciclo inteiro está em
 |---|---|---|---|
 | Patric Lacouth | orientador | todas | [@lacouth](https://github.com/lacouth) |
 | Marcos D. Lavarda | co-orientador | todas | [@marcosdl](https://github.com/marcosdl) |
+| Airam Eliel | discente | todas | [@Luck07](https://github.com/Luck07) |
 
 As frentes e o que cada uma faz estão em
 [Como trabalhamos](guia/05-como-trabalhamos.md#como-o-trabalho-é-distribuído).
