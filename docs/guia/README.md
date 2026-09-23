@@ -12,7 +12,7 @@ corrompida só se revela quando alguém tenta escrever o artigo, meses depois. Q
 neste repositório existe para empurrar a descoberta do erro para mais cedo — de
 preferência para a sua máquina, antes do commit.
 
-## Os seis documentos
+## Os sete documentos
 
 | | Documento | Do que trata |
 |---|---|---|
@@ -22,6 +22,7 @@ preferência para a sua máquina, antes do commit.
 | 4 | [O nó sensor](04-o-no-sensor.md) | as peças, a ligação e o que erra quando erra |
 | 5 | [Como trabalhamos](05-como-trabalhamos.md) | git, ambiente, testes, revisão, organização |
 | 6 | [Glossário](06-glossario.md) | consulta rápida |
+| 7 | [Os conceitos, no código](07-conceitos-no-codigo.md) | cada ideia de engenharia de software, onde mora e que exercício a treina; e a receita de uma funcionalidade nova |
 
 Leia na ordem, mas **não leia tudo antes de começar**: ler não fixa. A ordem de verdade
 está na **[trilha](../trilha.md)**, que intercala os documentos com exercícios de fazer —
