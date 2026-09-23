@@ -112,12 +112,22 @@ def _load_hive(session: Session, hive_id: int) -> Hive:
     return hive
 
 
+def _janela_pedida() -> str:
+    """A janela vinda da URL, ou a padrao quando ela nao existe.
+
+    Uma janela desconhecida cai na padrao em vez de virar erro: o parametro vem da URL,
+    e um endereco digitado a mao nao deve derrubar a tela.
+    """
+    window = request.args.get("janela", series_service.DEFAULT_WINDOW)
+    if window not in series_service.WINDOWS:
+        return series_service.DEFAULT_WINDOW
+    return window
+
+
 @bp.route("/colmeia/<int:hive_id>")
 @login_required
 def hive_detail(hive_id: int):
-    window = request.args.get("janela", series_service.DEFAULT_WINDOW)
-    if window not in series_service.WINDOWS:
-        window = series_service.DEFAULT_WINDOW
+    window = _janela_pedida()
 
     with session_scope() as session:
         context = _hive_context(session, _load_hive(session, hive_id), window)
@@ -134,9 +144,7 @@ def hive_panel(hive_id: int):
     amostragem de 5 minutos, a conexao persistente nao se paga e e fragil justamente
     onde o sistema precisa funcionar, que e a conectividade rural.
     """
-    window = request.args.get("janela", series_service.DEFAULT_WINDOW)
-    if window not in series_service.WINDOWS:
-        window = series_service.DEFAULT_WINDOW
+    window = _janela_pedida()
 
     with session_scope() as session:
         context = _hive_context(session, _load_hive(session, hive_id), window)

@@ -37,6 +37,52 @@ def _require_manager() -> None:
         abort(403)
 
 
+def _texto(campo: str) -> str | None:
+    """Le um campo de texto do formulario: vazio vira ``None``, nao string vazia.
+
+    A diferenca importa no banco. String vazia e um valor gravado -- "o municipio e a
+    palavra vazia" -- enquanto ``None`` e a ausencia, que e o que um campo deixado em
+    branco significa de verdade.
+    """
+    valor = (request.form.get(campo) or "").strip()
+    return valor or None
+
+
+def _decimal(campo: str) -> float | None:
+    """Le um campo numerico do formulario. Vazio ou ilegivel vira ``None``."""
+    valor = request.form.get(campo)
+    if not valor or not valor.strip():
+        return None
+    try:
+        return float(valor)
+    except ValueError:
+        return None
+
+
+def _meliponario_no_escopo(session, apiary_id: int) -> Apiary:
+    """Carrega o meliponario, exigindo que ele seja visivel ao usuario.
+
+    Existe porque a checagem e repetida em toda rota que recebe um id -- pela URL ou
+    pelo formulario -- e o modo de falha de esquece-la e o silencio: um id forjado
+    criaria colmeia dentro do meliponario de outra organizacao, sem erro nenhum.
+    """
+    apiary = session.scalar(scope.apiaries_for(current_user).where(Apiary.id == apiary_id))
+    if apiary is None:
+        abort(403)
+    return apiary
+
+
+def _colmeia_no_escopo(session, hive_id: int, *, com_meliponario: bool = False) -> Hive:
+    """Irma de ``_meliponario_no_escopo``, para as colmeias."""
+    statement = scope.hives_for(current_user).where(Hive.id == hive_id)
+    if com_meliponario:
+        statement = statement.options(selectinload(Hive.apiary))
+    hive = session.scalar(statement)
+    if hive is None:
+        abort(403)
+    return hive
+
+
 def _parse_local(value: str | None) -> datetime | None:
     """Le um ``datetime-local`` do formulario como horario da Paraiba e devolve UTC.
 
@@ -113,9 +159,9 @@ def create_apiary():
             Apiary(
                 organization_id=current_user.organization_id,
                 name=request.form["nome"].strip(),
-                municipality=(request.form.get("municipio") or "").strip() or None,
-                latitude=_float_or_none(request.form.get("latitude")),
-                longitude=_float_or_none(request.form.get("longitude")),
+                municipality=_texto("municipio"),
+                latitude=_decimal("latitude"),
+                longitude=_decimal("longitude"),
             )
         )
     flash("Meliponário cadastrado.", "ok")
@@ -129,19 +175,14 @@ def create_hive():
     apiary_id = int(request.form["meliponario_id"])
 
     with session_scope() as session:
-        # Confere que o meliponário é visível ao usuário antes de pendurar a colmeia
-        # nele: sem isso, um id forjado no formulário criaria uma colmeia dentro do
-        # meliponário de outra organização.
-        apiary = session.scalar(scope.apiaries_for(current_user).where(Apiary.id == apiary_id))
-        if apiary is None:
-            abort(403)
+        apiary = _meliponario_no_escopo(session, apiary_id)
 
         session.add(
             Hive(
                 apiary_id=apiary.id,
                 name=request.form["nome"].strip(),
-                species=(request.form.get("especie") or "").strip() or None,
-                box_type=(request.form.get("caixa") or "").strip() or None,
+                species=_texto("especie"),
+                box_type=_texto("caixa"),
                 # Em branco significa "agora", que e o caso comum; mas uma colmeia
                 # cadastrada semanas depois de instalada precisa da data verdadeira, e
                 # e ela que delimita a serie da colmeia.
@@ -163,19 +204,15 @@ def edit_apiary(apiary_id: int):
     """
     _require_manager()
     with session_scope() as session:
-        # Mesmo padrao de `create_hive`: o objeto precisa estar no escopo do usuario,
-        # senao trocar o numero na URL viraria a chave do cadastro alheio.
-        apiary = session.scalar(scope.apiaries_for(current_user).where(Apiary.id == apiary_id))
-        if apiary is None:
-            abort(403)
+        apiary = _meliponario_no_escopo(session, apiary_id)
 
         if request.method == "POST":
             apiary.name = request.form["nome"].strip()
-            apiary.municipality = (request.form.get("municipio") or "").strip() or None
-            apiary.latitude = _float_or_none(request.form.get("latitude"))
-            apiary.longitude = _float_or_none(request.form.get("longitude"))
-            apiary.inmet_station = (request.form.get("estacao_inmet") or "").strip() or None
-            apiary.notes = (request.form.get("observacoes") or "").strip() or None
+            apiary.municipality = _texto("municipio")
+            apiary.latitude = _decimal("latitude")
+            apiary.longitude = _decimal("longitude")
+            apiary.inmet_station = _texto("estacao_inmet")
+            apiary.notes = _texto("observacoes")
             flash("Meliponário atualizado.", "ok")
             return redirect(url_for("manage.index"))
 
@@ -204,20 +241,14 @@ def edit_hive(hive_id: int):
     """
     _require_manager()
     with session_scope() as session:
-        hive = session.scalar(
-            scope.hives_for(current_user)
-            .options(selectinload(Hive.apiary))
-            .where(Hive.id == hive_id)
-        )
-        if hive is None:
-            abort(403)
+        hive = _colmeia_no_escopo(session, hive_id, com_meliponario=True)
 
         if request.method == "POST":
             hive.name = request.form["nome"].strip()
-            hive.species = (request.form.get("especie") or "").strip() or None
-            hive.box_type = (request.form.get("caixa") or "").strip() or None
+            hive.species = _texto("especie")
+            hive.box_type = _texto("caixa")
             hive.installed_at = _parse_local(request.form.get("instalado_em"))
-            hive.notes = (request.form.get("observacoes") or "").strip() or None
+            hive.notes = _texto("observacoes")
             flash("Colmeia atualizada.", "ok")
             return redirect(url_for("manage.index"))
 
@@ -251,10 +282,7 @@ def assign_node(node_id: int):
             abort(403)
 
         if request.method == "POST":
-            hive_id = int(request.form["colmeia_id"])
-            hive = session.scalar(scope.hives_for(current_user).where(Hive.id == hive_id))
-            if hive is None:
-                abort(403)
+            hive = _colmeia_no_escopo(session, int(request.form["colmeia_id"]))
 
             installed_at = _parse_local(request.form.get("instalado_em")) or utcnow()
 
@@ -275,8 +303,8 @@ def assign_node(node_id: int):
                     node_id=node.id,
                     hive_id=hive.id,
                     installed_at=installed_at,
-                    sensor_placement=(request.form.get("posicionamento") or "").strip() or None,
-                    protocol_notes=(request.form.get("observacoes") or "").strip() or None,
+                    sensor_placement=_texto("posicionamento"),
+                    protocol_notes=_texto("observacoes"),
                 )
             )
             flash(f"Nó {node.node_id} vinculado a {hive.name}.", "ok")
@@ -328,12 +356,3 @@ def unassign_node(node_id: int):
             flash(f"Nó {node.node_id} desvinculado.", "ok")
 
     return redirect(url_for("manage.index"))
-
-
-def _float_or_none(value: str | None) -> float | None:
-    if not value or not value.strip():
-        return None
-    try:
-        return float(value)
-    except ValueError:
-        return None

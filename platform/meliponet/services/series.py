@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from meliponet.models import Measurement
@@ -140,7 +140,3 @@ def completeness(session: Session, hive_id: int, window: str = DEFAULT_WINDOW) -
 
     expected = seqs[-1] - seqs[0] + 1
     return {"received": len(seqs), "expected": expected, "gaps": expected - len(seqs)}
-
-
-def hive_count(session: Session) -> int:
-    return session.scalar(select(func.count()).select_from(Measurement)) or 0

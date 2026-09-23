@@ -29,6 +29,11 @@ SPECIES = [
 ]
 
 
+def _quantos(session, modelo) -> int:
+    """Quantas linhas existem de ``modelo``."""
+    return session.scalar(select(func.count()).select_from(modelo)) or 0
+
+
 @bp.route("/")
 def index():
     # Quem ja esta autenticado quer o painel, nao a apresentacao do projeto.
@@ -37,10 +42,10 @@ def index():
 
     with session_scope() as session:
         stats = {
-            "hives": session.scalar(select(func.count()).select_from(Hive)) or 0,
-            "apiaries": session.scalar(select(func.count()).select_from(Apiary)) or 0,
-            "measurements": session.scalar(select(func.count()).select_from(Measurement)) or 0,
-            "nodes": session.scalar(select(func.count()).select_from(Node)) or 0,
+            "hives": _quantos(session, Hive),
+            "apiaries": _quantos(session, Apiary),
+            "measurements": _quantos(session, Measurement),
+            "nodes": _quantos(session, Node),
         }
 
     return render_template("public/index.html", stats=stats, species=SPECIES)
