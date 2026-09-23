@@ -48,7 +48,7 @@ Desacopla o desenvolvimento da plataforma da entrega do hardware.
 
 **Dublê** — uma peça que ocupa o lugar de outra para que o resto possa funcionar, ou ser
 testado, sem ela. Os sensores simulados da [etapa S](../../firmware/etapas/S-os-sensores-simulados.md)
-são um dublê dos SHT30 e do HX711; o `simulator/` da plataforma é um dublê do nó. Ver
+são um dublê dos SHT30, do HX711 e da bateria; o `simulator/` da plataforma é um dublê do nó. Ver
 também *mock / stub*.
 
 **Endpoint** — uma URL que o servidor atende.

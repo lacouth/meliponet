@@ -80,7 +80,7 @@ passos ficam em `firmware/etapas/`, e cada um tem o seu **pronto quando**:
 | Etapas | O quê | Tempo |
 |---|---|---|
 | [E1 a E3](../firmware/etapas/E1-E3-a-placa-na-rede.md) | a placa fala, entra na rede e sabe que horas são | ~5 h |
-| [S](../firmware/etapas/S-os-sensores-simulados.md) | **sem os sensores ainda:** o nó inventa leituras de colmeia, e o resto do roteiro segue | ~4 h |
+| [S](../firmware/etapas/S-os-sensores-simulados.md) | **sem o hardware ainda:** o nó inventa leituras de colmeia e a tensão da bateria, e o resto do roteiro segue | ~4 h |
 | [E4 a E6](../firmware/etapas/E4-E6-a-primeira-mensagem.md) | os sensores respondem, a mensagem existe, o primeiro ponto no gráfico | ~9 h |
 | [E7](../firmware/etapas/E7-o-peso.md) | o peso: contagem bruta, tara, calibração, NVS | ~6 h |
 | [E8](../firmware/etapas/E8-o-no-completo.md) | o laço de 5 min, a `seq` que sobrevive ao reset, a bateria | ~5 h |
@@ -89,9 +89,9 @@ passos ficam em `firmware/etapas/`, e cada um tem o seu **pronto quando**:
 **E6 é o marco que muda tudo.** Até ele você depura pelo monitor serial; a partir dele,
 pela tela da plataforma.
 
-**Sem os sensores?** Tendo a placa, faça E1 a E3, depois **S**, e siga para E5, E6 e E8
-com leituras simuladas. E4 e E7 ficam para quando o hardware chegar — o
-[`ROTEIRO.md`](../firmware/ROTEIRO.md#sem-os-sensores-ainda) explica a ordem.
+**Sem os sensores e a bateria?** Tendo a placa, faça E1 a E3, depois **S**, e siga para
+E5, E6 e E8 com leituras simuladas. E4, E7 e E8.3 ficam para quando o hardware chegar — o
+[`ROTEIRO.md`](../firmware/ROTEIRO.md#sem-o-hardware-ainda) explica a ordem.
 
 Você já sabe, do Bloco A, qual mensagem a plataforma aceita e como ela responde quando a
 mensagem está errada. Agora é fazer o seu nó produzi-la.

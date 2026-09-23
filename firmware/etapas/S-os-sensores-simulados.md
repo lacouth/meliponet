@@ -1,22 +1,24 @@
-# S — os sensores simulados
+# S — os sensores simulados, e a bateria
 
 **Tempo:** ~4 h · voltar ao [índice](../ROTEIRO.md)
 
-**Para quem ainda não tem os sensores.** Você tem a placa, o nó já entra na rede e sabe
-que horas são (E1 a E3), mas os dois SHT30 e o HX711 ainda não chegaram. Sem eles, E4 não
-tem o que ler, e sem leitura a plataforma recusa a mensagem.
+**Para quem ainda não tem o hardware.** Você tem a placa, o nó já entra na rede e sabe
+que horas são (E1 a E3), mas os dois SHT30, o HX711 e a bateria ainda não chegaram. Sem
+eles, E4 não tem o que ler, e sem leitura a plataforma recusa a mensagem. A placa pode
+ficar ligada no USB do computador: é de lá que ela tira energia enquanto não há bateria.
 
-Nesta etapa o nó **inventa** as leituras: temperatura, umidade e peso com a cara de uma
-colmeia de verdade. Com elas você segue para E5 e E6, vê o seu ponto no gráfico e faz o
-nó completo de E8 — tudo sem sensor nenhum. Quando o hardware chegar, você faz E4 e E7, e
-o resto do seu programa não muda.
+Nesta etapa o nó **inventa** as leituras: temperatura, umidade, peso e a tensão da
+bateria, com a cara de uma colmeia de verdade. Com elas você segue para E5 e E6, vê o seu
+ponto no gráfico e faz o nó completo de E8 — tudo sem sensor nenhum. Quando o hardware
+chegar, você faz E4, E7 e a medição da bateria de E8.3, e o resto do seu programa não
+muda.
 
 E mesmo depois disso a simulação continua útil. Ela é o jeito de testar a mensagem num nó
 sem sensores ligados, e o único jeito de fazer um sensor falhar quando **você** quer.
 
 > **O conceito: trocar uma peça sem mexer no resto.**
-> Todo o seu nó depende de uma coisa só vinda dos sensores: **a leitura** — cinco números
-> e, para cada sensor, se ele respondeu. Se existir **uma única função** cujo trabalho é
+> Todo o seu nó depende de uma coisa só vinda do hardware: **a leitura** — seis números
+> e, para cada peça, se ela respondeu. Se existir **uma única função** cujo trabalho é
 > preencher essa leitura, quem está do outro lado dela — a montagem do JSON, o envio, o
 > laço de cinco minutos — não precisa saber de onde os números vieram. A função pode ler
 > o SHT30 ou pode inventar; o resto do programa é o mesmo.
@@ -31,20 +33,20 @@ sem sensores ligados, e o único jeito de fazer um sensor falhar quando **você*
 
 ## S.1 — a leitura tem um formato
 
-Defina, no seu programa, **o formato da leitura**: um lugar com as cinco medidas —
-temperatura interna, temperatura externa, umidade interna, umidade externa e peso — e, para
-cada um dos três sensores (SHT30 interno, SHT30 externo, HX711), a marca de que ele
-respondeu ou não.
+Defina, no seu programa, **o formato da leitura**: um lugar com as seis medidas —
+temperatura interna, temperatura externa, umidade interna, umidade externa, peso e tensão
+da bateria — e, para cada uma das quatro peças (SHT30 interno, SHT30 externo, HX711 e o
+divisor da bateria), a marca de que ela respondeu ou não.
 
 Depois escreva **uma função** que preenche essa leitura. Nesta primeira versão ela devolve
 sempre os mesmos números, fixos: uma colmeia parada no tempo.
 
-**Pronto quando:** o serial imprime, a cada 10 segundos, os cinco valores rotulados e o
-estado de cada sensor — algo como:
+**Pronto quando:** o serial imprime, a cada 10 segundos, os seis valores rotulados e o
+estado de cada peça — algo como:
 
 ```
-interna 30.0 C  68.0 %   | externa 33.0 C  45.0 %   | peso 12.000 kg
-sht_in: ok   sht_out: ok   hx711: ok
+interna 30.0 C  68.0 %   | externa 33.0 C  45.0 %   | peso 12.000 kg   | bateria 3.90 V
+sht_in: ok   sht_out: ok   hx711: ok   bateria: ok
 ```
 
 Repare onde está o `Serial.print`: **fora** da função de leitura. Ela só preenche; quem
@@ -65,15 +67,16 @@ Faça a função inventar números **com a forma** dos reais:
 | umidade interna | perto de 70 %, variando pouco |
 | umidade externa | o contrário da temperatura externa: mais alta de madrugada, mais baixa à tarde |
 | peso | perto de 12 kg, mudando devagar — alguns gramas por leitura, nunca saltos |
+| bateria | perto de 3,9 V; desce devagar à noite e sobe de dia, como uma célula com painel solar; nunca acima de 4,2 V |
 
 A hora do dia você já tem desde E3. E um pouco de sorteio em cima de cada valor faz a
 série parecer medida, e não calculada.
 
 **Não precisa inventar a física.** O simulador da plataforma faz exatamente isso, em
 Python, em [`simulator/model.py`](../../simulator/model.py): leia as funções
-`outside_temp_c`, `inside_temp_c` e `step_weight_kg` e traduza **a ideia** para o seu
-nó. Ler um programa numa linguagem e reescrever a lógica em outra é um exercício por si
-só — copiar as fórmulas sem entendê-las não é.
+`outside_temp_c`, `inside_temp_c`, `step_weight_kg` e `step_battery_v` e traduza **a
+ideia** para o seu nó. Ler um programa numa linguagem e reescrever a lógica em outra é um
+exercício por si só — copiar as fórmulas sem entendê-las não é.
 
 > **Como conferir algo que depende da hora sem esperar um dia inteiro.** Escreva a conta
 > da temperatura externa como uma função que **recebe a hora** em vez de consultá-la
@@ -93,6 +96,7 @@ só — copiar as fórmulas sem entendê-las não é.
 | temperatura interna | entre 28 e 32 °C |
 | umidade | entre 0 e 100 % — umidade acima de 100 é impossível, e a plataforma recusa |
 | peso | sem salto maior que 50 g de uma leitura para a seguinte |
+| bateria | entre 3,2 e 4,2 V — a faixa de uma célula 18650 viva |
 
 As faixas que a plataforma aceita estão escritas no contrato,
 [`../../contracts/telemetry.v1.schema.json`](../../contracts/telemetry.v1.schema.json) —
@@ -116,6 +120,9 @@ simulado. Por exemplo, `falha externo` e `volta externo` — os nomes são seus.
    externo — **não zero** — e continua lendo o interno e o peso normalmente.
 2. Depois de `volta externo`, os números do sensor externo voltam.
 3. O mesmo funciona para o sensor interno e para o peso.
+4. Um comando a mais, `bateria baixa` (e `bateria normal`), faz a tensão simulada cair
+   para abaixo de **3,50 V**. É com ele que você vai testar a flag `low_batt` em E8.4 —
+   sem fonte ajustável e sem esperar uma bateria descarregar.
 
 > **Zero não é ausente.** Zero é uma temperatura possível, e um peso possível. Se o sensor
 > ausente virar `0.0`, quem ler a série daqui a um ano vai ver uma colmeia a 0 °C, não um
@@ -126,17 +133,23 @@ simulado. Por exemplo, `falha externo` e `volta externo` — os nomes são seus.
 
 ## S.4 — a chave
 
-Os sensores vão chegar. Quando chegarem, você vai escrever a leitura de verdade (E4 e E7)
-— e **não vai apagar a simulada**. As duas ficam no programa, e uma **única chave** no
-código escolhe qual delas o nó usa.
+Os sensores e a bateria vão chegar. Quando chegarem, você vai escrever a leitura de
+verdade (E4, E7 e E8.3) — e **não vai apagar a simulada**. As duas ficam no programa, e
+uma **única chave** no código escolhe qual delas o nó usa.
 
 Por enquanto a leitura de verdade ainda não existe. Então, na posição "real", faça ela
-devolver **os três sensores ausentes** — é exatamente o que um nó sem sensor ligado
+devolver **as quatro peças ausentes** — é exatamente o que um nó sem nada ligado
 reportaria.
+
+> **A bateria ausente não se lê: se omite.** Com nada ligado no GPIO0, ler a entrada
+> analógica **não** dá zero nem erro: dá um número qualquer, que muda a cada leitura,
+> porque a entrada solta capta ruído. Um nó que manda esse número em `vbat_v` está
+> mandando lixo com cara de medida. Até existir o divisor de E8.3, a leitura real da
+> bateria não lê o pino — ela diz "ausente", e `vbat_v` fica fora da mensagem.
 
 **Pronto quando:**
 
-1. Com a chave em "real", o programa compila, roda, e imprime os três sensores como
+1. Com a chave em "real", o programa compila, roda, e imprime as quatro peças como
    ausentes, sem travar e sem imprimir zero.
 2. Com a chave de volta em "simulado", os números voltam.
 3. Procurando no seu código, **nenhuma linha fora da função de leitura** menciona a
@@ -213,7 +226,8 @@ não é igual a `"falha externo"`.
 ## O que levar daqui
 
 **A função de leitura é a fronteira entre o nó e o mundo.** Tudo que vem depois dela —
-mensagem, envio, laço, `seq` — funciona igual com sensor de verdade ou de mentira. É isso
+mensagem, envio, laço, `seq`, a flag de bateria fraca — funciona igual com hardware de
+verdade ou de mentira. É isso
 que deixa você fazer o resto do roteiro antes do hardware chegar.
 
 **Um teste bom provoca a falha em vez de esperar por ela.** Desligar um fio com o
