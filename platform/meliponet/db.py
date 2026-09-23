@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from flask import g
+from flask import Flask, g
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -62,6 +62,12 @@ def get_engine() -> Engine:
     return _engine
 
 
+def _sessionmaker() -> sessionmaker[Session]:
+    if _Session is None:
+        raise RuntimeError("session factory nao inicializada: chame init_engine() primeiro")
+    return _Session
+
+
 @contextmanager
 def session_scope() -> Iterator[Session]:
     """Sessao transacional: commit no sucesso, rollback em qualquer excecao."""
@@ -93,13 +99,7 @@ def sessao_do_request() -> Session:
     return g.sessao
 
 
-def _sessionmaker() -> sessionmaker[Session]:
-    if _Session is None:
-        raise RuntimeError("session factory nao inicializada: chame init_engine() primeiro")
-    return _Session
-
-
-def registrar_sessao_por_request(app) -> None:
+def registrar_sessao_por_request(app: Flask) -> None:
     """Liga a sessao ao ciclo da requisicao: grava no sucesso, desfaz no resto.
 
     A regra e uma so e vale para toda rota: **requisicao que terminou bem grava; qualquer

@@ -78,15 +78,13 @@ def index():
     )
     # Recusas nao pertencem a colmeia nenhuma (a mensagem sequer foi decodificada),
     # entao so quem tem visao ampla as ve.
-    rejects = (
-        list(
+    rejects = []
+    if current_user.role.sees_everything:
+        rejects = list(
             session.scalars(
                 select(IngestReject).order_by(IngestReject.received_at.desc()).limit(5)
             )
         )
-        if current_user.role.sees_everything
-        else []
-    )
 
     return render_template(
         "index.html",
@@ -149,9 +147,36 @@ def hive_panel(hive_id: int):
     return render_template("_panel.html", **context)
 
 
+def _diferencial_termico(points: list[series_service.Point]) -> list[float | None]:
+    """Quanto a colmeia esta mais quente que o lado de fora, ponto a ponto.
+
+    Um ponto que nao tem as duas temperaturas vira ``None``, e nao zero: zero seria
+    lido no grafico como "dentro e fora na mesma temperatura", que e uma afirmacao que
+    a leitura nao fez.
+    """
+    diferencas: list[float | None] = []
+    for ponto in points:
+        dentro = ponto.values.get("temp_in_c")
+        fora = ponto.values.get("temp_out_c")
+        if dentro is None or fora is None:
+            diferencas.append(None)
+        else:
+            diferencas.append(round(dentro - fora, 2))
+    return diferencas
+
+
 def _hive_context(session: Session, hive: Hive, window: str) -> dict:
     points = series_service.series(session, hive.id, window)
     tz = _display_tz()
+
+    chart = {
+        "labels": [p.time.astimezone(tz).strftime("%d/%m %H:%M") for p in points],
+        "series": {
+            column: [p.values.get(column) for p in points]
+            for column in series_service.METRIC_COLUMNS
+        },
+        "thermal_differential": _diferencial_termico(points),
+    }
 
     return {
         "hive": hive,
@@ -159,18 +184,6 @@ def _hive_context(session: Session, hive: Hive, window: str) -> dict:
         "windows": series_service.WINDOWS,
         "latest": series_service.latest(session, hive.id),
         "completeness": series_service.completeness(session, hive.id, window),
-        "chart": {
-            "labels": [p.time.astimezone(tz).strftime("%d/%m %H:%M") for p in points],
-            "series": {
-                column: [p.values.get(column) for p in points]
-                for column in series_service.METRIC_COLUMNS
-            },
-            "thermal_differential": [
-                None
-                if p.values.get("temp_in_c") is None or p.values.get("temp_out_c") is None
-                else round(p.values["temp_in_c"] - p.values["temp_out_c"], 2)
-                for p in points
-            ],
-        },
+        "chart": chart,
         "point_count": len(points),
     }

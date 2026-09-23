@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 
 from meliponet.config import DISPLAY_TIMEZONE
 from meliponet.db import sessao_do_request
@@ -50,8 +50,8 @@ def _texto(campo: str) -> str | None:
 
 def _decimal(campo: str) -> float | None:
     """Le um campo numerico do formulario. Vazio ou ilegivel vira ``None``."""
-    valor = request.form.get(campo)
-    if not valor or not valor.strip():
+    valor = (request.form.get(campo) or "").strip()
+    if not valor:
         return None
     try:
         return float(valor)
@@ -59,7 +59,7 @@ def _decimal(campo: str) -> float | None:
         return None
 
 
-def _meliponario_no_escopo(session, apiary_id: int) -> Apiary:
+def _meliponario_no_escopo(session: Session, apiary_id: int) -> Apiary:
     """Carrega o meliponario, exigindo que ele seja visivel ao usuario.
 
     Existe porque a checagem e repetida em toda rota que recebe um id -- pela URL ou
@@ -72,7 +72,7 @@ def _meliponario_no_escopo(session, apiary_id: int) -> Apiary:
     return apiary
 
 
-def _colmeia_no_escopo(session, hive_id: int) -> Hive:
+def _colmeia_no_escopo(session: Session, hive_id: int) -> Hive:
     """Irma de ``_meliponario_no_escopo``, para as colmeias."""
     hive = session.scalar(scope.hives_for(current_user).where(Hive.id == hive_id))
     if hive is None:
@@ -80,7 +80,7 @@ def _colmeia_no_escopo(session, hive_id: int) -> Hive:
     return hive
 
 
-def _no_gerenciavel(session, node_id: int) -> Node:
+def _no_gerenciavel(session: Session, node_id: int) -> Node:
     """Carrega o no que o usuario pode vincular ou desvincular.
 
     Um no que nao existe e 404; um que existe mas nao e seu e 403. Um no ainda sem dono
@@ -125,6 +125,7 @@ def _local_input(value: datetime | None) -> str:
 @login_required
 def index():
     session = sessao_do_request()
+    pode_gerenciar = scope.can_manage(current_user)
 
     # Os `selectinload` daqui sao otimizacao: sem eles, cada meliponario e cada no da
     # lista dispararia uma consulta propria -- o classico N+1.
@@ -144,8 +145,9 @@ def index():
     )
     # Nos que apareceram sozinhos na ingestao e ainda nao tem dono. So quem
     # administra os ve, porque so essa pessoa pode adota-los.
-    pending = (
-        list(
+    pending = []
+    if pode_gerenciar:
+        pending = list(
             session.scalars(
                 select(Node)
                 .options(selectinload(Node.assignments))
@@ -153,9 +155,6 @@ def index():
                 .order_by(Node.node_id)
             )
         )
-        if scope.can_manage(current_user)
-        else []
-    )
 
     return render_template(
         "manage/index.html",
@@ -163,7 +162,7 @@ def index():
         nodes=nodes,
         pending=pending,
         species=SPECIES,
-        pode_gerenciar=scope.can_manage(current_user),
+        pode_gerenciar=pode_gerenciar,
     )
 
 
@@ -276,9 +275,9 @@ def assign_node(node_id: int):
 
         # Fecha o vínculo anterior antes de abrir o novo: dois vínculos abertos ao
         # mesmo tempo tornariam ambígua a colmeia de uma leitura.
-        current = node.current_assignment
-        if current is not None:
-            current.removed_at = installed_at
+        current_assignment = node.current_assignment
+        if current_assignment is not None:
+            current_assignment.removed_at = installed_at
 
         # O nó passa a pertencer à organização **da colmeia**, não à de quem clicou.
         # Carimbar o usuário logado fazia um administrador levar consigo o nó que
@@ -319,14 +318,14 @@ def unassign_node(node_id: int):
     _require_manager()
     node = _no_gerenciavel(sessao_do_request(), node_id)
 
-    current = node.current_assignment
-    if current is None:
+    current_assignment = node.current_assignment
+    if current_assignment is None:
         flash("Esse nó já está sem colmeia.", "erro")
     else:
         # Fecha o período em vez de apagar o vínculo: as leituras já gravadas continuam
         # apontando para a colmeia certa, e o histórico de instalação é parte do
         # protocolo documentado.
-        current.removed_at = utcnow()
+        current_assignment.removed_at = utcnow()
         flash(f"Nó {node.node_id} desvinculado.", "ok")
 
     return redirect(url_for("manage.index"))
