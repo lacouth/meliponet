@@ -13,6 +13,20 @@ from dataclasses import dataclass
 #: apresentacao, para que a mudanca de fuso nunca corrompa uma serie ja coletada.
 FUSO_DE_EXIBICAO = "America/Fortaleza"
 
+#: Especies-alvo da parceria: nome cientifico e o nome popular pelo qual o
+#: meliponicultor as conhece. O cadastro oferece so estas para padronizar a grafia --
+#: nomes cientificos digitados a mao divergem e inviabilizam agrupar series por especie.
+ESPECIES = [
+    ("Melipona scutellaris", "uruçu-nordestina"),
+    ("Melipona subnitida", "jandaíra"),
+    ("Scaptotrigona depilis", "canudo"),
+]
+
+#: So os nomes cientificos, para os campos de escolha dos formularios.
+NOMES_CIENTIFICOS = []
+for cientifico, _popular in ESPECIES:
+    NOMES_CIENTIFICOS.append(cientifico)
+
 
 @dataclass(frozen=True, slots=True)
 class Configuracao:

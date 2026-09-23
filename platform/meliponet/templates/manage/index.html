@@ -28,7 +28,7 @@
       <code>{{ no.node_id }}</code>
       <span class="pill">visto {{ no.last_seen_at | hora_local }}</span>
       <a class="btn ghost" style="margin-left:auto"
-         href="{{ url_for('gerenciar.vincular_no', no_id=no.id) }}">Vincular a uma colmeia</a>
+         href="{{ url_for('nos.vincular', no_id=no.id) }}">Vincular a uma colmeia</a>
     </div>
   {% endfor %}
 </div>
@@ -42,7 +42,7 @@
     <span class="pill">{{ meliponario.municipality or 'sem município' }}</span>
     {% if pode_gerenciar %}
     <a class="btn ghost" style="margin-left:auto"
-       href="{{ url_for('gerenciar.editar_meliponario', meliponario_id=meliponario.id) }}">Editar</a>
+       href="{{ url_for('meliponarios.editar', meliponario_id=meliponario.id) }}">Editar</a>
     {% endif %}
   </div>
   {% if meliponario.hives %}
@@ -56,7 +56,7 @@
         <td>{{ colmeia.box_type or '—' }}</td>
         <td style="text-align:right">
           {% if pode_gerenciar %}
-          <a class="btn ghost" href="{{ url_for('gerenciar.editar_colmeia', colmeia_id=colmeia.id) }}">Editar</a>
+          <a class="btn ghost" href="{{ url_for('colmeias.editar', colmeia_id=colmeia.id) }}">Editar</a>
           {% else %}—{% endif %}
         </td>
       </tr>
@@ -68,7 +68,7 @@
   {% endif %}
 
   {% if pode_gerenciar %}
-  <form method="post" action="{{ url_for('gerenciar.criar_colmeia') }}" style="margin-top:14px;">
+  <form method="post" action="{{ url_for('colmeias.criar') }}" style="margin-top:14px;">
     <input type="hidden" name="meliponario_id" value="{{ meliponario.id }}">
     <div class="form-row">
       <label class="field"><span>Nova colmeia</span>
@@ -93,7 +93,7 @@
 
 {% if pode_gerenciar %}
 <h2>Novo meliponário</h2>
-<form method="post" action="{{ url_for('gerenciar.criar_meliponario') }}" class="card">
+<form method="post" action="{{ url_for('meliponarios.criar') }}" class="card">
   <div class="form-row">
     <label class="field"><span>Nome</span><input name="nome" required></label>
     <label class="field"><span>Município</span><input name="municipio" placeholder="João Pessoa"></label>
@@ -117,10 +117,10 @@
         <td>{{ no.last_seen_at | hora_local }}</td>
         <td style="text-align:right">
           {% if pode_gerenciar %}
-          <a class="btn ghost" href="{{ url_for('gerenciar.vincular_no', no_id=no.id) }}">
+          <a class="btn ghost" href="{{ url_for('nos.vincular', no_id=no.id) }}">
             {{ 'Remanejar' if vinculo else 'Vincular' }}</a>
           {% if vinculo %}
-          <form method="post" action="{{ url_for('gerenciar.desvincular_no', no_id=no.id) }}"
+          <form method="post" action="{{ url_for('nos.desvincular', no_id=no.id) }}"
                 style="display:inline">
             <button class="btn ghost" type="submit">Desvincular</button>
           </form>

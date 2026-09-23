@@ -184,8 +184,8 @@ que recuse um `POST` sem token.
 
 **Nó e vínculo não podem ser corrigidos depois de criados.**
 
-*Onde:* `platform/meliponet/rotas/gerenciar.py`. Meliponário e colmeia ganharam tela de
-edição; nó e `Vinculo` não.
+*Onde:* `platform/meliponet/rotas/nos.py` e `servicos/vinculos.py`. Meliponário e colmeia
+ganharam tela de edição; nó e `Vinculo` não.
 
 *Sintoma:* o `label` e a `firmware_version` do nó só são preenchidos pela ingestão e não
 têm onde ser ajustados. Pior é o vínculo: `sensor_placement`, `protocol_notes` e o
@@ -205,7 +205,7 @@ gravadas, então a edição precisa deixar isso explícito na tela.
 
 **O admin não cadastra meliponário para outra organização.**
 
-*Onde:* `platform/meliponet/rotas/gerenciar.py`, `create_apiary`, que grava sempre
+*Onde:* `platform/meliponet/rotas/meliponarios.py`, `criar`, que grava sempre
 `organization_id=current_user.organization_id`; o formulário não tem seletor de
 organização.
 

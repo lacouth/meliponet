@@ -168,7 +168,7 @@
   {% if current_user.is_authenticated %}
   <nav>
     <a href="{{ url_for('painel.index') }}">Colmeias</a>
-    <a href="{{ url_for('gerenciar.index') }}">Cadastros</a>
+    <a href="{{ url_for('cadastros.index') }}">Cadastros</a>
     <span class="who">
       {{ current_user.name }}
       <small>· {{ current_user.role.label }} · {{ current_user.organization.name }}</small>

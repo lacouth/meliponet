@@ -22,11 +22,16 @@ def criar_app(configuracao: Configuracao | None = None) -> Flask:
         sessao_do_request,
     )
     from meliponet.modelos import Usuario
-    from meliponet.rotas.api import bp as api_bp
-    from meliponet.rotas.autenticacao import bp as autenticacao_bp
-    from meliponet.rotas.gerenciar import bp as gerenciar_bp
-    from meliponet.rotas.painel import bp as painel_bp
-    from meliponet.rotas.publico import bp as publico_bp
+    from meliponet.rotas import (
+        api,
+        autenticacao,
+        cadastros,
+        colmeias,
+        meliponarios,
+        nos,
+        painel,
+        publico,
+    )
 
     configuracao = configuracao or Configuracao.do_ambiente()
 
@@ -53,10 +58,15 @@ def criar_app(configuracao: Configuracao | None = None) -> Flask:
 
     cli.register(app)
 
-    app.register_blueprint(api_bp)
-    app.register_blueprint(publico_bp)
-    app.register_blueprint(autenticacao_bp)
-    app.register_blueprint(painel_bp)
-    app.register_blueprint(gerenciar_bp)
+    # Cada arquivo de `rotas/` e um grupo de telas (um "blueprint"), e so passa a
+    # responder depois de registrado aqui.
+    app.register_blueprint(api.bp)
+    app.register_blueprint(publico.bp)
+    app.register_blueprint(autenticacao.bp)
+    app.register_blueprint(painel.bp)
+    app.register_blueprint(cadastros.bp)
+    app.register_blueprint(meliponarios.bp)
+    app.register_blueprint(colmeias.bp)
+    app.register_blueprint(nos.bp)
 
     return app

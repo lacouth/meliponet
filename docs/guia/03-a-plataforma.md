@@ -37,16 +37,22 @@ platform/
 │   ├── modelos.py              as tabelas, como classes Python
 │   ├── cli.py                  comandos de terminal (criar-usuario)
 │   │
-│   ├── rotas/                  ← AS ROTAS (o que o navegador acessa)
+│   ├── rotas/                  ← AS ROTAS (o que o navegador acessa), um arquivo por assunto
 │   │   ├── api.py                 POST /api/v1/telemetria: a porta do nó
 │   │   ├── autenticacao.py        entrar e sair
-│   │   ├── painel.py              a tela das colmeias e os gráficos
 │   │   ├── publico.py             a página inicial, sem login
-│   │   └── gerenciar.py           cadastros e vínculo nó↔colmeia
+│   │   ├── painel.py              a lista de colmeias e os gráficos
+│   │   ├── cadastros.py           a tela /gerenciar/, que lista tudo
+│   │   ├── meliponarios.py        criar e editar meliponário
+│   │   ├── colmeias.py            criar e editar colmeia
+│   │   ├── nos.py                 vincular e desvincular nó
+│   │   ├── formulario.py          ajudantes para ler campos de formulário
+│   │   └── permissao.py           ajudantes que respondem 403
 │   │
 │   ├── servicos/               ← A LÓGICA (sem saber que existe web)
 │   │   ├── escopo.py              quem pode ver o quê
-│   │   └── serie.py               as consultas que alimentam os gráficos
+│   │   ├── serie.py               as consultas que alimentam os gráficos
+│   │   └── vinculos.py            as regras de instalar e retirar um nó
 │   │
 │   ├── ingestao/               ← A ENTRADA DE DADOS (processo separado)
 │   │   ├── telemetria.py          valida a mensagem contra o contrato

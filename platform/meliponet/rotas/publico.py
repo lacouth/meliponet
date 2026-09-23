@@ -15,16 +15,10 @@ from flask_login import current_user
 from sqlalchemy import func, select
 
 from meliponet.banco import sessao_do_request
+from meliponet.configuracao import ESPECIES
 from meliponet.modelos import Colmeia, Medicao, Meliponario, No
 
 bp = Blueprint("publico", __name__)
-
-#: Especies-alvo da parceria, com o nome popular pelo qual o meliponicultor as conhece.
-ESPECIES = [
-    ("Melipona scutellaris", "uruçu-nordestina"),
-    ("Melipona subnitida", "jandaíra"),
-    ("Scaptotrigona depilis", "canudo"),
-]
 
 
 def _quantos(session, modelo) -> int:
