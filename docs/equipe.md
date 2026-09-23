@@ -21,6 +21,8 @@ verifiquei — e peça a revisão do orientador. O ciclo inteiro está em
 | Patric Lacouth | orientador | todas | [@lacouth](https://github.com/lacouth) |
 | Marcos D. Lavarda | co-orientador | todas | [@marcosdl](https://github.com/marcosdl) |
 | Geaniny Adriane| voluntário | todas | [@geaniny-lira](https://github.com/geaniny-lira) |
+| Andrews da Silva| Vonluntario| todas | [@SilvaAndrews](https://github.com/SilvaAndrews) |
+| João Pedro | Bolsista | todas | [@PedroDev-coder](https://github.com/PedroDev-coder) |
 
 As frentes e o que cada uma faz estão em
 [Como trabalhamos](guia/05-como-trabalhamos.md#como-o-trabalho-é-distribuído).
