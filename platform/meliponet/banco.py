@@ -1,12 +1,11 @@
 """Acesso ao banco, compartilhado pelo processo web e pelo ingestor.
 
-Roda contra PostgreSQL + TimescaleDB em producao e contra SQLite no desenvolvimento e
-nos testes. O modelo relacional e identico nos dois; o que difere sao os recursos de
-serie temporal, aplicados so no PostgreSQL por :func:`ativar_timescale`.
+PostgreSQL + TimescaleDB em producao, SQLite no desenvolvimento: o modelo relacional e
+o mesmo, e so os recursos de serie temporal ficam de fora do SQLite.
 
-Ha dois jeitos de obter uma sessao, e o porque de existirem dois esta em
-``docs/guia/03-a-plataforma.md``: :func:`sessao_do_request` para as rotas web, e
-:func:`abrir_sessao` para quem nao tem requisicao -- ingestor, CLI e testes.
+Duas formas de obter sessao: :func:`sessao_do_request` para as rotas web e
+:func:`abrir_sessao` para quem nao tem requisicao -- ingestor, CLI e testes. O porque
+esta em ``docs/guia/03-a-plataforma.md``.
 """
 
 from __future__ import annotations

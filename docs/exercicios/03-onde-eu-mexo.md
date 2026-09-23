@@ -94,6 +94,13 @@ Ordem:
 
 *Armadilha:* esquecer `CAMPOS_DE_METRICA` em `gravacao.py` faz a mensagem ser aceita e o campo
 ser **silenciosamente descartado** na gravação. Nada quebra; a coluna fica sempre `NULL`.
+
+Hoje existe uma rede para essa queda: `test_toda_metrica_do_contrato_e_gravada`, em
+`test_contract.py`, falha quando um campo entra no schema e não entra em
+`CAMPOS_DE_METRICA`. Ela não dispensa o raciocínio — dispensa perder a tarde. Repare que as
+duas listas **não** são iguais e não devem ser: `rssi` é gravado e não vira série, e `snr`
+e `sound_rms` já têm coluna e ainda não estão no contrato. A regra é de contenção, não de
+igualdade, e há um teste para cada metade dela.
 </details>
 
 ---

@@ -1,13 +1,11 @@
 """Decodificacao e validacao das mensagens de telemetria.
 
-Esta e a fronteira entre o que chega da rede e o que entra no banco. Tudo que passa
-por aqui vem de um no em campo e portanto nao e confiavel.
+A fronteira entre o que chega da rede e o que entra no banco: tudo que passa por aqui
+vem de um no em campo e portanto nao e confiavel.
 
-A politica e uma so: **o motivo da recusa e preservado**, nunca descartado em silencio.
-Mensagem invalida vira um :class:`ErroDeTelemetria` com um motivo legivel, que quem
-chamou grava em ``ingest_rejects``.
-
-Os nomes dos campos sao os do contrato, em ``contracts/telemetry.v1.schema.json``.
+A politica e uma so -- **o motivo da recusa e preservado**, nunca descartado em
+silencio. Mensagem invalida vira um :class:`ErroDeTelemetria`, que quem chamou grava em
+``ingest_rejects``. Os nomes dos campos sao os do contrato.
 """
 
 from __future__ import annotations

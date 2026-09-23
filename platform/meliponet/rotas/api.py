@@ -1,20 +1,12 @@
 """A porta por onde o no sensor entrega uma leitura, por HTTP.
 
-Existe para o aluno. O caminho de campo e MQTT (`meliponet/v1/<node_id>/telemetry`), mas
-para publicar em MQTT e preciso ter um broker no ar antes de a primeira leitura chegar --
-e quem esta escrevendo o firmware do zero precisa ver o ponto aparecer no grafico no
-mesmo dia, com o que ja tem na mao. Um POST resolve isso: HTTPClient no ESP32, `curl` na
-bancada, e nenhuma peca a mais para instalar.
+Existe para quem esta escrevendo o firmware: um POST nao exige broker no ar, entao o
+primeiro ponto aparece no grafico no mesmo dia. `decodificar()` valida e `gravar()`
+grava -- as mesmas funcoes do ingestor MQTT, nunca uma segunda implementacao.
 
-Os dois caminhos entram no mesmo lugar: `decodificar()` valida e `gravar()` grava, os mesmos
-que o ingestor MQTT chama. Nada aqui e uma segunda implementacao da ingestao -- se
-fosse, os dois caminhos divergiriam e o no que passa a publicar em MQTT (etapa final do
-roteiro) veria a plataforma se comportar de outro jeito.
-
-Esta e a unica rota que abre a sessao na mao, com `abrir_sessao()`, em vez de usar a
-sessao da requisicao: ela **grava a recusa e responde 400**, e a sessao da requisicao
-desfaz o que a resposta de erro tocou. E o comportamento certo para as telas e o errado
-aqui -- sem a recusa gravada, o aluno fica sem nada para depurar.
+E a unica rota que abre a sessao na mao: ela grava a recusa e responde 400, e a sessao
+da requisicao desfaria esse registro. O porque completo esta em
+``docs/guia/03-a-plataforma.md``.
 """
 
 from __future__ import annotations

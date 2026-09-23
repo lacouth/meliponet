@@ -1,11 +1,8 @@
 """Modelo de dados da plataforma: as tabelas escritas como classes Python.
 
-Tres decisoes governam este modulo, e o porque de cada uma esta em
-``docs/guia/03-a-plataforma.md``:
-
-* o vinculo no <-> colmeia e historico (:class:`Vinculo`), nao um campo;
-* metrica ausente e ``None``, nunca zero;
-* propriedade e por organizacao, e o escopo mora em ``meliponet.servicos.escopo``.
+Tres decisoes governam este modulo: o vinculo no <-> colmeia e historico
+(:class:`Vinculo`) e nao um campo; metrica ausente e ``None`` e nunca zero; propriedade
+e por organizacao. O porque de cada uma esta em ``docs/guia/03-a-plataforma.md``.
 
 Os nomes de coluna ficam como o banco e o contrato os escrevem -- em ingles.
 """
