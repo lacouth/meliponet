@@ -2,6 +2,7 @@
 
 from flask import Flask
 from flask_login import LoginManager
+from jinja2 import StrictUndefined
 
 from meliponet.configuracao import FUSO_DE_EXIBICAO, Configuracao
 
@@ -34,6 +35,11 @@ def criar_app(configuracao: Configuracao | None = None) -> Flask:
     configuracao = configuracao or Configuracao.do_ambiente()
 
     app = Flask(__name__)
+    # Por padrao o Jinja trata uma variavel inexistente como vazia, em silencio: um nome
+    # errado no template some da tela sem erro nenhum. Foi assim que as flags de
+    # qualidade sumiram do painel numa traducao. Com `StrictUndefined`, o nome errado
+    # vira um erro na hora -- e o teste que abre a pagina quebra.
+    app.jinja_env.undefined = StrictUndefined
     app.config["SECRET_KEY"] = configuracao.secret_key
     app.config["MELIPONET"] = configuracao
     app.config["FUSO_DE_EXIBICAO"] = FUSO_DE_EXIBICAO
