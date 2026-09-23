@@ -17,7 +17,7 @@ from datetime import UTC
 from pathlib import Path
 
 import pytest
-from meliponet.ingest.telemetry import TelemetryError, decode
+from meliponet.ingestao.telemetria import ErroDeTelemetria, decodificar
 from mensagem import ESQUEMA, serializar
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -36,7 +36,7 @@ def test_ha_exemplos_para_testar() -> None:
 
 @pytest.mark.parametrize("exemplo", VALIDAS, ids=lambda p: p.stem)
 def test_exemplo_valido_e_aceito(exemplo: Path) -> None:
-    telemetry = decode(exemplo.read_bytes())
+    telemetry = decodificar(exemplo.read_bytes())
 
     assert telemetry.node_id
     assert telemetry.ts.tzinfo == UTC
@@ -47,12 +47,12 @@ def test_exemplo_valido_e_aceito(exemplo: Path) -> None:
 def test_exemplo_invalido_e_recusado_com_motivo(exemplo: Path) -> None:
     esperado = exemplo.with_suffix(".motivo").read_text().strip()
 
-    with pytest.raises(TelemetryError) as excinfo:
-        decode(exemplo.read_bytes())
+    with pytest.raises(ErroDeTelemetria) as excinfo:
+        decodificar(exemplo.read_bytes())
 
     # O motivo precisa ser util para quem for ler `ingest_rejects` meses depois, e para
     # o aluno que so tem a resposta do POST para se guiar.
-    assert excinfo.value.reason, f"recusa sem motivo (esperado algo como: {esperado})"
+    assert excinfo.value.motivo, f"recusa sem motivo (esperado algo como: {esperado})"
 
 
 @pytest.mark.parametrize("exemplo", VALIDAS, ids=lambda p: p.stem)
@@ -86,7 +86,7 @@ def test_campo_ausente_nao_vira_nulo_nem_zero() -> None:
 
 
 def test_diferencial_termico() -> None:
-    telemetry = decode(
+    telemetry = decodificar(
         serializar(
             {
                 "schema": ESQUEMA,
@@ -99,11 +99,11 @@ def test_diferencial_termico() -> None:
         )
     )
 
-    assert telemetry.thermal_differential_c == pytest.approx(-4.68)
+    assert telemetry.diferencial_termico_c == pytest.approx(-4.68)
 
 
 def test_diferencial_termico_ausente_sem_sensor_externo() -> None:
-    telemetry = decode(
+    telemetry = decodificar(
         serializar(
             {
                 "schema": ESQUEMA,
@@ -116,10 +116,10 @@ def test_diferencial_termico_ausente_sem_sensor_externo() -> None:
         )
     )
 
-    assert telemetry.thermal_differential_c is None
+    assert telemetry.diferencial_termico_c is None
     assert telemetry.flags == ("sht_out_fault",)
 
 
 def test_payload_gigante_e_recusado_sem_parsear() -> None:
-    with pytest.raises(TelemetryError, match="excede o limite"):
-        decode(b"x" * 5000)
+    with pytest.raises(ErroDeTelemetria, match="excede o limite"):
+        decodificar(b"x" * 5000)

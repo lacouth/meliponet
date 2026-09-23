@@ -12,30 +12,30 @@ igual com o filtro removido.
 from __future__ import annotations
 
 import pytest
-from meliponet.db import session_scope
-from meliponet.models import Apiary, Hive, Node, Role
-from meliponet.services import scope
+from meliponet.banco import abrir_sessao
+from meliponet.modelos import Colmeia, Meliponario, No, Perfil
+from meliponet.servicos import escopo
 
 
 @pytest.fixture
 def meliponicultor(scenario, make_user):
-    return make_user(scenario.organization_id, Role.MELIPONICULTOR)
+    return make_user(scenario.organization_id, Perfil.MELIPONICULTOR)
 
 
 @pytest.fixture
 def pesquisador(scenario, make_user):
-    return make_user(scenario.organization_id, Role.PESQUISADOR)
+    return make_user(scenario.organization_id, Perfil.PESQUISADOR)
 
 
 @pytest.fixture
 def dono_alheio(scenario, make_user):
-    return make_user(scenario.other_organization_id, Role.MELIPONICULTOR)
+    return make_user(scenario.other_organization_id, Perfil.MELIPONICULTOR)
 
 
 def test_meliponicultor_ve_apenas_a_propria_organizacao(scenario, meliponicultor) -> None:
-    with session_scope() as session:
-        hives = list(session.scalars(scope.hives_for(meliponicultor)))
-        apiaries = list(session.scalars(scope.apiaries_for(meliponicultor)))
+    with abrir_sessao() as session:
+        hives = list(session.scalars(escopo.colmeias_visiveis(meliponicultor)))
+        apiaries = list(session.scalars(escopo.meliponarios_visiveis(meliponicultor)))
 
     assert [h.id for h in hives] == [scenario.hive_id]
     assert all(a.organization_id == scenario.organization_id for a in apiaries)
@@ -43,19 +43,19 @@ def test_meliponicultor_ve_apenas_a_propria_organizacao(scenario, meliponicultor
 
 def test_pesquisador_ve_todas_as_colmeias(scenario, pesquisador) -> None:
     """A pesquisa depende do conjunto agregado, não de um meliponário isolado."""
-    with session_scope() as session:
-        hives = list(session.scalars(scope.hives_for(pesquisador)))
+    with abrir_sessao() as session:
+        hives = list(session.scalars(escopo.colmeias_visiveis(pesquisador)))
 
     assert {h.id for h in hives} == {scenario.hive_id, scenario.other_hive_id}
 
 
 def test_colmeia_alheia_nao_e_visivel(scenario, meliponicultor, dono_alheio) -> None:
-    with session_scope() as session:
-        assert scope.can_view_hive(session, meliponicultor, scenario.hive_id)
-        assert not scope.can_view_hive(session, meliponicultor, scenario.other_hive_id)
+    with abrir_sessao() as session:
+        assert escopo.pode_ver_colmeia(session, meliponicultor, scenario.hive_id)
+        assert not escopo.pode_ver_colmeia(session, meliponicultor, scenario.other_hive_id)
         # E o recíproco: o isolamento vale nos dois sentidos.
-        assert scope.can_view_hive(session, dono_alheio, scenario.other_hive_id)
-        assert not scope.can_view_hive(session, dono_alheio, scenario.hive_id)
+        assert escopo.pode_ver_colmeia(session, dono_alheio, scenario.other_hive_id)
+        assert not escopo.pode_ver_colmeia(session, dono_alheio, scenario.hive_id)
 
 
 def test_pesquisador_nao_edita_cadastros(pesquisador, meliponicultor) -> None:
@@ -64,25 +64,25 @@ def test_pesquisador_nao_edita_cadastros(pesquisador, meliponicultor) -> None:
     Uma análise não pode alterar por engano o cadastro de campo de outra pessoa — quem
     instalou o nó na caixa é quem sabe onde cada sensor ficou.
     """
-    assert scope.can_manage(meliponicultor)
-    assert not scope.can_manage(pesquisador)
+    assert escopo.pode_gerenciar(meliponicultor)
+    assert not escopo.pode_gerenciar(pesquisador)
 
 
 def test_escopo_acompanha_colmeia_nova(scenario, meliponicultor) -> None:
     """Uma colmeia criada depois entra no escopo pelo meliponário, sem ajuste manual."""
-    with session_scope() as session:
-        apiary = session.get(Apiary, scenario.apiary_id)
-        session.add(Hive(apiary_id=apiary.id, name="Colmeia 02"))
+    with abrir_sessao() as session:
+        meliponario = session.get(Meliponario, scenario.apiary_id)
+        session.add(Colmeia(apiary_id=meliponario.id, name="Colmeia 02"))
 
-    with session_scope() as session:
-        hives = list(session.scalars(scope.hives_for(meliponicultor)))
+    with abrir_sessao() as session:
+        hives = list(session.scalars(escopo.colmeias_visiveis(meliponicultor)))
 
     assert {h.name for h in hives} == {"Colmeia 01", "Colmeia 02"}
 
 
 @pytest.fixture
 def admin(scenario, make_user):
-    return make_user(scenario.organization_id, Role.ADMIN)
+    return make_user(scenario.organization_id, Perfil.ADMIN)
 
 
 def test_admin_administra_no_de_qualquer_organizacao(
@@ -93,10 +93,10 @@ def test_admin_administra_no_de_qualquer_organizacao(
     O meliponicultor continua alcançando só o próprio nó — é este par de asserções que
     impede a correção de virar um buraco no isolamento.
     """
-    with session_scope() as session:
-        assert scope.can_manage_node(session, admin, scenario.node_pk)
-        assert scope.can_manage_node(session, meliponicultor, scenario.node_pk)
-        assert not scope.can_manage_node(session, dono_alheio, scenario.node_pk)
+    with abrir_sessao() as session:
+        assert escopo.pode_gerenciar_no(session, admin, scenario.node_pk)
+        assert escopo.pode_gerenciar_no(session, meliponicultor, scenario.node_pk)
+        assert not escopo.pode_gerenciar_no(session, dono_alheio, scenario.node_pk)
 
 
 def test_no_sem_dono_e_adotavel_por_quem_administra(
@@ -107,13 +107,13 @@ def test_no_sem_dono_e_adotavel_por_quem_administra(
     Enquanto ele não tem dono, exigir que já pertença a alguém tornaria a adoção
     impossível — e o nó publicaria para sempre sem aparecer em gráfico nenhum.
     """
-    with session_scope() as session:
-        orfao = Node(node_id="FFFFAA03")
+    with abrir_sessao() as session:
+        orfao = No(node_id="FFFFAA03")
         session.add(orfao)
         session.flush()
         orfao_pk = orfao.id
 
-    with session_scope() as session:
-        assert scope.can_manage_node(session, admin, orfao_pk)
-        assert scope.can_manage_node(session, meliponicultor, orfao_pk)
-        assert scope.can_manage_node(session, dono_alheio, orfao_pk)
+    with abrir_sessao() as session:
+        assert escopo.pode_gerenciar_no(session, admin, orfao_pk)
+        assert escopo.pode_gerenciar_no(session, meliponicultor, orfao_pk)
+        assert escopo.pode_gerenciar_no(session, dono_alheio, orfao_pk)

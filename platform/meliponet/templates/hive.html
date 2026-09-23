@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ hive.name }} — MelipoNet{% endblock %}
+{% block title %}{{ colmeia.name }} — MelipoNet{% endblock %}
 {% block content %}
 
-<h1>{{ hive.name }}</h1>
+<h1>{{ colmeia.name }}</h1>
 <p class="sub">
-  {{ hive.apiary.name }}{% if hive.species %} · <em>{{ hive.species }}</em>{% endif %}
+  {{ colmeia.apiary.name }}{% if colmeia.species %} · <em>{{ colmeia.species }}</em>{% endif %}
 </p>
 
-<div class="windows">
-  {% for key, spec in windows.items() %}
-    <a href="{{ url_for('dashboard.hive_detail', hive_id=hive.id, janela=key) }}"
-       class="{{ 'on' if key == window else '' }}">{{ spec[0] }}</a>
+<div class="janelas">
+  {% for chave, janela_spec in janelas.items() %}
+    <a href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=colmeia.id, janela=chave) }}"
+       class="{{ 'on' if chave == janela else '' }}">{{ janela_spec[0] }}</a>
   {% endfor %}
 </div>
 
@@ -18,7 +18,7 @@
      de um fragmento é mais robusto sob conectividade rural do que uma conexão
      persistente que precisaria ser reestabelecida a cada oscilação do enlace. -->
 <div id="painel"
-     hx-get="{{ url_for('dashboard.hive_panel', hive_id=hive.id, janela=window) }}"
+     hx-get="{{ url_for('painel.fragmento_da_colmeia', colmeia_id=colmeia.id, janela=janela) }}"
      hx-trigger="every 60s"
      hx-swap="innerHTML">
   {% include "_panel.html" %}

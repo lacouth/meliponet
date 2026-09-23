@@ -1,13 +1,12 @@
 """Acesso ao banco, compartilhado pelo processo web e pelo ingestor.
 
-A plataforma roda contra PostgreSQL + TimescaleDB em producao e contra SQLite no
-desenvolvimento e nos testes. O modelo relacional e identico nos dois; o que difere
-sao os recursos de serie temporal -- hypertable e continuous aggregates -- que sao
-aplicados apenas no PostgreSQL, em :func:`apply_timescale_features`.
+Roda contra PostgreSQL + TimescaleDB em producao e contra SQLite no desenvolvimento e
+nos testes. O modelo relacional e identico nos dois; o que difere sao os recursos de
+serie temporal, aplicados so no PostgreSQL por :func:`ativar_timescale`.
 
-Essa diferenca e deliberada e limitada: as *consultas* da aplicacao sao SQL comum e
-funcionam nos dois bancos. O TimescaleDB muda o desempenho da ingestao e das janelas
-longas, nao a semantica.
+Ha dois jeitos de obter uma sessao, e o porque de existirem dois esta em
+``docs/guia/03-a-plataforma.md``: :func:`sessao_do_request` para as rotas web, e
+:func:`abrir_sessao` para quem nao tem requisicao -- ingestor, CLI e testes.
 """
 
 from __future__ import annotations
@@ -19,18 +18,18 @@ from flask import Flask, g
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from meliponet.models import Base
+from meliponet.modelos import Base
 
 _engine: Engine | None = None
 _Session: sessionmaker[Session] | None = None
 
 
-def is_postgres(engine: Engine) -> bool:
+def e_postgres(engine: Engine) -> bool:
     return engine.dialect.name == "postgresql"
 
 
-def init_engine(database_url: str, echo: bool = False) -> Engine:
-    """Cria o engine e o session factory do processo."""
+def iniciar_banco(database_url: str, echo: bool = False) -> Engine:
+    """Cria o engine e a fabrica de sessoes do processo."""
     global _engine, _Session
 
     connect_args = {}
@@ -43,7 +42,7 @@ def init_engine(database_url: str, echo: bool = False) -> Engine:
     if _engine.dialect.name == "sqlite":
 
         @event.listens_for(_engine, "connect")
-        def _sqlite_pragmas(connection, _record):  # type: ignore[no-untyped-def]
+        def _pragmas_do_sqlite(connection, _record):  # type: ignore[no-untyped-def]
             cursor = connection.cursor()
             # WAL permite que o ingestor escreva enquanto o web le, em vez de um
             # bloquear o outro -- e o cenario normal desta aplicacao.
@@ -56,22 +55,22 @@ def init_engine(database_url: str, echo: bool = False) -> Engine:
     return _engine
 
 
-def get_engine() -> Engine:
+def obter_engine() -> Engine:
     if _engine is None:
-        raise RuntimeError("engine nao inicializado: chame init_engine() primeiro")
+        raise RuntimeError("engine nao inicializado: chame iniciar_banco() primeiro")
     return _engine
 
 
-def _sessionmaker() -> sessionmaker[Session]:
+def _fabrica_de_sessoes() -> sessionmaker[Session]:
     if _Session is None:
-        raise RuntimeError("session factory nao inicializada: chame init_engine() primeiro")
+        raise RuntimeError("fabrica de sessoes nao inicializada: chame iniciar_banco() primeiro")
     return _Session
 
 
 @contextmanager
-def session_scope() -> Iterator[Session]:
+def abrir_sessao() -> Iterator[Session]:
     """Sessao transacional: commit no sucesso, rollback em qualquer excecao."""
-    session = _sessionmaker()()
+    session = _fabrica_de_sessoes()()
     try:
         yield session
         session.commit()
@@ -85,17 +84,14 @@ def session_scope() -> Iterator[Session]:
 def sessao_do_request() -> Session:
     """A sessao desta requisicao, aberta na primeira vez que alguem a pede.
 
-    Existe porque o template renderiza *depois* que a view retorna. Com uma sessao
-    aberta e fechada dentro da view, tudo que o template fosse ler precisava ser
+    Existe porque o template renderiza *depois* que a rota retorna. Com uma sessao
+    aberta e fechada dentro da rota, tudo que o template fosse ler precisava ser
     carregado na marra antes -- `joinedload` defensivo, dicionario copiado a mao -- ou
     estourava `DetachedInstanceError` na hora de desenhar a pagina. Amarrando a sessao a
     requisicao inteira, o template le `colmeia.apiary.name` sem cerimonia.
-
-    O ingestor MQTT, o CLI e os testes continuam usando ``session_scope``: nao existe
-    requisicao HTTP la.
     """
     if "sessao" not in g:
-        g.sessao = _sessionmaker()()
+        g.sessao = _fabrica_de_sessoes()()
     return g.sessao
 
 
@@ -103,7 +99,7 @@ def registrar_sessao_por_request(app: Flask) -> None:
     """Liga a sessao ao ciclo da requisicao: grava no sucesso, desfaz no resto.
 
     A regra e uma so e vale para toda rota: **requisicao que terminou bem grava; qualquer
-    outra coisa desfaz**. Uma resposta 4xx ou 5xx nao commita, mesmo que a view ja tenha
+    outra coisa desfaz**. Uma resposta 4xx ou 5xx nao commita, mesmo que a rota ja tenha
     mexido em algum objeto antes de desistir.
     """
 
@@ -124,13 +120,13 @@ def registrar_sessao_por_request(app: Flask) -> None:
             sessao.close()
 
 
-def apply_timescale_features(engine: Engine) -> None:
+def ativar_timescale(engine: Engine) -> None:
     """Converte ``measurements`` em hypertable e cria os agregados continuos.
 
     So faz sentido no PostgreSQL com a extensao TimescaleDB; em SQLite e um no-op e a
     tabela permanece uma tabela comum, o que basta para desenvolvimento e testes.
     """
-    if not is_postgres(engine):
+    if not e_postgres(engine):
         return
 
     with engine.begin() as connection:
@@ -142,17 +138,17 @@ def apply_timescale_features(engine: Engine) -> None:
             )
         )
 
-        # Agregados por hora e por dia. O dashboard escolhe entre a tabela bruta e
-        # estes agregados conforme a janela pedida, para que "ultimos 30 dias" nao
-        # varra milhoes de linhas.
-        for name, bucket in (("measurements_1h", "1 hour"), ("measurements_1d", "1 day")):
+        # Agregados por hora e por dia. O painel escolhe entre a tabela bruta e estes
+        # agregados conforme a janela pedida, para que "ultimos 30 dias" nao varra
+        # milhoes de linhas.
+        for nome, balde in (("measurements_1h", "1 hour"), ("measurements_1d", "1 day")):
             connection.execute(
                 text(
                     f"""
-                    CREATE MATERIALIZED VIEW IF NOT EXISTS {name}
+                    CREATE MATERIALIZED VIEW IF NOT EXISTS {nome}
                     WITH (timescaledb.continuous) AS
                     SELECT
-                        time_bucket(INTERVAL '{bucket}', time) AS bucket,
+                        time_bucket(INTERVAL '{balde}', time) AS bucket,
                         hive_id,
                         avg(temp_in_c)   AS temp_in_c,
                         avg(temp_out_c)  AS temp_out_c,
@@ -169,7 +165,7 @@ def apply_timescale_features(engine: Engine) -> None:
             )
 
 
-def create_all(engine: Engine) -> None:
+def criar_tabelas(engine: Engine) -> None:
     """Cria o esquema. Em producao o Alembic assume; aqui serve para dev e testes."""
     Base.metadata.create_all(engine)
-    apply_timescale_features(engine)
+    ativar_timescale(engine)

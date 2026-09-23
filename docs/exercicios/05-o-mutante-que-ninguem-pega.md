@@ -47,17 +47,17 @@ Para cada mutante, o ciclo é:
 
 ## Mutante A — o reenvio que confunde dois nós
 
-**Arquivo:** `platform/meliponet/ingest/store.py`, função `store`.
+**Arquivo:** `platform/meliponet/ingestao/gravacao.py`, função `gravar`.
 
 ```python
 # antes
-        select(Measurement.id).where(
-            Measurement.node_id == telemetry.node_id, Measurement.seq == telemetry.seq
+        select(Medicao.id).where(
+            Medicao.node_id == telemetry.node_id, Medicao.seq == telemetry.seq
         )
 
 # depois
-        select(Measurement.id).where(
-            Measurement.seq == telemetry.seq
+        select(Medicao.id).where(
+            Medicao.seq == telemetry.seq
         )
 ```
 
@@ -68,7 +68,7 @@ Rode `platform/.venv/bin/pytest platform/tests`.
 
 **Tudo verde.**
 
-`test_ingest.py` cobre bem o reenvio: manda a mesma `seq` duas vezes e exige que a segunda
+`test_ingestao.py` cobre bem o reenvio: manda a mesma `seq` duas vezes e exige que a segunda
 seja marcada como duplicata. Mas as duas mensagens vêm **do mesmo nó**. Nenhum teste manda
 a mesma `seq` de **nós diferentes**, e é exatamente aí que o `node_id` importa.
 
@@ -84,18 +84,18 @@ cresce.
 
 ### O teste que falta
 
-**Primeiro, ache o buraco sozinho.** Abra `platform/tests/test_ingest.py` e responda por
+**Primeiro, ache o buraco sozinho.** Abra `platform/tests/test_ingestao.py` e responda por
 escrito, antes de abrir o gabarito:
 
 1. Que cenário nenhum teste do arquivo constrói? Descreva-o numa frase, em português.
-2. Que ajudantes o arquivo já oferece para construí-lo? (Procure `message` e `decode` —
+2. Que ajudantes o arquivo já oferece para construí-lo? (Procure `message` e `decodificar` —
    os testes existentes os usam, e o seu vai usar os mesmos.)
 3. O que exatamente o seu teste vai afirmar?
 
 <details>
 <summary>O teste — abra depois de responder as três</summary>
 
-Em `platform/tests/test_ingest.py`:
+Em `platform/tests/test_ingestao.py`:
 
 ```python
 def test_seq_repetida_de_outro_no_nao_e_duplicata(scenario) -> None:
@@ -105,10 +105,10 @@ def test_seq_repetida_de_outro_no_nao_e_duplicata(scenario) -> None:
     node_id na comparacao, as primeiras leituras do segundo no do meliponario seriam
     descartadas como reenvio, em silencio.
     """
-    with session_scope() as session:
-        primeiro = store(session, decode(message(1, node_id="A4C13800")))
-    with session_scope() as session:
-        outro = store(session, decode(message(1, node_id="7B21C904")))
+    with abrir_sessao() as session:
+        primeiro = gravar(session, decodificar(message(1, node_id="A4C13800")))
+    with abrir_sessao() as session:
+        outro = gravar(session, decodificar(message(1, node_id="7B21C904")))
 
     assert primeiro.stored
     assert outro.stored
@@ -123,14 +123,14 @@ O `node_id` do segundo é diferente; a `seq` é a mesma. É o menor cenário que
 
 ## Mutante B — a medição no instante exato da instalação
 
-**Arquivo:** `platform/meliponet/ingest/store.py`, função `resolve_hive`.
+**Arquivo:** `platform/meliponet/ingestao/gravacao.py`, função `colmeia_no_instante`.
 
 ```python
 # antes
-            NodeAssignment.installed_at <= when,
+            Vinculo.installed_at <= when,
 
 # depois
-            NodeAssignment.installed_at < when,
+            Vinculo.installed_at < when,
 ```
 
 Rode a suíte de novo.
@@ -140,7 +140,7 @@ Rode a suíte de novo.
 
 **Tudo verde.** E este é o mais sutil dos dois.
 
-`test_ingest.py` cobre o remanejamento, o reenvio e a leitura anterior à instalação — mas
+`test_ingestao.py` cobre o remanejamento, o reenvio e a leitura anterior à instalação — mas
 todos os instantes que ele usa estão a dias de distância das bordas
 (`installed_at - timedelta(days=1)`, `mudanca + timedelta(days=1)`). Nenhum teste usa
 **exatamente** `installed_at`.
@@ -185,7 +185,7 @@ colmeia é a que se perde. Justamente a que alguém vai procurar para conferir s
 <details>
 <summary>Os dois testes — abra depois de responder as três</summary>
 
-Ainda em `platform/tests/test_ingest.py`:
+Ainda em `platform/tests/test_ingestao.py`:
 
 ```python
 def test_medicao_no_instante_exato_da_instalacao(scenario) -> None:
@@ -193,14 +193,14 @@ def test_medicao_no_instante_exato_da_instalacao(scenario) -> None:
     # O `ts` do contrato tem resolucao de um segundo. Sem zerar os microssegundos, o
     # "instante exato" seria inalcancavel por uma mensagem de verdade.
     quando = (datetime.now(UTC) - timedelta(days=10)).replace(microsecond=0)
-    with session_scope() as session:
+    with abrir_sessao() as session:
         vinculo = session.scalar(
-            select(NodeAssignment).where(NodeAssignment.node_id == scenario.node_pk)
+            select(Vinculo).where(Vinculo.node_id == scenario.node_pk)
         )
         vinculo.installed_at = quando
 
-    with session_scope() as session:
-        resultado = store(session, decode(message(1, ts=quando)))
+    with abrir_sessao() as session:
+        resultado = gravar(session, decodificar(message(1, ts=quando)))
 
     assert resultado.hive_id == scenario.hive_id
 
@@ -208,14 +208,14 @@ def test_medicao_no_instante_exato_da_instalacao(scenario) -> None:
 def test_um_segundo_antes_da_instalacao_fica_sem_colmeia(scenario) -> None:
     """O par do teste acima: um teste de fronteira precisa dos dois lados dela."""
     quando = (datetime.now(UTC) - timedelta(days=10)).replace(microsecond=0)
-    with session_scope() as session:
+    with abrir_sessao() as session:
         vinculo = session.scalar(
-            select(NodeAssignment).where(NodeAssignment.node_id == scenario.node_pk)
+            select(Vinculo).where(Vinculo.node_id == scenario.node_pk)
         )
         vinculo.installed_at = quando
 
-    with session_scope() as session:
-        resultado = store(session, decode(message(2, ts=quando - timedelta(seconds=1))))
+    with abrir_sessao() as session:
+        resultado = gravar(session, decodificar(message(2, ts=quando - timedelta(seconds=1))))
 
     assert resultado.hive_id is None
 ```
@@ -258,8 +258,8 @@ instante com `.replace(microsecond=0)`.
 <details>
 <summary>Meu teste não compila: falta import</summary>
 
-`test_ingest.py` já importa quase tudo. Confira que estão lá `datetime`, `UTC`,
-`timedelta`, `NodeAssignment` e `select` — os dois últimos já são usados por
+`test_ingestao.py` já importa quase tudo. Confira que estão lá `datetime`, `UTC`,
+`timedelta`, `Vinculo` e `select` — os dois últimos já são usados por
 `test_no_remanejado_atribui_pela_data_da_medicao`.
 </details>
 

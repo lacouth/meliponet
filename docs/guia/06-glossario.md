@@ -23,7 +23,7 @@ termorregulatório da colônia.
 **Nó** *(node)* — o dispositivo instalado numa colmeia: placa, sensores e o firmware que
 é o exercício do projeto (ver [`firmware/ROTEIRO.md`](../../firmware/ROTEIRO.md)).
 
-**Vínculo** (`NodeAssignment`) — o período em que um nó esteve numa colmeia, com
+**Vínculo** (`Vinculo`) — o período em que um nó esteve numa colmeia, com
 `installed_at` e `removed_at`. A colmeia de uma medição é resolvida pelo instante da
 medição, não pelo estado atual.
 
@@ -38,7 +38,7 @@ Desacopla o desenvolvimento da plataforma da entrega do hardware.
 
 **API** — a interface pela qual um programa é usado por outro.
 
-**Blueprint** — no Flask, um grupo de rotas relacionadas. Ex.: `dashboard.py`.
+**Blueprint** — no Flask, um grupo de rotas relacionadas. Ex.: `painel.py`.
 
 **Branch** — linha de trabalho paralela no git.
 

@@ -1,27 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Editar {{ hive.name }} — MelipoNet{% endblock %}
+{% block title %}Editar {{ colmeia.name }} — MelipoNet{% endblock %}
 {% block content %}
 
 <h1>Editar colmeia</h1>
-<p class="sub">Em <strong>{{ hive.apiary.name }}</strong>.</p>
+<p class="sub">Em <strong>{{ colmeia.apiary.name }}</strong>.</p>
 
 <form method="post" class="card" style="max-width:620px;">
   <label class="field"><span>Nome</span>
-    <input name="nome" required value="{{ hive.name }}"></label>
+    <input name="nome" required value="{{ colmeia.name }}"></label>
 
   <div class="form-row">
     <label class="field"><span>Espécie</span>
       <select name="especie">
         <option value="">—</option>
-        {% for nome in species %}
-        <option {% if nome == hive.species %}selected{% endif %}>{{ nome }}</option>
+        {% for nome in especies %}
+        <option {% if nome == colmeia.species %}selected{% endif %}>{{ nome }}</option>
         {% endfor %}
-        {% if hive.species and hive.species not in species %}
-        <option selected>{{ hive.species }}</option>
+        {% if colmeia.species and colmeia.species not in especies %}
+        <option selected>{{ colmeia.species }}</option>
         {% endif %}
       </select></label>
     <label class="field"><span>Tipo de caixa</span>
-      <input name="caixa" value="{{ hive.box_type or '' }}" placeholder="INPA"></label>
+      <input name="caixa" value="{{ colmeia.box_type or '' }}" placeholder="INPA"></label>
   </div>
 
   <label class="field">
@@ -32,7 +32,7 @@
   <label class="field">
     <span>Observações</span>
     <textarea name="observacoes"
-      placeholder="Origem da colônia, manejos feitos, o que for útil para interpretar a série.">{{ hive.notes or '' }}</textarea>
+      placeholder="Origem da colônia, manejos feitos, o que for útil para interpretar a série.">{{ colmeia.notes or '' }}</textarea>
   </label>
 
   <p class="sub" style="font-size:13px;">
@@ -42,7 +42,7 @@
   </p>
 
   <button type="submit">Salvar</button>
-  <a class="btn ghost" href="{{ url_for('manage.index') }}">Cancelar</a>
+  <a class="btn ghost" href="{{ url_for('gerenciar.index') }}">Cancelar</a>
 </form>
 
 {% endblock %}

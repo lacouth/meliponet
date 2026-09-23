@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 
-from meliponet.config import Config
-from meliponet.db import session_scope
-from meliponet.models import IngestReject, Measurement
+from meliponet.banco import abrir_sessao
+from meliponet.configuracao import Configuracao
+from meliponet.modelos import Medicao, Recusa
 from mensagem import ESQUEMA, serializar
 from sqlalchemy import select
 
@@ -44,8 +44,8 @@ def test_leitura_valida_e_gravada(client, scenario) -> None:
     assert corpo["ok"] is True
     assert corpo["colmeia"] == scenario.hive_id
 
-    with session_scope() as session:
-        row = session.scalar(select(Measurement))
+    with abrir_sessao() as session:
+        row = session.scalar(select(Medicao))
         assert row.node_id == "A4C13800"
         assert row.seq == 1
 
@@ -63,8 +63,8 @@ def test_reenvio_responde_sucesso_e_nao_duplica(client, scenario) -> None:
     assert resposta.status_code == 200
     assert resposta.get_json()["repetida"] is True
 
-    with session_scope() as session:
-        assert len(session.scalars(select(Measurement)).all()) == 1
+    with abrir_sessao() as session:
+        assert len(session.scalars(select(Medicao)).all()) == 1
 
 
 def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, scenario) -> None:
@@ -73,8 +73,8 @@ def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, scenario)
     assert resposta.status_code == 400
     assert resposta.get_json()["erro"]
 
-    with session_scope() as session:
-        recusa = session.scalar(select(IngestReject))
+    with abrir_sessao() as session:
+        recusa = session.scalar(select(Recusa))
         assert recusa is not None
         assert recusa.reason
         assert recusa.topic == "http:/api/v1/telemetria"
@@ -88,10 +88,10 @@ def test_json_malformado_nao_derruba_a_rota(client, scenario) -> None:
 
 
 def test_token_e_exigido_quando_configurado(db, scenario) -> None:
-    from meliponet import create_app
+    from meliponet import criar_app
 
-    app = create_app(
-        Config(
+    app = criar_app(
+        Configuracao(
             database_url=str(db.url),
             secret_key="teste",
             mqtt_host="localhost",

@@ -50,8 +50,8 @@ def test_seed_encontra_o_meliponario_da_propria_organizacao(db):
     organizacao B encontrava o meliponario homonimo da A e pendurava as colmeias novas
     la, onde ninguem da B as veria.
     """
-    from meliponet.db import session_scope
-    from meliponet.models import Apiary, Organization
+    from meliponet.banco import abrir_sessao
+    from meliponet.modelos import Meliponario, Organizacao
     from sqlalchemy import select
 
     from simulator.__main__ import APIARIES, seed_database
@@ -61,11 +61,11 @@ def test_seed_encontra_o_meliponario_da_propria_organizacao(db):
     seed_database([HiveSimulator(node_id="A4C13901", name="Colmeia 01", species="M")], "Org B", 1)
 
     nome = APIARIES[0][0]
-    with session_scope() as session:
-        apiaries = list(session.scalars(select(Apiary).where(Apiary.name == nome)))
+    with abrir_sessao() as session:
+        apiaries = list(session.scalars(select(Meliponario).where(Meliponario.name == nome)))
         assert len(apiaries) == 2, "cada organizacao precisa do seu proprio meliponario"
 
         donos = {
-            session.get(Organization, apiary.organization_id).name for apiary in apiaries
+            session.get(Organizacao, meliponario.organization_id).name for meliponario in apiaries
         }
         assert donos == {"Org A", "Org B"}

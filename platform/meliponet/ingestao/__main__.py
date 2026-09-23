@@ -16,65 +16,63 @@ from types import FrameType
 
 import paho.mqtt.client as mqtt
 
-from meliponet.config import Config
-from meliponet.db import create_all, init_engine, session_scope
-from meliponet.ingest import store as store_module
-from meliponet.ingest.telemetry import TelemetryError, decode
+from meliponet.banco import abrir_sessao, criar_tabelas, iniciar_banco
+from meliponet.configuracao import Configuracao
+from meliponet.ingestao import gravacao
+from meliponet.ingestao.telemetria import ErroDeTelemetria, decodificar
 
-LOGGER = logging.getLogger("meliponet.ingest")
+LOGGER = logging.getLogger("meliponet.ingestao")
 
 #: Assina toda a v1: os nos publicam direto por WiFi na Fase 3 e, na Fase 5, o gateway
 #: LoRa publica no mesmo topico. Do broker para dentro, nada muda.
-TELEMETRY_TOPIC = "meliponet/v1/+/telemetry"
+TOPICO_DE_TELEMETRIA = "meliponet/v1/+/telemetry"
 
 #: Identidade estavel da sessao. Com `clean_session=False`, e o que permite ao broker
 #: guardar as mensagens QoS 1 enquanto este processo esta fora do ar.
-CLIENT_ID = "meliponet-ingest"
+ID_DO_CLIENTE = "meliponet-ingest"
 
 
-def handle_message(payload: bytes, topic: str) -> None:
+def tratar_mensagem(payload: bytes, topico: str) -> None:
     """Valida e grava uma mensagem. Recusas sao registradas, nunca silenciadas."""
     try:
-        telemetry = decode(payload)
-    except TelemetryError as exc:
-        LOGGER.warning("mensagem recusada em %s: %s", topic, exc.reason)
-        with session_scope() as session:
-            store_module.record_reject(session, exc.reason, payload, topic)
+        leitura = decodificar(payload)
+    except ErroDeTelemetria as exc:
+        LOGGER.warning("mensagem recusada em %s: %s", topico, exc.motivo)
+        with abrir_sessao() as session:
+            gravacao.registrar_recusa(session, exc.motivo, payload, topico)
         return
 
-    with session_scope() as session:
-        result = store_module.store(session, telemetry)
+    with abrir_sessao() as session:
+        resultado = gravacao.gravar(session, leitura)
 
-    if result.duplicate:
-        LOGGER.debug("reenvio ignorado: no %s seq %s", telemetry.node_id, telemetry.seq)
+    if resultado.duplicate:
+        LOGGER.debug("reenvio ignorado: no %s seq %s", leitura.node_id, leitura.seq)
     else:
-        LOGGER.info(
-            "gravado: no %s seq %s em %s", telemetry.node_id, telemetry.seq, telemetry.ts
-        )
+        LOGGER.info("gravado: no %s seq %s em %s", leitura.node_id, leitura.seq, leitura.ts)
 
 
-def build_client(config: Config) -> mqtt.Client:
+def montar_cliente(configuracao: Configuracao) -> mqtt.Client:
     client = mqtt.Client(
         mqtt.CallbackAPIVersion.VERSION2,
-        client_id=CLIENT_ID,
+        client_id=ID_DO_CLIENTE,
         clean_session=False,
     )
-    if config.mqtt_username:
-        client.username_pw_set(config.mqtt_username, config.mqtt_password)
+    if configuracao.mqtt_username:
+        client.username_pw_set(configuracao.mqtt_username, configuracao.mqtt_password)
 
     def on_connect(client: mqtt.Client, _userdata, _flags, reason_code, _properties=None):
         if reason_code != 0:
             LOGGER.error("falha ao conectar no broker: %s", reason_code)
             return
-        LOGGER.info("conectado ao broker; assinando %s", TELEMETRY_TOPIC)
+        LOGGER.info("conectado ao broker; assinando %s", TOPICO_DE_TELEMETRIA)
         # A assinatura e refeita a cada conexao, e nao so na primeira: apos uma queda
         # de rede o broker pode ter perdido a sessao, e sem reassinar o ingestor
         # ficaria conectado porem surdo.
-        client.subscribe(TELEMETRY_TOPIC, qos=1)
+        client.subscribe(TOPICO_DE_TELEMETRIA, qos=1)
 
     def on_message(_client: mqtt.Client, _userdata, message: mqtt.MQTTMessage):
         try:
-            handle_message(message.payload, message.topic)
+            tratar_mensagem(message.payload, message.topic)
         except Exception:
             # Uma falha ao processar uma mensagem nao pode derrubar o consumidor e
             # parar a ingestao de todas as outras colmeias.
@@ -90,12 +88,12 @@ def main() -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
-    config = Config.from_env()
+    configuracao = Configuracao.do_ambiente()
 
-    engine = init_engine(config.database_url)
-    create_all(engine)
+    engine = iniciar_banco(configuracao.database_url)
+    criar_tabelas(engine)
 
-    client = build_client(config)
+    client = montar_cliente(configuracao)
 
     def shutdown(_signum: int, _frame: FrameType | None) -> None:
         LOGGER.info("encerrando")
@@ -104,8 +102,8 @@ def main() -> int:
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    LOGGER.info("conectando em %s:%s", config.mqtt_host, config.mqtt_port)
-    client.connect(config.mqtt_host, config.mqtt_port, keepalive=60)
+    LOGGER.info("conectando em %s:%s", configuracao.mqtt_host, configuracao.mqtt_port)
+    client.connect(configuracao.mqtt_host, configuracao.mqtt_port, keepalive=60)
     client.loop_forever(retry_first_connection=True)
     return 0
 

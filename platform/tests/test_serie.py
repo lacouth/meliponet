@@ -10,9 +10,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from meliponet.db import session_scope
-from meliponet.models import Measurement
-from meliponet.services import series as series_service
+from meliponet.banco import abrir_sessao
+from meliponet.modelos import Medicao
+from meliponet.servicos import serie as servico_de_serie
 
 
 @pytest.fixture
@@ -23,12 +23,12 @@ def hive_id(scenario) -> int:
 def fill(hive_id: int, *, count: int, skip: frozenset[int] = frozenset()) -> None:
     """Grava ``count`` leituras a cada 5 min, pulando os índices em ``skip``."""
     now = datetime.now(UTC)
-    with session_scope() as session:
+    with abrir_sessao() as session:
         for index in range(count):
             if index in skip:
                 continue
             session.add(
-                Measurement(
+                Medicao(
                     time=now - timedelta(minutes=5 * (count - index)),
                     node_id="A4C13800",
                     hive_id=hive_id,
@@ -45,8 +45,8 @@ def fill(hive_id: int, *, count: int, skip: frozenset[int] = frozenset()) -> Non
 def test_lacuna_vira_null_e_nao_ponto_ausente(hive_id: int) -> None:
     fill(hive_id, count=60, skip=frozenset({20, 21, 22}))
 
-    with session_scope() as session:
-        points = series_service.series(session, hive_id, "24h")
+    with abrir_sessao() as session:
+        points = servico_de_serie.serie(session, hive_id, "24h")
 
     valores = [p.values["temp_in_c"] for p in points]
     # Buracos internos à série: descarta a cauda vazia anterior à primeira leitura.
@@ -65,8 +65,8 @@ def test_serie_cobre_a_janela_inteira(hive_id: int) -> None:
     """
     fill(hive_id, count=10)
 
-    with session_scope() as session:
-        points = series_service.series(session, hive_id, "24h")
+    with abrir_sessao() as session:
+        points = servico_de_serie.serie(session, hive_id, "24h")
 
     assert len(points) in (288, 289)
 
@@ -78,9 +78,9 @@ def test_baldes_sao_estaveis_entre_consultas(hive_id: int) -> None:
     """
     fill(hive_id, count=30)
 
-    with session_scope() as session:
-        primeiro = [p.time for p in series_service.series(session, hive_id, "24h")]
-        segundo = [p.time for p in series_service.series(session, hive_id, "24h")]
+    with abrir_sessao() as session:
+        primeiro = [p.time for p in servico_de_serie.serie(session, hive_id, "24h")]
+        segundo = [p.time for p in servico_de_serie.serie(session, hive_id, "24h")]
 
     assert primeiro == segundo
 
@@ -89,8 +89,8 @@ def test_completude_conta_saltos_de_seq(hive_id: int) -> None:
     """Completude vem dos saltos em ``seq``, medida direta, não de estimativa por tempo."""
     fill(hive_id, count=40, skip=frozenset({5, 6, 17}))
 
-    with session_scope() as session:
-        resultado = series_service.completeness(session, hive_id, "24h")
+    with abrir_sessao() as session:
+        resultado = servico_de_serie.completude(session, hive_id, "24h")
 
     assert resultado["received"] == 37
     assert resultado["expected"] == 40
@@ -98,6 +98,6 @@ def test_completude_conta_saltos_de_seq(hive_id: int) -> None:
 
 
 def test_colmeia_sem_leitura(hive_id: int) -> None:
-    with session_scope() as session:
-        assert series_service.latest(session, hive_id) is None
-        assert series_service.completeness(session, hive_id, "24h")["received"] == 0
+    with abrir_sessao() as session:
+        assert servico_de_serie.ultima_leitura(session, hive_id) is None
+        assert servico_de_serie.completude(session, hive_id, "24h")["received"] == 0

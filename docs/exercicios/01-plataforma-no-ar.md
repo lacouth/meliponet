@@ -84,7 +84,7 @@ arquivo `meliponet-dev.sqlite3` passa a existir na raiz do repositório.
 #### 2.3 — crie o seu usuário
 
 ```bash
-.venv/bin/python -m flask --app "meliponet:create_app" criar-usuario \
+.venv/bin/python -m flask --app "meliponet:criar_app" criar-usuario \
   --email voce@exemplo.br --nome "Seu Nome" --organizacao "Teste" --perfil admin
 ```
 
@@ -115,7 +115,7 @@ gráfico com buraco antes de ver um gráfico perfeito. Colmeia real produz séri
 #### 2.5 — suba o servidor
 
 ```bash
-cd platform && .venv/bin/python -m flask --app "meliponet:create_app" run
+cd platform && .venv/bin/python -m flask --app "meliponet:criar_app" run
 ```
 
 **Confira:** ele imprime `Running on http://127.0.0.1:5000`. Deixe este terminal ocupado —
@@ -175,7 +175,7 @@ dono legítimo deixava de enxergar o próprio nó, sem erro nenhum na tela.
 *Por que ninguém notou:* nenhum teste exercitava o perfil `admin`; as fixtures nasciam
 meliponicultor. Um conjunto de testes que nunca constrói um dos casos não cobre aquele
 caso, por mais linhas que tenha.
-*Como saber que funcionou:* as duas rotas passaram a perguntar ao `services/scope.py` em
+*Como saber que funcionou:* as duas rotas passaram a perguntar ao `servicos/escopo.py` em
 vez de comparar `organization_id` na mão, e o teste do nó alheio continua exigindo 403 —
 que é o que garante que a correção não virou buraco de segurança.
 

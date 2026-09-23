@@ -6,12 +6,12 @@ e quem esta escrevendo o firmware do zero precisa ver o ponto aparecer no grafic
 mesmo dia, com o que ja tem na mao. Um POST resolve isso: HTTPClient no ESP32, `curl` na
 bancada, e nenhuma peca a mais para instalar.
 
-Os dois caminhos entram no mesmo lugar: `decode()` valida e `store()` grava, os mesmos
+Os dois caminhos entram no mesmo lugar: `decodificar()` valida e `gravar()` grava, os mesmos
 que o ingestor MQTT chama. Nada aqui e uma segunda implementacao da ingestao -- se
 fosse, os dois caminhos divergiriam e o no que passa a publicar em MQTT (etapa final do
 roteiro) veria a plataforma se comportar de outro jeito.
 
-Esta e a unica rota que abre a sessao na mao, com `session_scope()`, em vez de usar a
+Esta e a unica rota que abre a sessao na mao, com `abrir_sessao()`, em vez de usar a
 sessao da requisicao: ela **grava a recusa e responde 400**, e a sessao da requisicao
 desfaz o que a resposta de erro tocou. E o comportamento certo para as telas e o errado
 aqui -- sem a recusa gravada, o aluno fica sem nada para depurar.
@@ -21,9 +21,9 @@ from __future__ import annotations
 
 from flask import Blueprint, current_app, jsonify, request
 
-from meliponet.db import session_scope
-from meliponet.ingest.store import record_reject, store
-from meliponet.ingest.telemetry import TelemetryError, decode
+from meliponet.banco import abrir_sessao
+from meliponet.ingestao.gravacao import gravar, registrar_recusa
+from meliponet.ingestao.telemetria import ErroDeTelemetria, decodificar
 
 bp = Blueprint("api", __name__, url_prefix="/api/v1")
 
@@ -54,16 +54,16 @@ def telemetria():
     corpo = request.get_data()
 
     try:
-        leitura = decode(corpo)
-    except TelemetryError as exc:
+        leitura = decodificar(corpo)
+    except ErroDeTelemetria as exc:
         # A mensagem recusada e guardada com o motivo, igual ao caminho MQTT: recusa em
         # silencio some, e o aluno fica sem nada para depurar.
-        with session_scope() as session:
-            record_reject(session, exc.reason, corpo, ORIGEM)
-        return jsonify({"erro": exc.reason}), 400
+        with abrir_sessao() as session:
+            registrar_recusa(session, exc.motivo, corpo, ORIGEM)
+        return jsonify({"erro": exc.motivo}), 400
 
-    with session_scope() as session:
-        resultado = store(session, leitura)
+    with abrir_sessao() as session:
+        resultado = gravar(session, leitura)
 
     if resultado.duplicate:
         # Nao e erro: o no que guardou a leitura durante uma queda de rede vai reenvia-la,

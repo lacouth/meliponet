@@ -15,7 +15,7 @@
 </div>
 {% endif %}
 
-{% if pending %}
+{% if pendentes %}
 <h2>Nós aguardando vínculo</h2>
 <p class="sub">
   Estes nós enviaram telemetria válida mas ainda não pertencem a nenhuma colmeia. As
@@ -23,40 +23,40 @@
   existir — nenhum dado foi perdido.
 </p>
 <div class="card">
-  {% for node in pending %}
+  {% for no in pendentes %}
     <div style="display:flex; align-items:center; gap:12px; padding:6px 0;">
-      <code>{{ node.node_id }}</code>
-      <span class="pill">visto {{ node.last_seen_at | localtime }}</span>
+      <code>{{ no.node_id }}</code>
+      <span class="pill">visto {{ no.last_seen_at | hora_local }}</span>
       <a class="btn ghost" style="margin-left:auto"
-         href="{{ url_for('manage.assign_node', node_id=node.id) }}">Vincular a uma colmeia</a>
+         href="{{ url_for('gerenciar.vincular_no', no_id=no.id) }}">Vincular a uma colmeia</a>
     </div>
   {% endfor %}
 </div>
 {% endif %}
 
 <h2>Meliponários e colmeias</h2>
-{% for apiary in apiaries %}
+{% for meliponario in meliponarios %}
 <div class="card" style="margin-bottom:14px;">
   <div style="display:flex; align-items:baseline; gap:10px;">
-    <strong>{{ apiary.name }}</strong>
-    <span class="pill">{{ apiary.municipality or 'sem município' }}</span>
+    <strong>{{ meliponario.name }}</strong>
+    <span class="pill">{{ meliponario.municipality or 'sem município' }}</span>
     {% if pode_gerenciar %}
     <a class="btn ghost" style="margin-left:auto"
-       href="{{ url_for('manage.edit_apiary', apiary_id=apiary.id) }}">Editar</a>
+       href="{{ url_for('gerenciar.editar_meliponario', meliponario_id=meliponario.id) }}">Editar</a>
     {% endif %}
   </div>
-  {% if apiary.hives %}
+  {% if meliponario.hives %}
   <table style="margin-top:10px;">
     <thead><tr><th>Colmeia</th><th>Espécie</th><th>Caixa</th><th></th></tr></thead>
     <tbody>
-      {% for hive in apiary.hives %}
+      {% for colmeia in meliponario.hives %}
       <tr>
-        <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=hive.id) }}">{{ hive.name }}</a></td>
-        <td><em>{{ hive.species or '—' }}</em></td>
-        <td>{{ hive.box_type or '—' }}</td>
+        <td><a class="hive" href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=colmeia.id) }}">{{ colmeia.name }}</a></td>
+        <td><em>{{ colmeia.species or '—' }}</em></td>
+        <td>{{ colmeia.box_type or '—' }}</td>
         <td style="text-align:right">
           {% if pode_gerenciar %}
-          <a class="btn ghost" href="{{ url_for('manage.edit_hive', hive_id=hive.id) }}">Editar</a>
+          <a class="btn ghost" href="{{ url_for('gerenciar.editar_colmeia', colmeia_id=colmeia.id) }}">Editar</a>
           {% else %}—{% endif %}
         </td>
       </tr>
@@ -68,15 +68,15 @@
   {% endif %}
 
   {% if pode_gerenciar %}
-  <form method="post" action="{{ url_for('manage.create_hive') }}" style="margin-top:14px;">
-    <input type="hidden" name="meliponario_id" value="{{ apiary.id }}">
+  <form method="post" action="{{ url_for('gerenciar.criar_colmeia') }}" style="margin-top:14px;">
+    <input type="hidden" name="meliponario_id" value="{{ meliponario.id }}">
     <div class="form-row">
       <label class="field"><span>Nova colmeia</span>
         <input name="nome" required placeholder="Colmeia 05"></label>
       <label class="field"><span>Espécie</span>
         <select name="especie">
           <option value="">—</option>
-          {% for nome in species %}<option>{{ nome }}</option>{% endfor %}
+          {% for nome in especies %}<option>{{ nome }}</option>{% endfor %}
         </select></label>
       <label class="field"><span>Tipo de caixa</span>
         <input name="caixa" placeholder="INPA"></label>
@@ -93,7 +93,7 @@
 
 {% if pode_gerenciar %}
 <h2>Novo meliponário</h2>
-<form method="post" action="{{ url_for('manage.create_apiary') }}" class="card">
+<form method="post" action="{{ url_for('gerenciar.criar_meliponario') }}" class="card">
   <div class="form-row">
     <label class="field"><span>Nome</span><input name="nome" required></label>
     <label class="field"><span>Município</span><input name="municipio" placeholder="João Pessoa"></label>
@@ -109,18 +109,18 @@
   <table>
     <thead><tr><th>Nó</th><th>Colmeia atual</th><th>Última mensagem</th><th></th></tr></thead>
     <tbody>
-      {% for node in nodes %}
-      {% set assignment = node.current_assignment %}
+      {% for no in nos %}
+      {% set vinculo = no.vinculo_atual %}
       <tr>
-        <td><code>{{ node.node_id }}</code></td>
-        <td>{{ assignment.hive.name if assignment else '—' }}</td>
-        <td>{{ node.last_seen_at | localtime }}</td>
+        <td><code>{{ no.node_id }}</code></td>
+        <td>{{ vinculo.hive.name if vinculo else '—' }}</td>
+        <td>{{ no.last_seen_at | hora_local }}</td>
         <td style="text-align:right">
           {% if pode_gerenciar %}
-          <a class="btn ghost" href="{{ url_for('manage.assign_node', node_id=node.id) }}">
-            {{ 'Remanejar' if assignment else 'Vincular' }}</a>
-          {% if assignment %}
-          <form method="post" action="{{ url_for('manage.unassign_node', node_id=node.id) }}"
+          <a class="btn ghost" href="{{ url_for('gerenciar.vincular_no', no_id=no.id) }}">
+            {{ 'Remanejar' if vinculo else 'Vincular' }}</a>
+          {% if vinculo %}
+          <form method="post" action="{{ url_for('gerenciar.desvincular_no', no_id=no.id) }}"
                 style="display:inline">
             <button class="btn ghost" type="submit">Desvincular</button>
           </form>

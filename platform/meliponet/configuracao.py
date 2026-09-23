@@ -11,11 +11,11 @@ from dataclasses import dataclass
 
 #: Fuso de exibicao. Os dados sao sempre gravados em UTC; a conversao acontece so na
 #: apresentacao, para que a mudanca de fuso nunca corrompa uma serie ja coletada.
-DISPLAY_TIMEZONE = "America/Fortaleza"
+FUSO_DE_EXIBICAO = "America/Fortaleza"
 
 
 @dataclass(frozen=True, slots=True)
-class Config:
+class Configuracao:
     database_url: str
     secret_key: str
     mqtt_host: str
@@ -27,7 +27,7 @@ class Config:
     token_ingestao: str | None = None
 
     @classmethod
-    def from_env(cls) -> Config:
+    def do_ambiente(cls) -> Configuracao:
         return cls(
             # SQLite como padrao permite rodar e testar a plataforma sem infraestrutura.
             # Em producao o compose injeta a URL do PostgreSQL/TimescaleDB, e e la que

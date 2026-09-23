@@ -16,12 +16,12 @@ Cada função dessas se chama **view**, e a ligação entre URL e função é um
 ```python
 @bp.route("/colmeia/<int:hive_id>")     # a rota
 @login_required                          # só entra quem está autenticado
-def hive_detail(hive_id: int):           # a view
+def detalhe_da_colmeia(hive_id: int):           # a view
     ...
     return render_template("hive.html", **context)
 ```
 
-Abrir `http://servidor/colmeia/7` chama `hive_detail(hive_id=7)`.
+Abrir `http://servidor/colmeia/7` chama `detalhe_da_colmeia(hive_id=7)`.
 
 ## A estrutura de pastas
 
@@ -31,25 +31,26 @@ platform/
 ├── alembic.ini                 configuração das migrações
 │
 ├── meliponet/                  ← O CÓDIGO
-│   ├── __init__.py             create_app(): monta a aplicação
-│   ├── config.py               lê as variáveis de ambiente
-│   ├── db.py                   conexão com o banco
-│   ├── models.py               as tabelas, como classes Python
+│   ├── __init__.py             criar_app(): monta a aplicação
+│   ├── configuracao.py         lê as variáveis de ambiente
+│   ├── banco.py                conexão com o banco e as sessões
+│   ├── modelos.py              as tabelas, como classes Python
 │   ├── cli.py                  comandos de terminal (criar-usuario)
 │   │
-│   ├── blueprints/             ← AS ROTAS (o que o navegador acessa)
+│   ├── rotas/                  ← AS ROTAS (o que o navegador acessa)
 │   │   ├── api.py                 POST /api/v1/telemetria: a porta do nó
-│   │   ├── auth.py                login e logout
-│   │   ├── dashboard.py           a tela das colmeias e os gráficos
-│   │   └── manage.py              cadastros e vínculo nó↔colmeia
+│   │   ├── autenticacao.py        entrar e sair
+│   │   ├── painel.py              a tela das colmeias e os gráficos
+│   │   ├── publico.py             a página inicial, sem login
+│   │   └── gerenciar.py           cadastros e vínculo nó↔colmeia
 │   │
-│   ├── services/               ← A LÓGICA (sem saber que existe web)
-│   │   ├── scope.py               quem pode ver o quê
-│   │   └── series.py              as consultas que alimentam os gráficos
+│   ├── servicos/               ← A LÓGICA (sem saber que existe web)
+│   │   ├── escopo.py              quem pode ver o quê
+│   │   └── serie.py               as consultas que alimentam os gráficos
 │   │
-│   ├── ingest/                 ← A ENTRADA DE DADOS (processo separado)
-│   │   ├── telemetry.py           valida a mensagem contra o contrato
-│   │   ├── store.py               grava no banco
+│   ├── ingestao/               ← A ENTRADA DE DADOS (processo separado)
+│   │   ├── telemetria.py          valida a mensagem contra o contrato
+│   │   ├── gravacao.py            grava no banco
 │   │   └── __main__.py            o consumidor MQTT
 │   │
 │   └── templates/              ← O HTML
@@ -69,18 +70,18 @@ Aqui a coisa é dividida em camadas, e vale entender a razão — não é organi
 organização.
 
 ```
-blueprints/   fala HTTP: recebe requisição, devolve HTML
+rotas/       fala HTTP: recebe requisição, devolve HTML
      ↓
-services/     lógica de negócio: não sabe o que é uma requisição
+servicos/    lógica de negócio: não sabe o que é uma requisição
      ↓
-models.py     as tabelas
+modelos.py   as tabelas
      ↓
 banco
 ```
 
-**A regra: uma camada só chama a de baixo.** `services/` nunca importa `blueprints/`.
+**A regra: uma camada só chama a de baixo.** `servicos/` nunca importa `rotas/`.
 
-O motivo prático fica claro num exemplo. `services/series.py` calcula a série de uma
+O motivo prático fica claro num exemplo. `servicos/serie.py` calcula a série de uma
 colmeia. Como ele não sabe o que é HTTP, ele pode ser chamado:
 
 - pela página web,
@@ -89,16 +90,16 @@ colmeia. Como ele não sabe o que é HTTP, ele pode ser chamado:
 - por um teste, sem subir servidor nenhum.
 
 Se a lógica estivesse dentro da view, cada um desses casos precisaria simular uma
-requisição HTTP para calcular uma média. É por isso que os testes em `test_series.py`
+requisição HTTP para calcular uma média. É por isso que os testes em `test_serie.py`
 rodam em milissegundos, sem servidor.
 
-## `models.py` — as tabelas como classes
+## `modelos.py` — as tabelas como classes
 
 Em vez de escrever SQL, descrevemos as tabelas como classes Python. A biblioteca que faz
 essa tradução (SQLAlchemy) chama-se **ORM**.
 
 ```python
-class Hive(Base):
+class Colmeia(Base):
     __tablename__ = "hives"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -110,7 +111,7 @@ class Hive(Base):
 E as consultas viram Python:
 
 ```python
-hive = session.scalar(select(Hive).where(Hive.id == 7))
+hive = session.scalar(select(Colmeia).where(Colmeia.id == 7))
 print(hive.name)
 ```
 
@@ -124,11 +125,11 @@ modelo. Um nó é remanejado entre colmeias em campo: sai de uma caixa que colap
 em outra. Se o vínculo fosse uma coluna em `nodes`, remanejar **reescreveria o passado**
 — toda a série histórica da colmeia antiga passaria a ser atribuída à nova.
 
-Por isso existe `NodeAssignment`, com `installed_at` e `removed_at`. A colmeia de uma
+Por isso existe `Vinculo`, com `installed_at` e `removed_at`. A colmeia de uma
 medição é resolvida pelo **instante da medição**:
 
 ```python
-def resolve_hive(session, node, when):
+def colmeia_no_instante(session, node, when):
     # "em que colmeia este nó estava em `when`?" — não "onde ele está hoje"
 ```
 
@@ -144,7 +145,7 @@ Uma **migração** é um script que transforma a estrutura do banco de uma vers�
 seguinte, preservando os dados. A ferramenta é o Alembic.
 
 ```bash
-# depois de mudar models.py, gere a migração
+# depois de mudar modelos.py, gere a migração
 python -m alembic revision --autogenerate -m "adiciona coluna X"
 
 # LEIA o arquivo gerado em migrations/versions/ antes de aplicar
@@ -191,7 +192,7 @@ Por isso a sessão está amarrada à requisição, e não à view:
 ```python
 @bp.route("/colmeia/<int:hive_id>")
 @login_required
-def hive_detail(hive_id: int):
+def detalhe_da_colmeia(hive_id: int):
     session = sessao_do_request()          # abre na primeira chamada da requisição
     ...
 ```
@@ -199,7 +200,7 @@ def hive_detail(hive_id: int):
 Quem fecha é o Flask, no fim da requisição, seguindo uma regra só:
 **requisição que terminou bem grava; qualquer outra coisa desfaz.** Uma resposta 4xx ou
 5xx não commita, mesmo que a view já tivesse mexido em algum objeto antes de desistir. O
-mecanismo está em `db.py`, em `registrar_sessao_por_request`.
+mecanismo está em `banco.py`, em `registrar_sessao_por_request`.
 
 Com a sessão aberta, o template escreve `{{ colmeia.apiary.name }}` sem cerimônia.
 
@@ -208,9 +209,9 @@ Com a sessão aberta, o template escreve `{{ colmeia.apiary.name }}` sem cerimô
 ```python
 apiaries = list(
     session.scalars(
-        scope.apiaries_for(current_user)
-        .options(selectinload(Apiary.hives))
-        .order_by(Apiary.name)
+        escopo.meliponarios_visiveis(current_user)
+        .options(selectinload(Meliponario.hives))
+        .order_by(Meliponario.name)
     )
 )
 ```
@@ -229,16 +230,16 @@ O ingestor MQTT, o `cli.py` e os testes não têm requisição nenhuma, e contin
 sessão na mão:
 
 ```python
-with session_scope() as session:
+with abrir_sessao() as session:
     gravar(session, decodificar(mensagem))
 ```
 
-Há uma exceção que vale entender, em `blueprints/api.py`: a rota HTTP de telemetria
-**também** usa `session_scope()`, mesmo sendo uma rota. O motivo é que ela grava a recusa
+Há uma exceção que vale entender, em `rotas/api.py`: a rota HTTP de telemetria
+**também** usa `abrir_sessao()`, mesmo sendo uma rota. O motivo é que ela grava a recusa
 de uma mensagem inválida e **responde 400** — e a regra da sessão por requisição desfaria
 justamente o registro que serve para depurar.
 
-## `services/scope.py` — quem vê o quê
+## `servicos/escopo.py` — quem vê o quê
 
 Três perfis: `meliponicultor` vê só a própria organização, `pesquisador` vê tudo mas não
 edita, `admin` vê tudo e edita.
@@ -250,10 +251,10 @@ regra num lugar, esquecer fica difícil.
 
 ```python
 # ✅ certo
-hives = session.scalars(scope.hives_for(current_user))
+hives = session.scalars(escopo.colmeias_visiveis(current_user))
 
 # ❌ errado — vê tudo, sem reclamar
-hives = session.scalars(select(Hive))
+hives = session.scalars(select(Colmeia))
 ```
 
 E repare que colmeia alheia responde **404, não 403**. Um 403 confirmaria que aquele id
@@ -267,7 +268,7 @@ desenhados, e levava **403 ao clicar**. Junto ia um defeito mais silencioso — 
 carimbava no nó a organização de quem estava logado, e um admin que adotasse um nó para
 a colmeia de outra organização levava o nó consigo, deixando o dono legítimo sem
 enxergar o próprio nó. É a mesma lição do arquivo, do outro lado: **a regra concentrada
-só protege quem a chama**. Hoje as duas rotas usam `can_manage_node`, e o nó recebe a
+só protege quem a chama**. Hoje as duas rotas usam `pode_gerenciar_no`, e o nó recebe a
 organização da colmeia.
 
 E há uma segunda lição, sobre teste: nenhum teste exercitava o perfil `admin` — as
@@ -277,17 +278,17 @@ não cobre aquele caso, por mais linhas que tenha.
 ## As duas portas por onde a telemetria entra
 
 O nó pode entregar a leitura de dois jeitos, e os dois terminam nas mesmas duas funções
-(`ingest.telemetry.decode` valida, `ingest.store.store` grava). Não existe uma segunda
+(`ingestao.telemetria.decodificar` valida, `ingestao.gravacao.gravar` grava). Não existe uma segunda
 implementação da ingestão — se existisse, os dois caminhos divergiriam, e o nó que
 trocasse de transporte veria a plataforma se comportar de outro jeito.
 
-**`blueprints/api.py` — `POST /api/v1/telemetria`.** É a porta que o aluno usa enquanto
+**`rotas/api.py` — `POST /api/v1/telemetria`.** É a porta que o aluno usa enquanto
 escreve o firmware: nenhuma peça a mais para instalar, e a resposta HTTP diz na hora o
 que estava errado (`201` gravou, `200` já tinha, `400` com o motivo). O token de ingestão
 é opcional: sem `TOKEN_INGESTAO` no ambiente a rota aceita qualquer POST, o que permite
 testar com `curl` sem configurar nada.
 
-**`ingest/__main__.py` — o consumidor MQTT.** É a porta de campo, e roda como um programa
+**`ingestao/__main__.py` — o consumidor MQTT.** É a porta de campo, e roda como um programa
 próprio, não dentro do servidor web. Ele:
 
 1. conecta no broker MQTT e assina `meliponet/v1/+/telemetry`;
@@ -311,13 +312,13 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 export DATABASE_URL="sqlite:///$PWD/../meliponet-dev.sqlite3"
 
 .venv/bin/python -m alembic upgrade head
-.venv/bin/python -m flask --app "meliponet:create_app" criar-usuario \
+.venv/bin/python -m flask --app "meliponet:criar_app" criar-usuario \
   --email voce@exemplo.br --nome "Seu Nome" --organizacao "Teste" --perfil admin
 
 cd .. && platform/.venv/bin/python -m simulator --transporte direto --historico 48 \
   --organizacao "Teste"
 
-cd platform && .venv/bin/python -m flask --app "meliponet:create_app" run
+cd platform && .venv/bin/python -m flask --app "meliponet:criar_app" run
 ```
 
 Em desenvolvimento roda SQLite (um arquivo, zero infraestrutura); em produção,

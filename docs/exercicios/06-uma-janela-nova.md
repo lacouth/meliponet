@@ -59,29 +59,29 @@ tabela bruta inteira antes de reduzir.
 
 ### 0. Leia antes de escrever
 
-Abra `platform/meliponet/services/series.py` e anote três coisas — sem elas o passo 1 é
+Abra `platform/meliponet/servicos/serie.py` e anote três coisas — sem elas o passo 1 é
 adivinhação:
 
 | Onde | O que anotar |
 |---|---|
-| `WINDOWS`, linha 31 | cada entrada é uma **tupla de três**: rótulo, duração total (`span`), passo (`step`). Todos os dois últimos são `timedelta` |
-| `DEFAULT_WINDOW`, logo abaixo | é `"24h"` — e é para ele que cai toda janela desconhecida |
-| `def series(...)`, linha 96 | a assinatura: `series(session, hive_id, window=DEFAULT_WINDOW)`, devolvendo uma lista de `Point` |
+| `JANELAS`, linha 31 | cada entrada é uma **tupla de três**: rótulo, duração total (`span`), passo (`step`). Todos os dois últimos são `timedelta` |
+| `JANELA_PADRAO`, logo abaixo | é `"24h"` — e é para ele que cai toda janela desconhecida |
+| `def series(...)`, linha 96 | a assinatura: `series(session, hive_id, window=JANELA_PADRAO)`, devolvendo uma lista de `Point` |
 
 **Confira:** você consegue dizer, sem olhar de novo, qual dos três elementos da tupla é o
-passo. Repare também no comentário acima de `WINDOWS` — ele explica a decisão do balde
+passo. Repare também no comentário acima de `JANELAS` — ele explica a decisão do balde
 vazio da caixa acima.
 
 ### 1. O teste, primeiro
 
-Em `platform/tests/test_series.py`. Repare que já existe
+Em `platform/tests/test_serie.py`. Repare que já existe
 `test_serie_cobre_a_janela_inteira`, que faz exatamente isso para 24 h — **copie o padrão
 dele**, como manda o guia: achar onde a coisa já é feita de forma parecida vale mais do
 que inventar um jeito novo.
 
 O seu teste precisa afirmar duas coisas:
 
-- a janela `90d` existe em `WINDOWS`;
+- a janela `90d` existe em `JANELAS`;
 - a série devolvida por `series(session, hive_id, "90d")` tem o número de pontos que você
   calculou (com a folga de um, para o alinhamento das bordas).
 
@@ -91,19 +91,19 @@ existiria e devolveria a quantidade de pontos de outra coisa.
 ### 2. Veja falhar
 
 ```bash
-platform/.venv/bin/pytest platform/tests/test_series.py -q
+platform/.venv/bin/pytest platform/tests/test_serie.py -q
 ```
 
 **Não pule este passo.** Um teste que nunca falhou é uma suposição, não uma verificação —
 e você viu isso duas vezes no exercício [05](05-o-mutante-que-ninguem-pega.md).
 
-Repare *como* ele falha. Se `WINDOWS.get("90d")` cai no `DEFAULT_WINDOW`, o teste não vai
+Repare *como* ele falha. Se `JANELAS.get("90d")` cai no `JANELA_PADRAO`, o teste não vai
 estourar com `KeyError`: ele vai receber a série de 24 h e falhar na contagem. Ler a
 mensagem de falha e entender por que ela é aquela faz parte do exercício.
 
 ### 3. Implemente
 
-Uma linha em `WINDOWS`.
+Uma linha em `JANELAS`.
 
 ### 4. Veja passar, e veja o resto acompanhar
 
@@ -135,7 +135,7 @@ que despacha os comandos, e por isso não tem como ficar desatualizado. Quando v
 lista escrita duas vezes no código, desconfie: uma delas vai envelhecer.
 
 E repare no que a rota faz com uma janela inválida (`?janela=abc`): ela cai no
-`DEFAULT_WINDOW` em vez de dar erro. Isso é deliberado — um link velho ou um parâmetro
+`JANELA_PADRAO` em vez de dar erro. Isso é deliberado — um link velho ou um parâmetro
 digitado errado mostra o painel, não uma página de erro.
 </details>
 
@@ -162,7 +162,7 @@ passo**, que é a decisão real deste commit.
 ## Pistas
 
 <details>
-<summary>Meu teste passa mesmo antes de eu mexer no `WINDOWS`</summary>
+<summary>Meu teste passa mesmo antes de eu mexer no `JANELAS`</summary>
 
 Provavelmente você afirmou algo que já era verdade — por exemplo, que a série tem "mais de
 100 pontos", o que a janela de 24 h também cumpre (288). Afirme o número exato que você
@@ -175,7 +175,7 @@ não está testando o que você acha.
 <details>
 <summary>A contagem dá um a mais (ou a menos) do que eu calculei</summary>
 
-`_resample` percorre de `_align(since, step)` até `_align(until, step)`, **inclusive** — e
+`_reamostrar` percorre de `_alinhar(since, step)` até `_alinhar(until, step)`, **inclusive** — e
 os dois são alinhados para baixo. Dependendo de onde o instante atual cai dentro do balde,
 sai um ponto a mais. Por isso o teste existente usa `in (288, 289)` em vez de um número
 cravado.

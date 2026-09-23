@@ -59,12 +59,12 @@
   td.num { font-variant-numeric: tabular-nums; }
   a.hive { color: var(--mel-accent); font-weight: 600; text-decoration: none; }
   a.hive:hover { text-decoration: underline; }
-  .windows { display: flex; gap: 8px; margin: 0 0 16px; }
-  .windows a {
+  .janelas { display: flex; gap: 8px; margin: 0 0 16px; }
+  .janelas a {
     padding: 5px 13px; border: 1px solid var(--mel-border); border-radius: 999px;
     text-decoration: none; color: var(--mel-muted); background: var(--mel-surface); font-size: 14px;
   }
-  .windows a.on { background: var(--mel-accent); border-color: var(--mel-accent); color: #fff; }
+  .janelas a.on { background: var(--mel-accent); border-color: var(--mel-accent); color: #fff; }
   .chart-wrap { position: relative; height: 260px; }
   .flags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
   .flag {
@@ -167,17 +167,17 @@
   <span class="tag">Monitoramento de colmeias de abelhas nativas sem ferrão</span>
   {% if current_user.is_authenticated %}
   <nav>
-    <a href="{{ url_for('dashboard.index') }}">Colmeias</a>
-    <a href="{{ url_for('manage.index') }}">Cadastros</a>
+    <a href="{{ url_for('painel.index') }}">Colmeias</a>
+    <a href="{{ url_for('gerenciar.index') }}">Cadastros</a>
     <span class="who">
       {{ current_user.name }}
       <small>· {{ current_user.role.label }} · {{ current_user.organization.name }}</small>
     </span>
-    <a href="{{ url_for('auth.logout') }}">Sair</a>
+    <a href="{{ url_for('autenticacao.sair') }}">Sair</a>
   </nav>
   {% else %}
   <nav>
-    <a href="{{ url_for('auth.login') }}">Entrar</a>
+    <a href="{{ url_for('autenticacao.entrar') }}">Entrar</a>
   </nav>
   {% endif %}
 </header>

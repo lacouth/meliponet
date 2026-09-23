@@ -11,27 +11,27 @@
     abre do celular.
   </p>
   <p>
-    <a class="btn" href="{{ url_for('auth.login') }}">Entrar na plataforma</a>
+    <a class="btn" href="{{ url_for('autenticacao.entrar') }}">Entrar na plataforma</a>
   </p>
 </section>
 
-{% if stats.measurements %}
+{% if numeros.measurements %}
 <section class="numbers">
   <div class="number">
-    <strong>{{ "{:,}".format(stats.measurements).replace(",", ".") }}</strong>
+    <strong>{{ "{:,}".format(numeros.measurements).replace(",", ".") }}</strong>
     <span>medições coletadas</span>
   </div>
   <div class="number">
-    <strong>{{ stats.hives }}</strong>
-    <span>colmeia{{ 's' if stats.hives != 1 }} monitorada{{ 's' if stats.hives != 1 }}</span>
+    <strong>{{ numeros.hives }}</strong>
+    <span>colmeia{{ 's' if numeros.hives != 1 }} monitorada{{ 's' if numeros.hives != 1 }}</span>
   </div>
   <div class="number">
-    <strong>{{ stats.apiaries }}</strong>
-    <span>meliponário{{ 's' if stats.apiaries != 1 }}</span>
+    <strong>{{ numeros.apiaries }}</strong>
+    <span>meliponário{{ 's' if numeros.apiaries != 1 }}</span>
   </div>
   <div class="number">
-    <strong>{{ stats.nodes }}</strong>
-    <span>nó{{ 's' if stats.nodes != 1 }} sensor{{ 'es' if stats.nodes != 1 }}</span>
+    <strong>{{ numeros.nodes }}</strong>
+    <span>nó{{ 's' if numeros.nodes != 1 }} sensor{{ 'es' if numeros.nodes != 1 }}</span>
   </div>
 </section>
 {% endif %}
@@ -90,9 +90,9 @@
 <section>
   <h2>Espécies acompanhadas</h2>
   <div class="species">
-    {% for scientific, popular in species %}
+    {% for cientifico, popular in especies %}
     <div class="card">
-      <em>{{ scientific }}</em>
+      <em>{{ cientifico }}</em>
       <span>{{ popular }}</span>
     </div>
     {% endfor %}

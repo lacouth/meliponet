@@ -35,13 +35,13 @@ export DATABASE_URL="sqlite:///$PWD/../meliponet-dev.sqlite3"
 
 .venv/bin/python -m alembic upgrade head          # cria o banco
 
-.venv/bin/python -m flask --app "meliponet:create_app" criar-usuario \
+.venv/bin/python -m flask --app "meliponet:criar_app" criar-usuario \
   --email voce@exemplo.br --nome "Seu Nome" --organizacao "Teste" --perfil admin
 
 cd .. && platform/.venv/bin/python -m simulator --transporte direto --historico 48 \
   --organizacao "Teste"                           # 48 h de dados, com falhas injetadas
 
-cd platform && .venv/bin/python -m flask --app "meliponet:create_app" run
+cd platform && .venv/bin/python -m flask --app "meliponet:criar_app" run
 ```
 
 Abra `http://127.0.0.1:5000` e entre. Vale gastar meia hora explorando: alterne as janelas
@@ -103,10 +103,10 @@ ele roda de novo sozinho para sempre.
 
 ```python
 def test_reenvio_do_spool_e_idempotente(scenario):
-    with session_scope() as session:
-        primeiro = store(session, decode(message(7)))
-    with session_scope() as session:
-        de_novo = store(session, decode(message(7)))
+    with abrir_sessao() as session:
+        primeiro = gravar(session, decodificar(message(7)))
+    with abrir_sessao() as session:
+        de_novo = gravar(session, decodificar(message(7)))
 
     assert primeiro.stored
     assert de_novo.duplicate
@@ -179,11 +179,11 @@ Python imprime um *traceback*. **Leia de baixo para cima**: a última linha é o
 de cima mostram o caminho até ele.
 
 ```
-sqlalchemy.orm.exc.DetachedInstanceError: Parent instance <Hive> is not bound
+sqlalchemy.orm.exc.DetachedInstanceError: Parent instance <Colmeia> is not bound
 to a Session; lazy load operation of attribute 'apiary' cannot proceed
 ```
 
-Isso diz tudo: um objeto `Hive`, a relação `apiary`, fora de uma sessão — a armadilha
+Isso diz tudo: um objeto `Colmeia`, a relação `apiary`, fora de uma sessão — a armadilha
 descrita em [A plataforma](03-a-plataforma.md). Se a mensagem não fizer sentido, **cole ela
 inteira** ao pedir ajuda: a metade que você cortaria costuma ser a que contém a resposta.
 

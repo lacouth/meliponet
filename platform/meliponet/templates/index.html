@@ -2,9 +2,9 @@
 {% block content %}
 
 <h1>Colmeias monitoradas</h1>
-<p class="sub">{{ total_measurements }} medições recebidas.</p>
+<p class="sub">{{ total_de_medicoes }} medições recebidas.</p>
 
-{% if overview %}
+{% if visao_geral %}
 <div class="card" style="padding: 0; overflow: hidden;">
   <table>
     <thead>
@@ -14,17 +14,17 @@
       </tr>
     </thead>
     <tbody>
-      {% for row in overview %}
-      {% set m = row.latest %}
+      {% for linha in visao_geral %}
+      {% set m = linha.ultima %}
       <tr>
-        <td><a class="hive" href="{{ url_for('dashboard.hive_detail', hive_id=row.hive.id) }}">{{ row.hive.name }}</a></td>
-        <td>{{ row.apiary.name }}</td>
-        <td><em>{{ row.hive.species or '—' }}</em></td>
-        <td class="num">{{ m.temp_in_c | num(1, ' °C') if m else '—' }}</td>
-        <td class="num">{{ m.temp_out_c | num(1, ' °C') if m else '—' }}</td>
-        <td class="num">{{ m.thermal_differential_c | num(1, ' °C') if m else '—' }}</td>
-        <td class="num">{{ m.weight_kg | num(2, ' kg') if m else '—' }}</td>
-        <td>{{ m.time | localtime if m else '—' }}</td>
+        <td><a class="hive" href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=linha.colmeia.id) }}">{{ linha.colmeia.name }}</a></td>
+        <td>{{ linha.meliponario.name }}</td>
+        <td><em>{{ linha.colmeia.species or '—' }}</em></td>
+        <td class="num">{{ m.temp_in_c | numero(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.temp_out_c | numero(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.diferencial_termico_c | numero(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.weight_kg | numero(2, ' kg') if m else '—' }}</td>
+        <td>{{ m.time | hora_local if m else '—' }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -33,12 +33,12 @@
 {% else %}
 <div class="card empty">
   Nenhuma colmeia visível ainda.<br>
-  Cadastre um meliponário e uma colmeia em <a href="{{ url_for('manage.index') }}">Cadastros</a>,
+  Cadastre um meliponário e uma colmeia em <a href="{{ url_for('gerenciar.index') }}">Cadastros</a>,
   e vincule um nó a ela.
 </div>
 {% endif %}
 
-{% if rejects %}
+{% if recusas %}
 <h2>Mensagens recusadas</h2>
 <p class="sub">
   Toda recusa é registrada com o motivo — é o que permite reportar a proporção de
@@ -48,8 +48,8 @@
   <table>
     <thead><tr><th>Quando</th><th>Motivo</th></tr></thead>
     <tbody>
-      {% for reject in rejects %}
-      <tr><td>{{ reject.received_at | localtime }}</td><td>{{ reject.reason }}</td></tr>
+      {% for recusa in recusas %}
+      <tr><td>{{ recusa.received_at | hora_local }}</td><td>{{ recusa.reason }}</td></tr>
       {% endfor %}
     </tbody>
   </table>

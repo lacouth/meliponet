@@ -16,24 +16,24 @@ from flask_login import current_user, login_required
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from meliponet.config import DISPLAY_TIMEZONE
-from meliponet.db import sessao_do_request
-from meliponet.models import Apiary, Hive, Node, NodeAssignment, utcnow
-from meliponet.services import scope
+from meliponet.banco import sessao_do_request
+from meliponet.configuracao import FUSO_DE_EXIBICAO
+from meliponet.modelos import Colmeia, Meliponario, No, Vinculo, agora_utc
+from meliponet.servicos import escopo
 
-bp = Blueprint("manage", __name__, url_prefix="/gerenciar")
+bp = Blueprint("gerenciar", __name__, url_prefix="/gerenciar")
 
 #: Especies-alvo da parceria, oferecidas no cadastro para padronizar a grafia -- nomes
 #: cientificos digitados a mao divergem e inviabilizam agrupar series por especie.
-SPECIES = [
+ESPECIES = [
     "Melipona scutellaris",
     "Melipona subnitida",
     "Scaptotrigona depilis",
 ]
 
 
-def _require_manager() -> None:
-    if not scope.can_manage(current_user):
+def _exigir_quem_administra() -> None:
+    if not escopo.pode_gerenciar(current_user):
         abort(403)
 
 
@@ -59,119 +59,123 @@ def _decimal(campo: str) -> float | None:
         return None
 
 
-def _meliponario_no_escopo(session: Session, apiary_id: int) -> Apiary:
+def _meliponario_no_escopo(session: Session, meliponario_id: int) -> Meliponario:
     """Carrega o meliponario, exigindo que ele seja visivel ao usuario.
 
     Existe porque a checagem e repetida em toda rota que recebe um id -- pela URL ou
     pelo formulario -- e o modo de falha de esquece-la e o silencio: um id forjado
     criaria colmeia dentro do meliponario de outra organizacao, sem erro nenhum.
     """
-    apiary = session.scalar(scope.apiaries_for(current_user).where(Apiary.id == apiary_id))
-    if apiary is None:
+    meliponario = session.scalar(
+        escopo.meliponarios_visiveis(current_user).where(Meliponario.id == meliponario_id)
+    )
+    if meliponario is None:
         abort(403)
-    return apiary
+    return meliponario
 
 
-def _colmeia_no_escopo(session: Session, hive_id: int) -> Hive:
+def _colmeia_no_escopo(session: Session, colmeia_id: int) -> Colmeia:
     """Irma de ``_meliponario_no_escopo``, para as colmeias."""
-    hive = session.scalar(scope.hives_for(current_user).where(Hive.id == hive_id))
-    if hive is None:
+    colmeia = session.scalar(
+        escopo.colmeias_visiveis(current_user).where(Colmeia.id == colmeia_id)
+    )
+    if colmeia is None:
         abort(403)
-    return hive
+    return colmeia
 
 
-def _no_gerenciavel(session: Session, node_id: int) -> Node:
+def _no_gerenciavel(session: Session, no_id: int) -> No:
     """Carrega o no que o usuario pode vincular ou desvincular.
 
     Um no que nao existe e 404; um que existe mas nao e seu e 403. Um no ainda sem dono
     pode ser adotado por quem administra; um no de outra organizacao, so por quem
-    administra todas -- a regra inteira mora em ``scope.can_manage_node``.
+    administra todas -- a regra inteira mora em ``escopo.pode_gerenciar_no``.
     """
-    node = session.scalar(
-        select(Node).options(selectinload(Node.assignments)).where(Node.id == node_id)
+    no = session.scalar(
+        select(No).options(selectinload(No.assignments)).where(No.id == no_id)
     )
-    if node is None:
+    if no is None:
         abort(404)
-    if not scope.can_manage_node(session, current_user, node.id):
+    if not escopo.pode_gerenciar_no(session, current_user, no.id):
         abort(403)
-    return node
+    return no
 
 
-def _parse_local(value: str | None) -> datetime | None:
+def _ler_instante_local(valor: str | None) -> datetime | None:
     """Le um ``datetime-local`` do formulario como horario da Paraiba e devolve UTC.
 
     O campo HTML nao carrega fuso. Interpretar o valor como UTC deslocaria toda
     instalacao em tres horas, e a data de instalacao e o que delimita a que colmeia
     cada leitura pertence.
     """
-    if not value:
+    if not valor:
         return None
-    naive = datetime.fromisoformat(value)
-    return naive.replace(tzinfo=ZoneInfo(DISPLAY_TIMEZONE)).astimezone(UTC)
+    ingenuo = datetime.fromisoformat(valor)
+    return ingenuo.replace(tzinfo=ZoneInfo(FUSO_DE_EXIBICAO)).astimezone(UTC)
 
 
-def _local_input(value: datetime | None) -> str:
+def _escrever_instante_local(valor: datetime | None) -> str:
     """Formata um instante UTC para preencher um ``datetime-local`` do formulario.
 
-    Inverso de ``_parse_local``. Sem ele, abrir a tela de edicao mostraria o campo de
-    data vazio e salvar apagaria a data que ja estava gravada.
+    Inverso de ``_ler_instante_local``. Sem ele, abrir a tela de edicao mostraria o
+    campo de data vazio e salvar apagaria a data que ja estava gravada.
     """
-    if value is None:
+    if valor is None:
         return ""
-    return value.astimezone(ZoneInfo(DISPLAY_TIMEZONE)).strftime("%Y-%m-%dT%H:%M")
+    return valor.astimezone(ZoneInfo(FUSO_DE_EXIBICAO)).strftime("%Y-%m-%dT%H:%M")
 
 
 @bp.route("/")
 @login_required
 def index():
     session = sessao_do_request()
-    pode_gerenciar = scope.can_manage(current_user)
+    pode_gerenciar = escopo.pode_gerenciar(current_user)
 
     # Os `selectinload` daqui sao otimizacao: sem eles, cada meliponario e cada no da
     # lista dispararia uma consulta propria -- o classico N+1.
-    apiaries = list(
+    meliponarios = list(
         session.scalars(
-            scope.apiaries_for(current_user)
-            .options(selectinload(Apiary.hives))
-            .order_by(Apiary.name)
+            escopo.meliponarios_visiveis(current_user)
+            .options(selectinload(Meliponario.hives))
+            .order_by(Meliponario.name)
         )
     )
-    nodes = list(
+    nos = list(
         session.scalars(
-            scope.nodes_for(current_user)
-            .options(selectinload(Node.assignments).selectinload(NodeAssignment.hive))
-            .order_by(Node.node_id)
+            escopo.nos_visiveis(current_user)
+            .options(selectinload(No.assignments).selectinload(Vinculo.hive))
+            .order_by(No.node_id)
         )
     )
     # Nos que apareceram sozinhos na ingestao e ainda nao tem dono. So quem
     # administra os ve, porque so essa pessoa pode adota-los.
-    pending = []
+    pendentes = []
     if pode_gerenciar:
-        pending = list(
+        pendentes = list(
             session.scalars(
-                select(Node)
-                .options(selectinload(Node.assignments))
-                .where(Node.organization_id.is_(None))
-                .order_by(Node.node_id)
+                select(No)
+                .options(selectinload(No.assignments))
+                .where(No.organization_id.is_(None))
+                .order_by(No.node_id)
             )
         )
 
     return render_template(
         "manage/index.html",
-        apiaries=apiaries,
-        nodes=nodes,
-        pending=pending,
-        species=SPECIES,
+        meliponarios=meliponarios,
+        nos=nos,
+        pendentes=pendentes,
+        especies=ESPECIES,
         pode_gerenciar=pode_gerenciar,
     )
 
 
 @bp.route("/meliponario", methods=["POST"])
 @login_required
-def create_apiary():
-    _require_manager()
+def criar_meliponario():
+    _exigir_quem_administra()
     sessao_do_request().add(
-        Apiary(
+        Meliponario(
             organization_id=current_user.organization_id,
             name=request.form["nome"].strip(),
             municipality=_texto("municipio"),
@@ -180,152 +184,154 @@ def create_apiary():
         )
     )
     flash("Meliponário cadastrado.", "ok")
-    return redirect(url_for("manage.index"))
+    return redirect(url_for("gerenciar.index"))
 
 
 @bp.route("/colmeia", methods=["POST"])
 @login_required
-def create_hive():
-    _require_manager()
+def criar_colmeia():
+    _exigir_quem_administra()
     session = sessao_do_request()
-    apiary = _meliponario_no_escopo(session, int(request.form["meliponario_id"]))
+    meliponario = _meliponario_no_escopo(session, int(request.form["meliponario_id"]))
 
     session.add(
-        Hive(
-            apiary_id=apiary.id,
+        Colmeia(
+            apiary_id=meliponario.id,
             name=request.form["nome"].strip(),
             species=_texto("especie"),
             box_type=_texto("caixa"),
             # Em branco significa "agora", que e o caso comum; mas uma colmeia
             # cadastrada semanas depois de instalada precisa da data verdadeira, e
             # e ela que delimita a serie da colmeia.
-            installed_at=_parse_local(request.form.get("instalado_em")) or utcnow(),
+            installed_at=_ler_instante_local(request.form.get("instalado_em")) or agora_utc(),
         )
     )
     flash("Colmeia cadastrada.", "ok")
-    return redirect(url_for("manage.index"))
+    return redirect(url_for("gerenciar.index"))
 
 
-@bp.route("/meliponario/<int:apiary_id>/editar", methods=["GET", "POST"])
+@bp.route("/meliponario/<int:meliponario_id>/editar", methods=["GET", "POST"])
 @login_required
-def edit_apiary(apiary_id: int):
+def editar_meliponario(meliponario_id: int):
     """Corrige o cadastro de um meliponario.
 
     Um cadastro so criavel e um cadastro que envelhece errado: municipio digitado com
     erro, coordenada trocada de sinal, estacao do INMET descoberta depois. Nada disso
     justifica recriar o meliponario, o que orfanaria as colmeias e a serie inteira.
     """
-    _require_manager()
-    apiary = _meliponario_no_escopo(sessao_do_request(), apiary_id)
+    _exigir_quem_administra()
+    meliponario = _meliponario_no_escopo(sessao_do_request(), meliponario_id)
 
     if request.method == "POST":
-        apiary.name = request.form["nome"].strip()
-        apiary.municipality = _texto("municipio")
-        apiary.latitude = _decimal("latitude")
-        apiary.longitude = _decimal("longitude")
-        apiary.inmet_station = _texto("estacao_inmet")
-        apiary.notes = _texto("observacoes")
+        meliponario.name = request.form["nome"].strip()
+        meliponario.municipality = _texto("municipio")
+        meliponario.latitude = _decimal("latitude")
+        meliponario.longitude = _decimal("longitude")
+        meliponario.inmet_station = _texto("estacao_inmet")
+        meliponario.notes = _texto("observacoes")
         flash("Meliponário atualizado.", "ok")
-        return redirect(url_for("manage.index"))
+        return redirect(url_for("gerenciar.index"))
 
-    return render_template("manage/apiary_edit.html", apiary=apiary)
+    return render_template("manage/apiary_edit.html", meliponario=meliponario)
 
 
-@bp.route("/colmeia/<int:hive_id>/editar", methods=["GET", "POST"])
+@bp.route("/colmeia/<int:colmeia_id>/editar", methods=["GET", "POST"])
 @login_required
-def edit_hive(hive_id: int):
+def editar_colmeia(colmeia_id: int):
     """Corrige o cadastro de uma colmeia.
 
     Inclui a data de instalacao, que ate aqui era carimbada como "agora" no cadastro e
     nao tinha como ser ajustada depois -- e e ela que diz a partir de quando a serie
     daquela colmeia comeca a valer.
     """
-    _require_manager()
-    hive = _colmeia_no_escopo(sessao_do_request(), hive_id)
+    _exigir_quem_administra()
+    colmeia = _colmeia_no_escopo(sessao_do_request(), colmeia_id)
 
     if request.method == "POST":
-        hive.name = request.form["nome"].strip()
-        hive.species = _texto("especie")
-        hive.box_type = _texto("caixa")
-        hive.installed_at = _parse_local(request.form.get("instalado_em"))
-        hive.notes = _texto("observacoes")
+        colmeia.name = request.form["nome"].strip()
+        colmeia.species = _texto("especie")
+        colmeia.box_type = _texto("caixa")
+        colmeia.installed_at = _ler_instante_local(request.form.get("instalado_em"))
+        colmeia.notes = _texto("observacoes")
         flash("Colmeia atualizada.", "ok")
-        return redirect(url_for("manage.index"))
+        return redirect(url_for("gerenciar.index"))
 
     return render_template(
         "manage/hive_edit.html",
-        hive=hive,
-        # O campo `datetime-local` do HTML tem formato proprio, e a conversao e da view:
-        # o template escreve o que recebe, sem saber de fuso.
-        instalado_em=_local_input(hive.installed_at),
-        species=SPECIES,
+        colmeia=colmeia,
+        # O campo `datetime-local` do HTML tem formato proprio, e a conversao e da
+        # rota: o template escreve o que recebe, sem saber de fuso.
+        instalado_em=_escrever_instante_local(colmeia.installed_at),
+        especies=ESPECIES,
     )
 
 
-@bp.route("/no/<int:node_id>/vincular", methods=["GET", "POST"])
+@bp.route("/no/<int:no_id>/vincular", methods=["GET", "POST"])
 @login_required
-def assign_node(node_id: int):
-    _require_manager()
+def vincular_no(no_id: int):
+    _exigir_quem_administra()
     session = sessao_do_request()
-    node = _no_gerenciavel(session, node_id)
+    no = _no_gerenciavel(session, no_id)
 
     if request.method == "POST":
-        hive = _colmeia_no_escopo(session, int(request.form["colmeia_id"]))
-        installed_at = _parse_local(request.form.get("instalado_em")) or utcnow()
+        colmeia = _colmeia_no_escopo(session, int(request.form["colmeia_id"]))
+        instalado_em = _ler_instante_local(request.form.get("instalado_em")) or agora_utc()
 
         # Fecha o vínculo anterior antes de abrir o novo: dois vínculos abertos ao
         # mesmo tempo tornariam ambígua a colmeia de uma leitura.
-        current_assignment = node.current_assignment
-        if current_assignment is not None:
-            current_assignment.removed_at = installed_at
+        vinculo_atual = no.vinculo_atual
+        if vinculo_atual is not None:
+            vinculo_atual.removed_at = instalado_em
 
         # O nó passa a pertencer à organização **da colmeia**, não à de quem clicou.
         # Carimbar o usuário logado fazia um administrador levar consigo o nó que
         # adotasse para a colmeia de outra organização: o dono legítimo deixava de
         # enxergar o próprio nó e não conseguia mais desvinculá-lo, sem erro na tela.
-        node.organization_id = hive.apiary.organization_id
+        no.organization_id = colmeia.apiary.organization_id
         session.add(
-            NodeAssignment(
-                node_id=node.id,
-                hive_id=hive.id,
-                installed_at=installed_at,
+            Vinculo(
+                node_id=no.id,
+                hive_id=colmeia.id,
+                installed_at=instalado_em,
                 sensor_placement=_texto("posicionamento"),
                 protocol_notes=_texto("observacoes"),
             )
         )
-        flash(f"Nó {node.node_id} vinculado a {hive.name}.", "ok")
-        return redirect(url_for("manage.index"))
+        flash(f"Nó {no.node_id} vinculado a {colmeia.name}.", "ok")
+        return redirect(url_for("gerenciar.index"))
 
-    hives = list(
+    colmeias = list(
         session.scalars(
-            scope.hives_for(current_user).options(selectinload(Hive.apiary)).order_by(Hive.name)
+            escopo.colmeias_visiveis(current_user)
+            .options(selectinload(Colmeia.apiary))
+            .order_by(Colmeia.name)
         )
     )
 
     return render_template(
         "manage/assign.html",
-        node_id=node_id,
-        node_label=node.node_id,
-        current_hive=node.current_assignment.hive.name if node.current_assignment else None,
-        hives=hives,
-        species=SPECIES,
+        no_id=no_id,
+        no_label=no.node_id,
+        colmeia_atual=no.vinculo_atual.hive.name if no.vinculo_atual else None,
+        colmeias=colmeias,
+        especies=ESPECIES,
     )
 
 
-@bp.route("/no/<int:node_id>/desvincular", methods=["POST"])
+@bp.route("/no/<int:no_id>/desvincular", methods=["POST"])
 @login_required
-def unassign_node(node_id: int):
-    _require_manager()
-    node = _no_gerenciavel(sessao_do_request(), node_id)
+def desvincular_no(no_id: int):
+    _exigir_quem_administra()
+    no = _no_gerenciavel(sessao_do_request(), no_id)
 
-    current_assignment = node.current_assignment
-    if current_assignment is None:
+    vinculo_atual = no.vinculo_atual
+    if vinculo_atual is None:
         flash("Esse nó já está sem colmeia.", "erro")
     else:
         # Fecha o período em vez de apagar o vínculo: as leituras já gravadas continuam
         # apontando para a colmeia certa, e o histórico de instalação é parte do
         # protocolo documentado.
-        current_assignment.removed_at = utcnow()
-        flash(f"Nó {node.node_id} desvinculado.", "ok")
+        vinculo_atual.removed_at = agora_utc()
+        flash(f"Nó {no.node_id} desvinculado.", "ok")
 
-    return redirect(url_for("manage.index"))
+    return redirect(url_for("gerenciar.index"))

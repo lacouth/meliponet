@@ -1,23 +1,13 @@
-"""Modelo de dados da plataforma.
+"""Modelo de dados da plataforma: as tabelas escritas como classes Python.
 
-Tres decisoes estruturais governam este modulo.
+Tres decisoes governam este modulo, e o porque de cada uma esta em
+``docs/guia/03-a-plataforma.md``:
 
-**O vinculo no <-> colmeia e historico, nao um campo.** Um no e remanejado entre
-colmeias em campo: sai de uma caixa que colapsou, entra em outra. Se o vinculo fosse
-uma coluna em ``nodes``, remanejar reescreveria o passado -- toda a serie historica da
-colmeia antiga passaria a ser atribuida a nova. Por isso existe
-:class:`NodeAssignment`, com ``installed_at``/``removed_at``, e por isso a colmeia de
-uma medicao e resolvida pelo *instante da medicao*, nao pelo estado atual. Isso importa
-duplamente com o spool: uma mensagem que ficou dias no buffer do no precisa pousar na
-colmeia em que ele estava quando mediu.
+* o vinculo no <-> colmeia e historico (:class:`Vinculo`), nao um campo;
+* metrica ausente e ``None``, nunca zero;
+* propriedade e por organizacao, e o escopo mora em ``meliponet.servicos.escopo``.
 
-**Metricas sao anulaveis.** Um SHT30 que falhou nao produz zero, produz *nada*. Gravar
-zero apagaria a diferenca entre "a colmeia estava a 0 grau" e "nao sabemos" -- e essa
-distincao e o insumo dos indicadores de completude do Edital 17.
-
-**Propriedade e por organizacao.** O meliponicultor ve os proprios meliponarios; o
-pesquisador ve todos. O escopo vive em ``meliponet.services.scope``, num helper unico,
-para que nenhuma consulta o esqueca.
+Os nomes de coluna ficam como o banco e o contrato os escrevem -- em ingles.
 """
 
 from __future__ import annotations
@@ -46,11 +36,11 @@ class Base(DeclarativeBase):
     pass
 
 
-def utcnow() -> datetime:
+def agora_utc() -> datetime:
     return datetime.now(UTC)
 
 
-class UtcDateTime(TypeDecorator):
+class DataHoraUtc(TypeDecorator):
     """Instante sempre com fuso, em UTC, nos dois bancos suportados.
 
     O PostgreSQL guarda o fuso e devolve um datetime consciente; o SQLite nao guarda e
@@ -74,7 +64,7 @@ class UtcDateTime(TypeDecorator):
         if value.tzinfo is None:
             raise ValueError(
                 "datetime sem fuso horário: converta para UTC antes de gravar "
-                "(veja meliponet.models.utcnow)"
+                "(veja meliponet.modelos.agora_utc)"
             )
         return value.astimezone(UTC)
 
@@ -84,7 +74,7 @@ class UtcDateTime(TypeDecorator):
         return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
-class Role(enum.StrEnum):
+class Perfil(enum.StrEnum):
     """Perfis de acesso.
 
     ``MELIPONICULTOR`` ve apenas a propria organizacao -- e o dono das colmeias.
@@ -99,30 +89,30 @@ class Role(enum.StrEnum):
     @property
     def label(self) -> str:
         return {
-            Role.MELIPONICULTOR: "Meliponicultor",
-            Role.PESQUISADOR: "Pesquisador",
-            Role.ADMIN: "Administrador",
+            Perfil.MELIPONICULTOR: "Meliponicultor",
+            Perfil.PESQUISADOR: "Pesquisador",
+            Perfil.ADMIN: "Administrador",
         }[self]
 
     @property
-    def sees_everything(self) -> bool:
-        return self in (Role.PESQUISADOR, Role.ADMIN)
+    def ve_tudo(self) -> bool:
+        return self in (Perfil.PESQUISADOR, Perfil.ADMIN)
 
 
-class Organization(Base):
+class Organizacao(Base):
     """Unidade de propriedade: um meliponicultor, uma associacao ou um grupo de pesquisa."""
 
     __tablename__ = "organizations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DataHoraUtc, default=agora_utc)
 
-    users: Mapped[list[User]] = relationship(back_populates="organization")
-    apiaries: Mapped[list[Apiary]] = relationship(back_populates="organization")
+    users: Mapped[list[Usuario]] = relationship(back_populates="organization")
+    apiaries: Mapped[list[Meliponario]] = relationship(back_populates="organization")
 
 
-class User(Base):
+class Usuario(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -130,16 +120,16 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(200), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[Role] = mapped_column(
-        Enum(Role, native_enum=False, values_callable=lambda e: [m.value for m in e]),
+    role: Mapped[Perfil] = mapped_column(
+        Enum(Perfil, native_enum=False, values_callable=lambda e: [m.value for m in e]),
         nullable=False,
-        default=Role.MELIPONICULTOR,
+        default=Perfil.MELIPONICULTOR,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
-    last_login_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    created_at: Mapped[datetime] = mapped_column(DataHoraUtc, default=agora_utc)
+    last_login_at: Mapped[datetime | None] = mapped_column(DataHoraUtc)
 
-    organization: Mapped[Organization] = relationship(back_populates="users")
+    organization: Mapped[Organizacao] = relationship(back_populates="users")
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -160,7 +150,7 @@ class User(Base):
         return str(self.id)
 
 
-class Apiary(Base):
+class Meliponario(Base):
     """Um meliponario: o lugar fisico onde ficam as colmeias."""
 
     __tablename__ = "apiaries"
@@ -174,13 +164,13 @@ class Apiary(Base):
     #: Codigo da estacao automatica do INMET mais proxima, usado na Fase 4.
     inmet_station: Mapped[str | None] = mapped_column(String(20))
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DataHoraUtc, default=agora_utc)
 
-    organization: Mapped[Organization] = relationship(back_populates="apiaries")
-    hives: Mapped[list[Hive]] = relationship(back_populates="apiary", order_by="Hive.name")
+    organization: Mapped[Organizacao] = relationship(back_populates="apiaries")
+    hives: Mapped[list[Colmeia]] = relationship(back_populates="apiary", order_by="Colmeia.name")
 
 
-class Hive(Base):
+class Colmeia(Base):
     """Uma colmeia instrumentada."""
 
     __tablename__ = "hives"
@@ -191,14 +181,14 @@ class Hive(Base):
     #: Especies da parceria: M. scutellaris, M. subnitida e S. depilis.
     species: Mapped[str | None] = mapped_column(String(120))
     box_type: Mapped[str | None] = mapped_column(String(120))
-    installed_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    installed_at: Mapped[datetime | None] = mapped_column(DataHoraUtc)
     notes: Mapped[str | None] = mapped_column(Text)
 
-    apiary: Mapped[Apiary] = relationship(back_populates="hives")
-    assignments: Mapped[list[NodeAssignment]] = relationship(back_populates="hive")
+    apiary: Mapped[Meliponario] = relationship(back_populates="hives")
+    assignments: Mapped[list[Vinculo]] = relationship(back_populates="hive")
 
 
-class Node(Base):
+class No(Base):
     """Um no MelipoSense."""
 
     __tablename__ = "nodes"
@@ -209,23 +199,23 @@ class Node(Base):
     organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"))
     label: Mapped[str | None] = mapped_column(String(120))
     firmware_version: Mapped[str | None] = mapped_column(String(40))
-    last_seen_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DataHoraUtc)
+    created_at: Mapped[datetime] = mapped_column(DataHoraUtc, default=agora_utc)
 
-    organization: Mapped[Organization | None] = relationship()
-    assignments: Mapped[list[NodeAssignment]] = relationship(
-        back_populates="node", order_by="NodeAssignment.installed_at"
+    organization: Mapped[Organizacao | None] = relationship()
+    assignments: Mapped[list[Vinculo]] = relationship(
+        back_populates="node", order_by="Vinculo.installed_at"
     )
 
     @property
-    def current_assignment(self) -> NodeAssignment | None:
-        for assignment in reversed(self.assignments):
-            if assignment.removed_at is None:
-                return assignment
+    def vinculo_atual(self) -> Vinculo | None:
+        for vinculo in reversed(self.assignments):
+            if vinculo.removed_at is None:
+                return vinculo
         return None
 
 
-class NodeAssignment(Base):
+class Vinculo(Base):
     """Periodo em que um no esteve instalado numa colmeia.
 
     Alem do vinculo, guarda os metadados de instalacao que o Edital 17 exige do
@@ -240,27 +230,27 @@ class NodeAssignment(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     node_id: Mapped[int] = mapped_column(ForeignKey("nodes.id"), nullable=False)
     hive_id: Mapped[int] = mapped_column(ForeignKey("hives.id"), nullable=False)
-    installed_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
-    removed_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    installed_at: Mapped[datetime] = mapped_column(DataHoraUtc, nullable=False)
+    removed_at: Mapped[datetime | None] = mapped_column(DataHoraUtc)
     #: Onde cada sensor ficou: "SHT30 interno sobre o invólucro de cerume", etc.
     sensor_placement: Mapped[str | None] = mapped_column(Text)
     photo_path: Mapped[str | None] = mapped_column(String(255))
     #: Condicoes de instalacao e desvios do protocolo padrao.
     protocol_notes: Mapped[str | None] = mapped_column(Text)
 
-    node: Mapped[Node] = relationship(back_populates="assignments")
-    hive: Mapped[Hive] = relationship(back_populates="assignments")
+    node: Mapped[No] = relationship(back_populates="assignments")
+    hive: Mapped[Colmeia] = relationship(back_populates="assignments")
 
     __table_args__ = (Index("ix_assignments_node_period", "node_id", "installed_at"),)
 
-    def covers(self, when: datetime) -> bool:
-        """Verdadeiro se ``when`` cai dentro deste periodo de instalacao."""
-        if when < self.installed_at:
+    def cobre(self, quando: datetime) -> bool:
+        """Verdadeiro se ``quando`` cai dentro deste periodo de instalacao."""
+        if quando < self.installed_at:
             return False
-        return self.removed_at is None or when < self.removed_at
+        return self.removed_at is None or quando < self.removed_at
 
 
-class Calibration(Base):
+class Calibracao(Base):
     """Calibracao de um sensor de um no, com o historico das aplicacoes.
 
     Fica no banco, e nao so na NVS do no, porque a deriva ao longo do tempo e um dos
@@ -276,13 +266,13 @@ class Calibration(Base):
     sensor: Mapped[str] = mapped_column(String(20), nullable=False)
     offset: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     scale: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
-    applied_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utcnow)
+    applied_at: Mapped[datetime] = mapped_column(DataHoraUtc, nullable=False, default=agora_utc)
     notes: Mapped[str | None] = mapped_column(Text)
 
-    node: Mapped[Node] = relationship()
+    node: Mapped[No] = relationship()
 
 
-class AlertRule(Base):
+class RegraDeAlerta(Base):
     """Regra de deteccao de anomalia. A avaliacao entra na Fase 4."""
 
     __tablename__ = "alert_rules"
@@ -302,7 +292,7 @@ class AlertRule(Base):
     description: Mapped[str | None] = mapped_column(Text)
 
 
-class Alert(Base):
+class Alerta(Base):
     """Ocorrencia de uma regra. A abertura e o fechamento entram na Fase 4."""
 
     __tablename__ = "alerts"
@@ -310,21 +300,21 @@ class Alert(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     hive_id: Mapped[int] = mapped_column(ForeignKey("hives.id"), nullable=False, index=True)
     rule_id: Mapped[int | None] = mapped_column(ForeignKey("alert_rules.id"))
-    opened_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
-    closed_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    opened_at: Mapped[datetime] = mapped_column(DataHoraUtc, nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(DataHoraUtc)
     value: Mapped[float | None] = mapped_column(Float)
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
-    hive: Mapped[Hive] = relationship()
+    hive: Mapped[Colmeia] = relationship()
 
 
-class Measurement(Base):
+class Medicao(Base):
     """Uma leitura de telemetria ja validada e persistida."""
 
     __tablename__ = "measurements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    time: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+    time: Mapped[datetime] = mapped_column(DataHoraUtc, nullable=False, index=True)
     #: Identificador do contrato, guardado como texto: uma leitura precisa continuar
     #: rastreavel ao no mesmo que o cadastro dele seja removido.
     node_id: Mapped[str] = mapped_column(String(8), nullable=False)
@@ -347,7 +337,7 @@ class Measurement(Base):
     gateway_id: Mapped[str | None] = mapped_column(String(32))
     #: Flags do no e da validacao semantica, separadas por virgula.
     quality_flags: Mapped[str | None] = mapped_column(Text)
-    received_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    received_at: Mapped[datetime] = mapped_column(DataHoraUtc, default=agora_utc)
 
     __table_args__ = (
         # Absorve o reenvio de um no que drena o spool apos uma queda de rede: sem
@@ -357,14 +347,14 @@ class Measurement(Base):
     )
 
     @property
-    def thermal_differential_c(self) -> float | None:
+    def diferencial_termico_c(self) -> float | None:
         """Esforco termorregulatorio estimado: interna menos externa."""
         if self.temp_in_c is None or self.temp_out_c is None:
             return None
         return self.temp_in_c - self.temp_out_c
 
 
-class IngestReject(Base):
+class Recusa(Base):
     """Mensagem recusada na ingestao, com o motivo.
 
     O Edital 17 se compromete a reportar a proporcao de leituras descartadas, o que so
@@ -375,7 +365,7 @@ class IngestReject(Base):
     __tablename__ = "ingest_rejects"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    received_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    received_at: Mapped[datetime] = mapped_column(DataHoraUtc, default=agora_utc)
     topic: Mapped[str | None] = mapped_column(String(200))
     node_id: Mapped[str | None] = mapped_column(String(8), index=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)

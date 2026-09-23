@@ -5,9 +5,7 @@ meliponicultor que recebeu o endereco, para o avaliador do edital e para quem ch
 um trabalho apresentado no SIMPIF.
 
 Sobre os numeros exibidos: sao **apenas agregados** -- quantas colmeias, quantos
-meliponarios, quantas medicoes. Nunca nomes, localizacoes ou leituras. A contagem
-demonstra que o sistema esta vivo e coletando, que e o que interessa a quem chega aqui,
-sem expor a nenhum visitante anonimo onde ficam as colmeias de um produtor.
+meliponarios, quantas medicoes. Nunca nomes, localizacoes ou leituras.
 """
 
 from __future__ import annotations
@@ -16,13 +14,13 @@ from flask import Blueprint, redirect, render_template, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
 
-from meliponet.db import sessao_do_request
-from meliponet.models import Apiary, Hive, Measurement, Node
+from meliponet.banco import sessao_do_request
+from meliponet.modelos import Colmeia, Medicao, Meliponario, No
 
-bp = Blueprint("public", __name__)
+bp = Blueprint("publico", __name__)
 
 #: Especies-alvo da parceria, com o nome popular pelo qual o meliponicultor as conhece.
-SPECIES = [
+ESPECIES = [
     ("Melipona scutellaris", "uruçu-nordestina"),
     ("Melipona subnitida", "jandaíra"),
     ("Scaptotrigona depilis", "canudo"),
@@ -38,14 +36,14 @@ def _quantos(session, modelo) -> int:
 def index():
     # Quem ja esta autenticado quer o painel, nao a apresentacao do projeto.
     if current_user.is_authenticated:
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for("painel.index"))
 
     session = sessao_do_request()
-    stats = {
-        "hives": _quantos(session, Hive),
-        "apiaries": _quantos(session, Apiary),
-        "measurements": _quantos(session, Measurement),
-        "nodes": _quantos(session, Node),
+    numeros = {
+        "hives": _quantos(session, Colmeia),
+        "apiaries": _quantos(session, Meliponario),
+        "measurements": _quantos(session, Medicao),
+        "nodes": _quantos(session, No),
     }
 
-    return render_template("public/index.html", stats=stats, species=SPECIES)
+    return render_template("public/index.html", numeros=numeros, especies=ESPECIES)
