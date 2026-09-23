@@ -105,8 +105,8 @@ def _media(medicoes: list[Medicao], coluna: str) -> float | None:
     for medicao in medicoes:
         valor = getattr(medicao, coluna)
         if valor is not None:
-            soma = soma + valor
-            quantas = quantas + 1
+            soma += valor
+            quantas += 1
     if quantas == 0:
         return None
     return soma / quantas
@@ -157,17 +157,23 @@ def completude(session: Session, colmeia_id: int, janela: str = JANELA_PADRAO) -
     if not seqs:
         return {"received": 0, "expected": 0, "gaps": 0}
 
-    esperadas = seqs[-1] - seqs[0] + 1
-    return {"received": len(seqs), "expected": esperadas, "gaps": esperadas - len(seqs)}
+    # `seqs` vem ordenada: a primeira e a menor, e a ultima (`[-1]` conta do fim) a maior.
+    # Toda seq entre as duas deveria ter chegado.
+    menor = seqs[0]
+    maior = seqs[-1]
+    esperadas = maior - menor + 1
+    recebidas = len(seqs)
+    return {"received": recebidas, "expected": esperadas, "gaps": esperadas - recebidas}
 
 
 def contar_medicoes(session: Session, colmeia_ids: list[int]) -> int:
     """Quantas medicoes existem, somando as colmeias de ``colmeia_ids``."""
     if not colmeia_ids:
         return 0
-    return (
-        session.scalar(
-            select(func.count()).select_from(Medicao).where(Medicao.hive_id.in_(colmeia_ids))
-        )
-        or 0
+    total = session.scalar(
+        select(func.count()).select_from(Medicao).where(Medicao.hive_id.in_(colmeia_ids))
     )
+    # O banco pode devolver None em vez de zero quando nao ha linha nenhuma.
+    if total is None:
+        return 0
+    return total

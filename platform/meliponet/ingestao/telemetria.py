@@ -29,16 +29,17 @@ SCHEMA_ID = "meliponet.telemetry.v1"
 LIMITE_DE_BYTES = 4096
 
 
-def _agora() -> datetime:
-    return datetime.now(UTC)
-
-
 class ErroDeTelemetria(ValueError):
     """Mensagem que nao pode ser aceita, com o motivo que sera persistido."""
 
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+def _agora() -> datetime:
+    """O instante atual, em UTC. Serve de valor padrao para ``received_at``."""
+    return datetime.now(UTC)
 
 
 @dataclass
@@ -95,13 +96,19 @@ _VALIDADOR = _carregar_validador()
 
 def _descrever(erro: ValidationError) -> str:
     """Traduz o erro do jsonschema numa razao curta e acionavel."""
-    onde = ".".join(str(parte) for parte in erro.absolute_path)
     if erro.validator == "required":
         return f"campo obrigatorio ausente: {erro.message}"
     if erro.validator == "additionalProperties":
         return f"campo fora do contrato: {erro.message}"
     if erro.validator == "anyOf":
         return "mensagem sem nenhuma metrica de colmeia"
+
+    # O caminho ate o campo com problema: "temp_in_c", ou "flags.0" para a primeira
+    # flag. Erro na raiz da mensagem tem caminho vazio, e ai vai so o texto do jsonschema.
+    partes = []
+    for parte in erro.absolute_path:
+        partes.append(str(parte))
+    onde = ".".join(partes)
     if onde:
         return f"{onde}: {erro.message}"
     return erro.message
@@ -110,14 +117,16 @@ def _descrever(erro: ValidationError) -> str:
 def _onde_esta_o_erro(erro: ValidationError) -> list:
     """O caminho do erro dentro da mensagem, usado para ordenar os erros.
 
-    A mensagem pode ter varios erros ao mesmo tempo; ordenar pelo caminho faz a
-    recusa citar sempre o mesmo, em vez de um diferente a cada execucao.
+    A mensagem pode ter varios erros ao mesmo tempo, e a recusa cita so um. Sem ordenar,
+    seria o primeiro que o validador encontrasse percorrendo o *schema*; ordenando pelo
+    caminho, e o que fica mais perto da raiz da *mensagem* -- um campo que falta no topo
+    vem antes de um valor errado dentro de ``flags``.
     """
     return list(erro.absolute_path)
 
 
 #: Campos do contrato que nao sao metricas de serie temporal.
-_NAO_SAO_METRICA = frozenset({"schema", "node_id", "seq", "ts", "flags", "gateway_id"})
+_NAO_SAO_METRICA = ("schema", "node_id", "seq", "ts", "flags", "gateway_id")
 
 
 def decodificar(payload: bytes | str) -> Telemetria:
@@ -144,7 +153,9 @@ def decodificar(payload: bytes | str) -> Telemetria:
         raise ErroDeTelemetria("payload nao e um objeto JSON")
 
     # Checa a versao antes do schema: um no com firmware de outra versao produz uma
-    # cascata de erros de schema pouco informativos, e a causa real e so esta.
+    # cascata de erros de schema pouco informativos, e a causa real e so esta. O `!r`
+    # escreve o valor com aspas, para a recusa distinguir o texto "v2" de um campo
+    # ausente, que aparece como None.
     versao = mensagem.get("schema")
     if versao != SCHEMA_ID:
         raise ErroDeTelemetria(f"versao de schema nao suportada: {versao!r}")

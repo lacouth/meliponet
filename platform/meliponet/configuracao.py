@@ -2,6 +2,9 @@
 
 Um unico ponto de leitura de variaveis de ambiente, compartilhado pelo processo web e
 pelo ingestor -- que sao processos separados mas precisam concordar sobre o banco.
+
+A regra: o resto da plataforma nao le ``os.environ`` direto; pede uma
+:class:`Configuracao` e usa os campos dela.
 """
 
 from __future__ import annotations
@@ -28,6 +31,18 @@ for cientifico, _popular in ESPECIES:
     NOMES_CIENTIFICOS.append(cientifico)
 
 
+def _opcional(nome: str) -> str | None:
+    """Le uma variavel de ambiente que pode faltar.
+
+    Variavel definida mas vazia (``MQTT_USERNAME=``) conta como ausente: um texto vazio
+    como usuario ou token nunca e o que a pessoa quis dizer.
+    """
+    valor = os.environ.get(nome)
+    if not valor:
+        return None
+    return valor
+
+
 # `frozen=True` impede mudar a configuracao depois de montada: web e ingestor leem os
 # mesmos valores do comeco ao fim, e uma troca no meio do caminho seria um defeito.
 @dataclass(frozen=True)
@@ -42,6 +57,8 @@ class Configuracao:
     #: o que permite ao aluno testar com `curl` sem configurar nada.
     token_ingestao: str | None = None
 
+    # `@classmethod` deixa chamar o metodo pela classe, `Configuracao.do_ambiente()`,
+    # antes de existir uma configuracao; `cls` e a propria classe `Configuracao`.
     @classmethod
     def do_ambiente(cls) -> Configuracao:
         return cls(
@@ -52,7 +69,7 @@ class Configuracao:
             secret_key=os.environ.get("SECRET_KEY", "dev-inseguro-troque-em-producao"),
             mqtt_host=os.environ.get("MQTT_HOST", "localhost"),
             mqtt_port=int(os.environ.get("MQTT_PORT", "1883")),
-            mqtt_username=os.environ.get("MQTT_USERNAME") or None,
-            mqtt_password=os.environ.get("MQTT_PASSWORD") or None,
-            token_ingestao=os.environ.get("TOKEN_INGESTAO") or None,
+            mqtt_username=_opcional("MQTT_USERNAME"),
+            mqtt_password=_opcional("MQTT_PASSWORD"),
+            token_ingestao=_opcional("TOKEN_INGESTAO"),
         )
