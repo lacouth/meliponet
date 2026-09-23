@@ -1,4 +1,4 @@
-"""Checagens de permissao das telas de cadastro, que respondem 403 quando falham.
+"""Checagens de permissao das telas de cadastro, que interrompem com 403 (ou 404).
 
 A regra de quem ve o que mora em ``servicos/escopo.py``. Aqui ficam so os ajudantes que
 aplicam essa regra numa rota: carregam o objeto pedido e interrompem a requisicao se o
@@ -8,9 +8,10 @@ forjado alcancar o cadastro de outra organizacao --, por isso ela tem nome e um 
 
 from flask import abort
 from flask_login import current_user
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
-from meliponet.modelos import Colmeia, Meliponario
+from meliponet.modelos import Colmeia, Meliponario, No
 from meliponet.servicos import escopo
 
 
@@ -38,3 +39,18 @@ def colmeia_no_escopo(session: Session, colmeia_id: int) -> Colmeia:
     if colmeia is None:
         abort(403)
     return colmeia
+
+
+def no_gerenciavel(session: Session, no_id: int) -> No:
+    """Carrega o no que o usuario pode vincular ou desvincular.
+
+    Um no que nao existe e 404; um que existe mas nao e seu e 403. Um no ainda sem dono
+    pode ser adotado por quem administra; um no de outra organizacao, so por quem
+    administra todas -- a regra inteira mora em ``escopo.pode_gerenciar_no``.
+    """
+    no = session.scalar(select(No).options(selectinload(No.assignments)).where(No.id == no_id))
+    if no is None:
+        abort(404)
+    if not escopo.pode_gerenciar_no(session, current_user, no.id):
+        abort(403)
+    return no

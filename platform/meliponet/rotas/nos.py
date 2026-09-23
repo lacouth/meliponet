@@ -6,32 +6,16 @@ vinculo moram em ``servicos/vinculos.py``; esta rota le o formulario, confere a
 permissao e chama o servico.
 """
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import selectinload
 
 from meliponet.banco import sessao_do_request
-from meliponet.modelos import Colmeia, No, agora_utc
+from meliponet.modelos import Colmeia, agora_utc
 from meliponet.rotas import formulario, permissao
 from meliponet.servicos import escopo, vinculos
 
 bp = Blueprint("nos", __name__, url_prefix="/gerenciar/no")
-
-
-def _no_gerenciavel(session: Session, no_id: int) -> No:
-    """Carrega o no que o usuario pode vincular ou desvincular.
-
-    Um no que nao existe e 404; um que existe mas nao e seu e 403. Um no ainda sem dono
-    pode ser adotado por quem administra; um no de outra organizacao, so por quem
-    administra todas -- a regra inteira mora em ``escopo.pode_gerenciar_no``.
-    """
-    no = session.scalar(select(No).options(selectinload(No.assignments)).where(No.id == no_id))
-    if no is None:
-        abort(404)
-    if not escopo.pode_gerenciar_no(session, current_user, no.id):
-        abort(403)
-    return no
 
 
 @bp.route("/<int:no_id>/vincular", methods=["GET", "POST"])
@@ -39,11 +23,14 @@ def _no_gerenciavel(session: Session, no_id: int) -> No:
 def vincular(no_id: int):
     permissao.exigir_quem_administra()
     session = sessao_do_request()
-    no = _no_gerenciavel(session, no_id)
+    no = permissao.no_gerenciavel(session, no_id)
 
     if request.method == "POST":
         colmeia = permissao.colmeia_no_escopo(session, int(request.form["colmeia_id"]))
 
+        # Em branco significa "agora", como no cadastro da colmeia; uma instalacao
+        # registrada dias depois precisa da data verdadeira, porque e ela que diz a que
+        # colmeia pertencem as leituras daquele intervalo.
         instalado_em = formulario.ler_instante_local("instalado_em")
         if instalado_em is None:
             instalado_em = agora_utc()
@@ -68,8 +55,9 @@ def vincular(no_id: int):
     )
 
     colmeia_atual = None
-    if no.vinculo_atual is not None:
-        colmeia_atual = no.vinculo_atual.hive.name
+    vinculo_atual = no.vinculo_atual
+    if vinculo_atual is not None:
+        colmeia_atual = vinculo_atual.hive.name
 
     return render_template(
         "manage/assign.html",
@@ -84,7 +72,7 @@ def vincular(no_id: int):
 @login_required
 def desvincular(no_id: int):
     permissao.exigir_quem_administra()
-    no = _no_gerenciavel(sessao_do_request(), no_id)
+    no = permissao.no_gerenciavel(sessao_do_request(), no_id)
 
     if vinculos.desvincular(no):
         flash(f"Nó {no.node_id} desvinculado.", "ok")
