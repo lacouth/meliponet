@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from meliponet.banco import sessao_do_request
 from meliponet.configuracao import FUSO_DE_EXIBICAO
 from meliponet.modelos import Colmeia, Meliponario, No, Vinculo, agora_utc
-from meliponet.servicos import escopo
+from meliponet.servicos import escopo, vinculos
 
 bp = Blueprint("gerenciar", __name__, url_prefix="/gerenciar")
 
@@ -151,14 +151,7 @@ def index():
     # administra os ve, porque so essa pessoa pode adota-los.
     pendentes = []
     if pode_gerenciar:
-        pendentes = list(
-            session.scalars(
-                select(No)
-                .options(selectinload(No.assignments))
-                .where(No.organization_id.is_(None))
-                .order_by(No.node_id)
-            )
-        )
+        pendentes = vinculos.nos_pendentes(session)
 
     return render_template(
         "manage/index.html",
@@ -276,26 +269,13 @@ def vincular_no(no_id: int):
     if request.method == "POST":
         colmeia = _colmeia_no_escopo(session, int(request.form["colmeia_id"]))
         instalado_em = _ler_instante_local(request.form.get("instalado_em")) or agora_utc()
-
-        # Fecha o vínculo anterior antes de abrir o novo: dois vínculos abertos ao
-        # mesmo tempo tornariam ambígua a colmeia de uma leitura.
-        vinculo_atual = no.vinculo_atual
-        if vinculo_atual is not None:
-            vinculo_atual.removed_at = instalado_em
-
-        # O nó passa a pertencer à organização **da colmeia**, não à de quem clicou.
-        # Carimbar o usuário logado fazia um administrador levar consigo o nó que
-        # adotasse para a colmeia de outra organização: o dono legítimo deixava de
-        # enxergar o próprio nó e não conseguia mais desvinculá-lo, sem erro na tela.
-        no.organization_id = colmeia.apiary.organization_id
-        session.add(
-            Vinculo(
-                node_id=no.id,
-                hive_id=colmeia.id,
-                installed_at=instalado_em,
-                sensor_placement=_texto("posicionamento"),
-                protocol_notes=_texto("observacoes"),
-            )
+        vinculos.vincular(
+            session,
+            no,
+            colmeia,
+            instalado_em,
+            posicionamento=_texto("posicionamento"),
+            observacoes=_texto("observacoes"),
         )
         flash(f"Nó {no.node_id} vinculado a {colmeia.name}.", "ok")
         return redirect(url_for("gerenciar.index"))
@@ -324,14 +304,9 @@ def desvincular_no(no_id: int):
     _exigir_quem_administra()
     no = _no_gerenciavel(sessao_do_request(), no_id)
 
-    vinculo_atual = no.vinculo_atual
-    if vinculo_atual is None:
-        flash("Esse nó já está sem colmeia.", "erro")
-    else:
-        # Fecha o período em vez de apagar o vínculo: as leituras já gravadas continuam
-        # apontando para a colmeia certa, e o histórico de instalação é parte do
-        # protocolo documentado.
-        vinculo_atual.removed_at = agora_utc()
+    if vinculos.desvincular(no):
         flash(f"Nó {no.node_id} desvinculado.", "ok")
+    else:
+        flash("Esse nó já está sem colmeia.", "erro")
 
     return redirect(url_for("gerenciar.index"))

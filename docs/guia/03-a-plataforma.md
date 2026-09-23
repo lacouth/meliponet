@@ -269,7 +269,9 @@ carimbava no nó a organização de quem estava logado, e um admin que adotasse 
 a colmeia de outra organização levava o nó consigo, deixando o dono legítimo sem
 enxergar o próprio nó. É a mesma lição do arquivo, do outro lado: **a regra concentrada
 só protege quem a chama**. Hoje as duas rotas usam `pode_gerenciar_no`, e o nó recebe a
-organização da colmeia.
+organização da colmeia — regra que mora em `servicos/vinculos.py`, na função `vincular`,
+e é testada sem servidor nenhum em `test_vinculos.py`. A rota só lê o formulário,
+confere a permissão e chama o serviço.
 
 E há uma segunda lição, sobre teste: nenhum teste exercitava o perfil `admin` — as
 fixtures nasciam meliponicultor. Um conjunto de testes que nunca constrói um dos casos

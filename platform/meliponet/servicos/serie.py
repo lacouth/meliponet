@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from meliponet.modelos import Medicao
@@ -136,3 +136,15 @@ def completude(session: Session, colmeia_id: int, janela: str = JANELA_PADRAO) -
 
     esperadas = seqs[-1] - seqs[0] + 1
     return {"received": len(seqs), "expected": esperadas, "gaps": esperadas - len(seqs)}
+
+
+def contar_medicoes(session: Session, colmeia_ids: list[int]) -> int:
+    """Quantas medicoes existem, somando as colmeias de ``colmeia_ids``."""
+    if not colmeia_ids:
+        return 0
+    return (
+        session.scalar(
+            select(func.count()).select_from(Medicao).where(Medicao.hive_id.in_(colmeia_ids))
+        )
+        or 0
+    )

@@ -7,11 +7,11 @@ from zoneinfo import ZoneInfo
 
 from flask import Blueprint, abort, current_app, render_template, request
 from flask_login import current_user, login_required
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from meliponet.banco import sessao_do_request
-from meliponet.modelos import Colmeia, Medicao, Meliponario, Recusa
+from meliponet.modelos import Colmeia, Meliponario, Recusa
 from meliponet.servicos import escopo
 from meliponet.servicos import serie as servico_de_serie
 
@@ -68,12 +68,7 @@ def index():
     ]
 
     colmeia_ids = [linha["colmeia"].id for linha in visao_geral]
-    total_de_medicoes = (
-        session.scalar(
-            select(func.count()).select_from(Medicao).where(Medicao.hive_id.in_(colmeia_ids))
-        )
-        or 0
-    )
+    total_de_medicoes = servico_de_serie.contar_medicoes(session, colmeia_ids)
     # Recusas nao pertencem a colmeia nenhuma (a mensagem sequer foi decodificada),
     # entao so quem tem visao ampla as ve.
     recusas = []
