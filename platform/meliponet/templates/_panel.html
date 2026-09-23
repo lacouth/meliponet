@@ -29,7 +29,7 @@
   Última leitura {{ ultima.time | hora_local if ultima else '—' }} ·
   {{ completude.received }} de {{ completude.expected }} mensagens na janela
   {%- if completude.gaps %}, {{ completude.gaps }} perdida(s){% endif %}
-  {%- if latest and ultima.quality_flags %} ·
+  {%- if ultima and ultima.quality_flags %} ·
     <span class="flags">
       {% for flag in ultima.quality_flags.split(',') %}<span class="flag">{{ flag }}</span>{% endfor %}
     </span>

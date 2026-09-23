@@ -6,11 +6,11 @@ rotas de fato a aplicam — a regra certa num helper que ninguém chama não pro
 
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from meliponet.banco import abrir_sessao
-from meliponet.modelos import Colmeia, Meliponario, No, Perfil, Vinculo
+from meliponet.modelos import Colmeia, Medicao, Meliponario, No, Perfil, Vinculo
 from sqlalchemy import select
 
 
@@ -83,6 +83,31 @@ def test_email_inexistente_da_a_mesma_resposta(client, scenario) -> None:
 
     assert resposta.status_code == 401
     assert "E-mail ou senha incorretos" in resposta.get_data(as_text=True)
+
+
+def test_painel_mostra_as_flags_da_ultima_leitura(client, scenario, login) -> None:
+    """Uma flag e o no avisando que um sensor falhou: ela precisa chegar a tela.
+
+    Este teste nasceu de um defeito. Na traducao do painel para o portugues, a variavel
+    `latest` virou `ultima` em todo lugar menos numa condicao -- e as flags pararam de
+    aparecer sem erro nenhum, porque uma variavel inexistente no Jinja vale "falso".
+    """
+    with abrir_sessao() as session:
+        session.add(
+            Medicao(
+                time=datetime.now(UTC) - timedelta(minutes=1),
+                node_id=scenario.node_id,
+                hive_id=scenario.hive_id,
+                seq=1,
+                temp_in_c=30.1,
+                quality_flags="sht_out_fault",
+            )
+        )
+
+    login(scenario.organization_id)
+    corpo = client.get(f"/colmeia/{scenario.hive_id}").get_data(as_text=True)
+
+    assert '<span class="flag">sht_out_fault</span>' in corpo
 
 
 def test_colmeia_alheia_responde_404(client, scenario, login) -> None:
