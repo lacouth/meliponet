@@ -8,8 +8,6 @@ O porque dos baldes vazios virarem ``None`` e nao sumirem esta em
 ``docs/guia/03-a-plataforma.md``.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -42,8 +40,10 @@ COLUNAS_DE_METRICA = (
 )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class Ponto:
+    """Um ponto do grafico: o inicio do balde e a media de cada metrica nele."""
+
     time: datetime
     values: dict[str, float | None]
 
@@ -71,10 +71,15 @@ def _reamostrar(
     perda de mensagens. Zero seria pior ainda, porque viraria um mergulho falso na
     serie. ``None`` e o unico valor que representa "nao sabemos".
     """
+    # Primeiro separa as leituras por balde: a chave e o instante em que o balde comeca.
     baldes: dict[datetime, list[Medicao]] = {}
     for linha in linhas:
-        baldes.setdefault(_alinhar(linha.time, passo), []).append(linha)
+        inicio = _alinhar(linha.time, passo)
+        if inicio not in baldes:
+            baldes[inicio] = []
+        baldes[inicio].append(linha)
 
+    # Depois percorre a janela inteira, balde a balde, tenha ele leitura ou nao.
     pontos = []
     balde = _alinhar(desde, passo)
     ultimo = _alinhar(ate, passo)
@@ -82,11 +87,29 @@ def _reamostrar(
         medicoes = baldes.get(balde, [])
         valores: dict[str, float | None] = {}
         for coluna in COLUNAS_DE_METRICA:
-            presentes = [getattr(m, coluna) for m in medicoes if getattr(m, coluna) is not None]
-            valores[coluna] = sum(presentes) / len(presentes) if presentes else None
+            valores[coluna] = _media(medicoes, coluna)
         pontos.append(Ponto(time=balde, values=valores))
         balde += passo
     return pontos
+
+
+def _media(medicoes: list[Medicao], coluna: str) -> float | None:
+    """Media de ``coluna`` entre as medicoes do balde, pulando as que nao tem valor.
+
+    Um sensor que falhou deixa a coluna vazia (``None``), e ela fica de fora da conta --
+    em vez de entrar como zero e puxar a media para baixo. Se nenhuma medicao tem valor,
+    a media tambem e ``None``.
+    """
+    soma = 0.0
+    quantas = 0
+    for medicao in medicoes:
+        valor = getattr(medicao, coluna)
+        if valor is not None:
+            soma = soma + valor
+            quantas = quantas + 1
+    if quantas == 0:
+        return None
+    return soma / quantas
 
 
 def serie(session: Session, colmeia_id: int, janela: str = JANELA_PADRAO) -> list[Ponto]:

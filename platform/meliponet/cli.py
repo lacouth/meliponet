@@ -6,8 +6,6 @@ Estes comandos resolvem isso a partir do terminal do servidor -- que e o unico l
 onde a permissao pode ser presumida.
 """
 
-from __future__ import annotations
-
 import getpass
 import sys
 

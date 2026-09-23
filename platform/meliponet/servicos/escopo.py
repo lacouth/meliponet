@@ -8,8 +8,6 @@ Os tres perfis e a historia de quem contornou este modulo estao em
 ``docs/guia/03-a-plataforma.md``.
 """
 
-from __future__ import annotations
-
 from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 

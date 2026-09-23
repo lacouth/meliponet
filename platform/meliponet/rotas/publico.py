@@ -8,8 +8,6 @@ Sobre os numeros exibidos: sao **apenas agregados** -- quantas colmeias, quantos
 meliponarios, quantas medicoes. Nunca nomes, localizacoes ou leituras.
 """
 
-from __future__ import annotations
-
 from flask import Blueprint, redirect, render_template, url_for
 from flask_login import current_user
 from sqlalchemy import func, select

@@ -28,7 +28,9 @@ for cientifico, _popular in ESPECIES:
     NOMES_CIENTIFICOS.append(cientifico)
 
 
-@dataclass(frozen=True, slots=True)
+# `frozen=True` impede mudar a configuracao depois de montada: web e ingestor leem os
+# mesmos valores do comeco ao fim, e uma troca no meio do caminho seria um defeito.
+@dataclass(frozen=True)
 class Configuracao:
     database_url: str
     secret_key: str

@@ -8,12 +8,9 @@ silencio. Mensagem invalida vira um :class:`ErroDeTelemetria`, que quem chamou g
 ``ingest_rejects``. Os nomes dos campos sao os do contrato.
 """
 
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +29,10 @@ SCHEMA_ID = "meliponet.telemetry.v1"
 LIMITE_DE_BYTES = 4096
 
 
+def _agora() -> datetime:
+    return datetime.now(UTC)
+
+
 class ErroDeTelemetria(ValueError):
     """Mensagem que nao pode ser aceita, com o motivo que sera persistido."""
 
@@ -40,7 +41,7 @@ class ErroDeTelemetria(ValueError):
         self.motivo = motivo
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class Telemetria:
     """Uma leitura validada, pronta para persistencia."""
 
@@ -52,7 +53,11 @@ class Telemetria:
     #:
     #: Os dois sao distintos e a diferenca e informacao: uma mensagem drenada do spool
     #: apos uma queda de rede chega horas depois de ter sido medida.
-    received_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    #:
+    #: `default_factory` diz ao dataclass qual funcao chamar para obter o valor padrao
+    #: *a cada leitura nova*. Um `= _agora()` simples seria calculado uma vez so, quando
+    #: o modulo carrega, e toda leitura ficaria com o mesmo horario de chegada.
+    received_at: datetime = field(default_factory=_agora)
     metrics: dict[str, float] = field(default_factory=dict)
     flags: tuple[str, ...] = ()
     gateway_id: str | None = None
@@ -76,11 +81,16 @@ class Telemetria:
         return dentro - fora
 
 
-@lru_cache(maxsize=1)
-def _validador() -> Draft202012Validator:
+def _carregar_validador() -> Draft202012Validator:
+    """Le o schema do contrato, confere que ele mesmo e valido, e monta o validador."""
     schema = json.loads((PASTA_DOS_CONTRATOS / "telemetry.v1.schema.json").read_text())
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
+
+
+#: Montado uma vez, quando o modulo e importado: ler e conferir o schema a cada
+#: mensagem seria trabalho repetido.
+_VALIDADOR = _carregar_validador()
 
 
 def _descrever(erro: ValidationError) -> str:
@@ -95,6 +105,15 @@ def _descrever(erro: ValidationError) -> str:
     if onde:
         return f"{onde}: {erro.message}"
     return erro.message
+
+
+def _onde_esta_o_erro(erro: ValidationError) -> list:
+    """O caminho do erro dentro da mensagem, usado para ordenar os erros.
+
+    A mensagem pode ter varios erros ao mesmo tempo; ordenar pelo caminho faz a
+    recusa citar sempre o mesmo, em vez de um diferente a cada execucao.
+    """
+    return list(erro.absolute_path)
 
 
 #: Campos do contrato que nao sao metricas de serie temporal.
@@ -130,7 +149,7 @@ def decodificar(payload: bytes | str) -> Telemetria:
     if versao != SCHEMA_ID:
         raise ErroDeTelemetria(f"versao de schema nao suportada: {versao!r}")
 
-    erros = sorted(_validador().iter_errors(mensagem), key=lambda e: list(e.absolute_path))
+    erros = sorted(_VALIDADOR.iter_errors(mensagem), key=_onde_esta_o_erro)
     if erros:
         raise ErroDeTelemetria(_descrever(erros[0]))
 
@@ -144,11 +163,17 @@ def decodificar(payload: bytes | str) -> Telemetria:
     if ts.tzinfo is None:
         raise ErroDeTelemetria("ts sem fuso horario: o contrato exige UTC explicito")
 
+    # Tudo que nao e cabecalho da mensagem e metrica de serie temporal.
+    metricas = {}
+    for campo, valor in mensagem.items():
+        if campo not in _NAO_SAO_METRICA:
+            metricas[campo] = valor
+
     return Telemetria(
         node_id=mensagem["node_id"],
         seq=mensagem["seq"],
         ts=ts.astimezone(UTC),
-        metrics={k: v for k, v in mensagem.items() if k not in _NAO_SAO_METRICA},
+        metrics=metricas,
         flags=tuple(mensagem.get("flags", ())),
         gateway_id=mensagem.get("gateway_id"),
     )

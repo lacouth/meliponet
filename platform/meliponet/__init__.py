@@ -1,7 +1,5 @@
 """Plataforma web MelipoNet."""
 
-from __future__ import annotations
-
 from flask import Flask
 from flask_login import LoginManager
 

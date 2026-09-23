@@ -1,7 +1,5 @@
 """Painel: a visao que o meliponicultor abre para saber como esta a colmeia."""
 
-from __future__ import annotations
-
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -57,17 +55,20 @@ def index():
             .order_by(Meliponario.name)
         )
     )
-    visao_geral = [
-        {
-            "meliponario": meliponario,
-            "colmeia": colmeia,
-            "ultima": servico_de_serie.ultima_leitura(session, colmeia.id),
-        }
-        for meliponario in meliponarios
-        for colmeia in meliponario.hives
-    ]
+    # Uma linha da tabela por colmeia, com o meliponario dela e a leitura mais recente.
+    visao_geral = []
+    colmeia_ids = []
+    for meliponario in meliponarios:
+        for colmeia in meliponario.hives:
+            visao_geral.append(
+                {
+                    "meliponario": meliponario,
+                    "colmeia": colmeia,
+                    "ultima": servico_de_serie.ultima_leitura(session, colmeia.id),
+                }
+            )
+            colmeia_ids.append(colmeia.id)
 
-    colmeia_ids = [linha["colmeia"].id for linha in visao_geral]
     total_de_medicoes = servico_de_serie.contar_medicoes(session, colmeia_ids)
     # Recusas nao pertencem a colmeia nenhuma (a mensagem sequer foi decodificada),
     # entao so quem tem visao ampla as ve.
@@ -163,12 +164,21 @@ def _contexto_da_colmeia(session: Session, colmeia: Colmeia, janela: str) -> dic
     pontos = servico_de_serie.serie(session, colmeia.id, janela)
     fuso = _fuso_de_exibicao()
 
+    # O grafico recebe listas paralelas: a posicao N de cada lista e o mesmo instante.
+    rotulos = []
+    for ponto in pontos:
+        rotulos.append(ponto.time.astimezone(fuso).strftime("%d/%m %H:%M"))
+
+    series = {}
+    for coluna in servico_de_serie.COLUNAS_DE_METRICA:
+        valores = []
+        for ponto in pontos:
+            valores.append(ponto.values.get(coluna))
+        series[coluna] = valores
+
     grafico = {
-        "labels": [p.time.astimezone(fuso).strftime("%d/%m %H:%M") for p in pontos],
-        "series": {
-            coluna: [p.values.get(coluna) for p in pontos]
-            for coluna in servico_de_serie.COLUNAS_DE_METRICA
-        },
+        "labels": rotulos,
+        "series": series,
         "thermal_differential": _diferencial_termico(pontos),
     }
 

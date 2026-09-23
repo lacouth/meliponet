@@ -5,8 +5,6 @@ aqui que uma leitura ganha a colmeia a que pertence e que o reenvio de spool e
 absorvido.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -35,8 +33,10 @@ CAMPOS_DE_METRICA = (
 )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class ResultadoDaGravacao:
+    """O que aconteceu com uma leitura: gravada, repetida, e em que colmeia caiu."""
+
     stored: bool
     #: Verdadeiro quando a leitura ja existia -- reenvio de spool, nao erro.
     duplicate: bool = False
@@ -100,19 +100,28 @@ def gravar(session: Session, telemetria: Telemetria) -> ResultadoDaGravacao:
 
     hive_id = colmeia_no_instante(session, no, telemetria.ts)
 
+    # As flags viram um texto so, separado por virgula; sem flag nenhuma, a coluna fica
+    # vazia em vez de guardar um texto vazio.
+    flags = None
+    if telemetria.flags:
+        flags = ",".join(telemetria.flags)
+
     medicao = Medicao(
         time=telemetria.ts,
         node_id=telemetria.node_id,
         hive_id=hive_id,
         seq=telemetria.seq,
         gateway_id=telemetria.gateway_id,
-        quality_flags=",".join(telemetria.flags) or None,
-        **{
-            nome: telemetria.metrics[nome]
-            for nome in CAMPOS_DE_METRICA
-            if nome in telemetria.metrics
-        },
+        quality_flags=flags,
     )
+
+    # Cada metrica que veio na mensagem vai para a coluna de mesmo nome. `setattr` e o
+    # jeito de preencher um atributo cujo nome esta numa variavel: equivale a escrever
+    # `medicao.temp_in_c = ...` quando `nome` vale "temp_in_c".
+    for nome in CAMPOS_DE_METRICA:
+        if nome in telemetria.metrics:
+            setattr(medicao, nome, telemetria.metrics[nome])
+
     session.add(medicao)
 
     # `last_seen_at` e o horario de chegada, nao o da medicao: uma mensagem antiga

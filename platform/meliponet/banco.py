@@ -8,8 +8,6 @@ Duas formas de obter sessao: :func:`sessao_do_request` para as rotas web e
 esta em ``docs/guia/03-a-plataforma.md``.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterator
 from contextlib import contextmanager
 

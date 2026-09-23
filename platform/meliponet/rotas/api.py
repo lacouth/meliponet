@@ -9,8 +9,6 @@ da requisicao desfaria esse registro. O porque completo esta em
 ``docs/guia/03-a-plataforma.md``.
 """
 
-from __future__ import annotations
-
 from flask import Blueprint, current_app, jsonify, request
 
 from meliponet.banco import abrir_sessao

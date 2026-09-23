@@ -7,8 +7,6 @@ broker em vez de sumirem. Um deploy da plataforma nao pode abrir uma lacuna nas 
 ja que lacuna e justamente o que o Edital 17 se propoe a medir e minimizar.
 """
 
-from __future__ import annotations
-
 import logging
 import signal
 import sys
