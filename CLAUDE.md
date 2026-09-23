@@ -87,7 +87,7 @@ O espelho do `./verificar` é `.github/workflows/ci.yml`: mudou um, mude o outro
 
 ## Documentação
 
-- `docs/trilha.md` é a porta de entrada, e aponta para `docs/exercicios/NN-slug.md` (oito
+- `docs/trilha.md` é a porta de entrada, e aponta para `docs/exercicios/NN-slug.md` (nove
   exercícios) e para `firmware/ROTEIRO.md`.
 - Os guias em português vivem em `docs/guia/`, na convenção `NN-slug.md`, e hoje são sete.
   Todo guia traz diagramas de arquitetura em Mermaid e termina com uma seção do que ainda
