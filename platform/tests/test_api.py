@@ -36,13 +36,13 @@ def postar(client, corpo: str, **kwargs):
     return client.post(ROTA, data=corpo, content_type="application/json", **kwargs)
 
 
-def test_leitura_valida_e_gravada(client, scenario) -> None:
+def test_leitura_valida_e_gravada(client, cenario) -> None:
     resposta = postar(client, leitura())
 
     assert resposta.status_code == 201
     corpo = resposta.get_json()
     assert corpo["ok"] is True
-    assert corpo["colmeia"] == scenario.hive_id
+    assert corpo["colmeia"] == cenario.colmeia_id
 
     with abrir_sessao() as session:
         row = session.scalar(select(Medicao))
@@ -50,7 +50,7 @@ def test_leitura_valida_e_gravada(client, scenario) -> None:
         assert row.seq == 1
 
 
-def test_reenvio_responde_sucesso_e_nao_duplica(client, scenario) -> None:
+def test_reenvio_responde_sucesso_e_nao_duplica(client, cenario) -> None:
     """O no que guardou a leitura durante uma queda vai reenvia-la.
 
     Se o reenvio respondesse erro, o firmware do aluno guardaria a copia local para
@@ -67,7 +67,7 @@ def test_reenvio_responde_sucesso_e_nao_duplica(client, scenario) -> None:
         assert len(session.scalars(select(Medicao)).all()) == 1
 
 
-def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, scenario) -> None:
+def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, cenario) -> None:
     resposta = postar(client, json.dumps({"schema": ESQUEMA, "node_id": "A4C13800"}))
 
     assert resposta.status_code == 400
@@ -80,14 +80,14 @@ def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, scenario)
         assert recusa.topic == "http:/api/v1/telemetria"
 
 
-def test_json_malformado_nao_derruba_a_rota(client, scenario) -> None:
+def test_json_malformado_nao_derruba_a_rota(client, cenario) -> None:
     resposta = postar(client, '{"schema": "meliponet.telemetry.v1", "seq": 1,')
 
     assert resposta.status_code == 400
     assert "malformado" in resposta.get_json()["erro"]
 
 
-def test_token_e_exigido_quando_configurado(db, scenario) -> None:
+def test_token_e_exigido_quando_configurado(db, cenario) -> None:
     from meliponet import criar_app
 
     app = criar_app(

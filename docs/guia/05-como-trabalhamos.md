@@ -102,7 +102,7 @@ automatizado é a mesma ideia, com duas diferenças: a verificação é feita pe
 ele roda de novo sozinho para sempre.
 
 ```python
-def test_reenvio_do_spool_e_idempotente(scenario):
+def test_reenvio_do_spool_e_idempotente(cenario):
     with abrir_sessao() as session:
         primeiro = gravar(session, decodificar(message(7)))
     with abrir_sessao() as session:

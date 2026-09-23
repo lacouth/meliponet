@@ -98,7 +98,7 @@ escrito, antes de abrir o gabarito:
 Em `platform/tests/test_ingestao.py`:
 
 ```python
-def test_seq_repetida_de_outro_no_nao_e_duplicata(scenario) -> None:
+def test_seq_repetida_de_outro_no_nao_e_duplicata(cenario) -> None:
     """A duplicata e por (node_id, seq), nao por seq.
 
     Cada no tem o seu proprio contador, e todo no novo comeca perto de zero: sem o
@@ -168,7 +168,7 @@ colmeia é a que se perde. Justamente a que alguém vai procurar para conferir s
 > **O conceito: a resolução do `ts` importa aqui.** O contrato formata o horário com
 > resolução de **um segundo** (`2027-03-14T12:05:00Z`) — nenhuma mensagem real carrega
 > fração de segundo. Já um `datetime` do Python guarda microssegundos, e a fixture
-> `scenario` cria o vínculo com `datetime.now(UTC)`, que tem os seus. A consequência é que
+> `cenario` cria o vínculo com `datetime.now(UTC)`, que tem os seus. A consequência é que
 > "o instante exato da instalação" é **inalcançável** por uma mensagem de verdade enquanto
 > o `installed_at` tiver fração de segundo: o `ts`, truncado, sempre cai alguns
 > microssegundos antes. Por isso o teste precisa recuar o vínculo para um instante redondo
@@ -188,29 +188,29 @@ colmeia é a que se perde. Justamente a que alguém vai procurar para conferir s
 Ainda em `platform/tests/test_ingestao.py`:
 
 ```python
-def test_medicao_no_instante_exato_da_instalacao(scenario) -> None:
+def test_medicao_no_instante_exato_da_instalacao(cenario) -> None:
     """A fronteira do periodo de instalacao pertence ao periodo."""
     # O `ts` do contrato tem resolucao de um segundo. Sem zerar os microssegundos, o
     # "instante exato" seria inalcancavel por uma mensagem de verdade.
     quando = (datetime.now(UTC) - timedelta(days=10)).replace(microsecond=0)
     with abrir_sessao() as session:
         vinculo = session.scalar(
-            select(Vinculo).where(Vinculo.node_id == scenario.node_pk)
+            select(Vinculo).where(Vinculo.node_id == cenario.no_pk)
         )
         vinculo.installed_at = quando
 
     with abrir_sessao() as session:
         resultado = gravar(session, decodificar(message(1, ts=quando)))
 
-    assert resultado.hive_id == scenario.hive_id
+    assert resultado.hive_id == cenario.colmeia_id
 
 
-def test_um_segundo_antes_da_instalacao_fica_sem_colmeia(scenario) -> None:
+def test_um_segundo_antes_da_instalacao_fica_sem_colmeia(cenario) -> None:
     """O par do teste acima: um teste de fronteira precisa dos dois lados dela."""
     quando = (datetime.now(UTC) - timedelta(days=10)).replace(microsecond=0)
     with abrir_sessao() as session:
         vinculo = session.scalar(
-            select(Vinculo).where(Vinculo.node_id == scenario.node_pk)
+            select(Vinculo).where(Vinculo.node_id == cenario.no_pk)
         )
         vinculo.installed_at = quando
 
@@ -245,7 +245,7 @@ E no fim: `./verificar` verde.
 
 É a armadilha dos microssegundos, e vale entendê-la.
 
-O `installed_at` da fixture `scenario` é `datetime.now(UTC) - timedelta(days=30)` — com
+O `installed_at` da fixture `cenario` é `datetime.now(UTC) - timedelta(days=30)` — com
 microssegundos. Mas o helper `message()` formata o `ts` com `"%Y-%m-%dT%H:%M:%SZ"`, que
 **trunca no segundo**, como manda o contrato.
 

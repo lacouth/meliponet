@@ -28,12 +28,12 @@ def message(seq: int, *, ts: datetime | None = None, node_id: str = "A4C13800", 
     return serializar(payload)
 
 
-def test_grava_leitura(scenario) -> None:
+def test_grava_leitura(cenario) -> None:
     with abrir_sessao() as session:
         resultado = gravar(session, decodificar(message(1)))
 
     assert resultado.stored
-    assert resultado.hive_id == scenario.hive_id
+    assert resultado.hive_id == cenario.colmeia_id
 
     with abrir_sessao() as session:
         row = session.scalar(select(Medicao))
@@ -41,7 +41,7 @@ def test_grava_leitura(scenario) -> None:
         assert row.diferencial_termico_c == pytest.approx(-4.1)
 
 
-def test_reenvio_do_spool_e_idempotente(scenario) -> None:
+def test_reenvio_do_spool_e_idempotente(cenario) -> None:
     """Um nó que drena o spool depois de uma queda reenvia a mesma seq.
 
     A restrição UNIQUE (node_id, seq) tem de absorver isso silenciosamente: sem ela a
@@ -77,7 +77,7 @@ def test_no_desconhecido_e_autocadastrado(db) -> None:
         assert no.last_seen_at is not None
 
 
-def test_sensor_ausente_grava_null_e_nao_zero(scenario) -> None:
+def test_sensor_ausente_grava_null_e_nao_zero(cenario) -> None:
     """A distinção entre "sem sensor" e "leu zero" é o insumo da curadoria."""
     # O campo nao vem com zero nem com null: ele simplesmente nao e montado.
     payload = message(1, flags=["sht_out_fault"], temp_out_c=None)
@@ -92,13 +92,13 @@ def test_sensor_ausente_grava_null_e_nao_zero(scenario) -> None:
         assert row.quality_flags == "sht_out_fault"
 
 
-def test_leitura_anterior_a_instalacao_fica_sem_colmeia(scenario) -> None:
+def test_leitura_anterior_a_instalacao_fica_sem_colmeia(cenario) -> None:
     """Uma medição de antes de o nó ser instalado não pertence à colmeia.
 
     Atribuí-la contaminaria a série com leituras feitas na bancada, ou na caixa
     anterior, antes de o nó chegar àquela colônia.
     """
-    antes = scenario.installed_at - timedelta(days=1)
+    antes = cenario.instalado_em - timedelta(days=1)
 
     with abrir_sessao() as session:
         resultado = gravar(session, decodificar(message(1, ts=antes)))
@@ -107,7 +107,7 @@ def test_leitura_anterior_a_instalacao_fica_sem_colmeia(scenario) -> None:
     assert resultado.hive_id is None
 
 
-def test_no_remanejado_atribui_pela_data_da_medicao(scenario) -> None:
+def test_no_remanejado_atribui_pela_data_da_medicao(cenario) -> None:
     """O ponto central do modelo histórico de vínculos.
 
     Um nó movido da colmeia A para a B não pode fazer a série antiga de A migrar para
@@ -118,13 +118,13 @@ def test_no_remanejado_atribui_pela_data_da_medicao(scenario) -> None:
 
     with abrir_sessao() as session:
         atual = session.scalar(
-            select(Vinculo).where(Vinculo.node_id == scenario.node_pk)
+            select(Vinculo).where(Vinculo.node_id == cenario.no_pk)
         )
         atual.removed_at = mudanca
         session.add(
             Vinculo(
-                node_id=scenario.node_pk,
-                hive_id=scenario.other_hive_id,
+                node_id=cenario.no_pk,
+                hive_id=cenario.outra_colmeia_id,
                 installed_at=mudanca,
             )
         )
@@ -137,11 +137,11 @@ def test_no_remanejado_atribui_pela_data_da_medicao(scenario) -> None:
         atrasada = gravar(session, decodificar(message(1, ts=antiga)))
         recente = gravar(session, decodificar(message(2, ts=nova)))
 
-    assert atrasada.hive_id == scenario.hive_id, "leitura antiga fica na colmeia de origem"
-    assert recente.hive_id == scenario.other_hive_id, "leitura nova vai para a colmeia atual"
+    assert atrasada.hive_id == cenario.colmeia_id, "leitura antiga fica na colmeia de origem"
+    assert recente.hive_id == cenario.outra_colmeia_id, "leitura nova vai para a colmeia atual"
 
 
-def test_last_seen_usa_a_chegada_e_nao_a_medicao(scenario) -> None:
+def test_last_seen_usa_a_chegada_e_nao_a_medicao(cenario) -> None:
     """Uma mensagem antiga drenada do spool não significa que o nó está vivo agora."""
     antiga = datetime.now(UTC) - timedelta(days=3)
 
@@ -149,7 +149,7 @@ def test_last_seen_usa_a_chegada_e_nao_a_medicao(scenario) -> None:
         gravar(session, decodificar(message(1, ts=antiga)))
 
     with abrir_sessao() as session:
-        no = session.scalar(select(No).where(No.node_id == scenario.node_id))
+        no = session.scalar(select(No).where(No.node_id == cenario.node_id))
         assert no.last_seen_at > antiga + timedelta(days=2)
 
 

@@ -48,38 +48,44 @@ def db(tmp_path):
     return engine
 
 
-@dataclass(frozen=True, slots=True)
-class Fixture:
-    """Ids de um cenario montado, para os testes referenciarem sem reabrir sessao."""
+@dataclass
+class Cenario:
+    """Ids de um cenario montado, para os testes referenciarem sem reabrir sessao.
 
-    organization_id: int
-    other_organization_id: int
-    apiary_id: int
-    hive_id: int
-    other_hive_id: int
-    node_pk: int
+    `no_pk` e a chave do no no banco (a coluna `id`); `node_id` e o identificador do
+    contrato, o que o no escreve na mensagem ("A4C13800").
+    """
+
+    organizacao_id: int
+    outra_organizacao_id: int
+    meliponario_id: int
+    colmeia_id: int
+    outra_colmeia_id: int
+    no_pk: int
     node_id: str
-    installed_at: datetime
+    instalado_em: datetime
 
 
 @pytest.fixture
-def scenario(db) -> Fixture:
+def cenario(db) -> Cenario:
     """Duas organizacoes, uma colmeia em cada, e um no vinculado a primeira.
 
     Ter *duas* organizacoes desde a base e deliberado: e a unica forma de um teste
     provar que o escopo isola de verdade. Um cenario com uma organizacao so passaria
     igual com o filtro ausente.
     """
-    installed_at = datetime.now(UTC) - timedelta(days=30)
+    instalado_em = datetime.now(UTC) - timedelta(days=30)
 
     with abrir_sessao() as session:
-        org = Organizacao(name="Meliponicultores da Paraíba")
-        other = Organizacao(name="Cooperativa do Brejo")
-        session.add_all([org, other])
+        organizacao = Organizacao(name="Meliponicultores da Paraíba")
+        outra = Organizacao(name="Cooperativa do Brejo")
+        session.add_all([organizacao, outra])
         session.flush()
 
-        meliponario = Meliponario(organization_id=org.id, name="Meliponário Mata do Buraquinho")
-        outro_meliponario = Meliponario(organization_id=other.id, name="Meliponário do Brejo")
+        meliponario = Meliponario(
+            organization_id=organizacao.id, name="Meliponário Mata do Buraquinho"
+        )
+        outro_meliponario = Meliponario(organization_id=outra.id, name="Meliponário do Brejo")
         session.add_all([meliponario, outro_meliponario])
         session.flush()
 
@@ -90,39 +96,39 @@ def scenario(db) -> Fixture:
         session.add_all([colmeia, outra_colmeia])
         session.flush()
 
-        no = No(node_id="A4C13800", organization_id=org.id)
+        no = No(node_id="A4C13800", organization_id=organizacao.id)
         session.add(no)
         session.flush()
 
         session.add(
-            Vinculo(node_id=no.id, hive_id=colmeia.id, installed_at=installed_at)
+            Vinculo(node_id=no.id, hive_id=colmeia.id, installed_at=instalado_em)
         )
 
-        return Fixture(
-            organization_id=org.id,
-            other_organization_id=other.id,
-            apiary_id=meliponario.id,
-            hive_id=colmeia.id,
-            other_hive_id=outra_colmeia.id,
-            node_pk=no.id,
+        return Cenario(
+            organizacao_id=organizacao.id,
+            outra_organizacao_id=outra.id,
+            meliponario_id=meliponario.id,
+            colmeia_id=colmeia.id,
+            outra_colmeia_id=outra_colmeia.id,
+            no_pk=no.id,
             node_id=no.node_id,
-            installed_at=installed_at,
+            instalado_em=instalado_em,
         )
 
 
 @pytest.fixture
-def make_user(db):
+def criar_usuario(db):
     """Fabrica de usuarios, para os testes de escopo montarem cada perfil."""
 
-    def _make(
-        organization_id: int,
+    def _criar(
+        organizacao_id: int,
         perfil: Perfil = Perfil.MELIPONICULTOR,
         email: str | None = None,
     ):
         with abrir_sessao() as session:
             usuario = Usuario(
-                organization_id=organization_id,
-                email=email or f"{perfil.value}-{organization_id}@exemplo.br",
+                organization_id=organizacao_id,
+                email=email or f"{perfil.value}-{organizacao_id}@exemplo.br",
                 name=perfil.label,
                 role=perfil,
             )
@@ -131,11 +137,11 @@ def make_user(db):
             session.flush()
             return usuario
 
-    return _make
+    return _criar
 
 
 @pytest.fixture
-def app(db, scenario):
+def app(db, cenario):
     """Aplicacao Flask ligada ao banco do teste."""
     from meliponet import criar_app
 
