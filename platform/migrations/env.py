@@ -16,6 +16,9 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# O import de `modelos_futuros` registra as tabelas da Fase 4 no `Base.metadata`. Sem
+# ele o autogenerate as veria no banco e fora do codigo, e proporia apaga-las.
+from meliponet import modelos_futuros  # noqa: F401
 from meliponet.configuracao import Configuracao
 from meliponet.modelos import Base
 

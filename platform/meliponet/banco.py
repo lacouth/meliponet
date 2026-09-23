@@ -17,6 +17,10 @@ from flask import Flask, g
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
+# As tabelas da Fase 4 moram num arquivo proprio, e importa-lo e o que as registra no
+# `Base.metadata`. Parece um import sem uso, mas sem ele `criar_tabelas` deixaria as tres
+# de fora em silencio -- `test_banco.py` existe para que apagar esta linha quebre algo.
+from meliponet import modelos_futuros  # noqa: F401
 from meliponet.modelos import Base
 
 _engine: Engine | None = None

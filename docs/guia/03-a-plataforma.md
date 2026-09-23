@@ -35,6 +35,7 @@ platform/
 │   ├── configuracao.py         lê as variáveis de ambiente
 │   ├── banco.py                conexão com o banco e as sessões
 │   ├── modelos.py              as tabelas, como classes Python
+│   ├── modelos_futuros.py      tabelas da Fase 4, criadas mas ainda sem uso
 │   ├── cli.py                  comandos de terminal (criar-usuario)
 │   │
 │   ├── rotas/                  ← AS ROTAS (o que o navegador acessa), um arquivo por assunto
