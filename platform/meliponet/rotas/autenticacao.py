@@ -25,14 +25,14 @@ def entrar():
         # casos revelaria quais enderecos tem conta na plataforma.
         if usuario is None or not usuario.is_active or not usuario.check_password(senha):
             flash("E-mail ou senha incorretos.", "erro")
-            return render_template("auth/login.html", email=email), 401
+            return render_template("autenticacao/entrar.html", email=email), 401
 
         usuario.last_login_at = agora_utc()
         login_user(usuario, remember=True)
 
         return redirect(request.args.get("next") or url_for("painel.index"))
 
-    return render_template("auth/login.html", email="")
+    return render_template("autenticacao/entrar.html", email="")
 
 
 @bp.route("/sair")

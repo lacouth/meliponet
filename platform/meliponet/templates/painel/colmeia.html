@@ -21,7 +21,7 @@
      hx-get="{{ url_for('painel.fragmento_da_colmeia', colmeia_id=colmeia.id, janela=janela) }}"
      hx-trigger="every 60s"
      hx-swap="innerHTML">
-  {% include "_panel.html" %}
+  {% include "painel/_fragmento_da_colmeia.html" %}
 </div>
 
 {% endblock %}

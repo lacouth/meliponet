@@ -47,7 +47,7 @@ def index():
         pendentes = vinculos.nos_pendentes(session)
 
     return render_template(
-        "manage/index.html",
+        "cadastros/index.html",
         meliponarios=meliponarios,
         nos=nos,
         pendentes=pendentes,

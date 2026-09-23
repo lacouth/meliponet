@@ -79,7 +79,7 @@ def index():
         )
 
     return render_template(
-        "index.html",
+        "painel/colmeias.html",
         visao_geral=visao_geral,
         total_de_medicoes=total_de_medicoes,
         recusas=recusas,
@@ -123,7 +123,7 @@ def detalhe_da_colmeia(colmeia_id: int):
     session = sessao_do_request()
     contexto = _contexto_da_colmeia(session, _colmeia_visivel(session, colmeia_id), janela)
 
-    return render_template("hive.html", **contexto)
+    return render_template("painel/colmeia.html", **contexto)
 
 
 @bp.route("/colmeia/<int:colmeia_id>/painel")
@@ -139,7 +139,7 @@ def fragmento_da_colmeia(colmeia_id: int):
     session = sessao_do_request()
     contexto = _contexto_da_colmeia(session, _colmeia_visivel(session, colmeia_id), janela)
 
-    return render_template("_panel.html", **contexto)
+    return render_template("painel/_fragmento_da_colmeia.html", **contexto)
 
 
 def _diferencial_termico(pontos: list[servico_de_serie.Ponto]) -> list[float | None]:
@@ -176,10 +176,11 @@ def _contexto_da_colmeia(session: Session, colmeia: Colmeia, janela: str) -> dic
             valores.append(ponto.values.get(coluna))
         series[coluna] = valores
 
+    # Vai para o navegador como JSON e e lido por static/graficos.js.
     grafico = {
-        "labels": rotulos,
+        "rotulos": rotulos,
         "series": series,
-        "thermal_differential": _diferencial_termico(pontos),
+        "diferencial_termico": _diferencial_termico(pontos),
     }
 
     return {

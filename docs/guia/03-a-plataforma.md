@@ -14,14 +14,14 @@ navegador pede uma URL  →  Flask acha a função responsável  →  a função
 Cada função dessas se chama **view**, e a ligação entre URL e função é uma **rota**:
 
 ```python
-@bp.route("/colmeia/<int:hive_id>")     # a rota
-@login_required                          # só entra quem está autenticado
-def detalhe_da_colmeia(hive_id: int):           # a view
+@bp.route("/colmeia/<int:colmeia_id>")   # a rota
+@login_required                           # só entra quem está autenticado
+def detalhe_da_colmeia(colmeia_id: int):  # a view
     ...
-    return render_template("hive.html", **context)
+    return render_template("painel/colmeia.html", **contexto)
 ```
 
-Abrir `http://servidor/colmeia/7` chama `detalhe_da_colmeia(hive_id=7)`.
+Abrir `http://servidor/colmeia/7` chama `detalhe_da_colmeia(colmeia_id=7)`.
 
 ## A estrutura de pastas
 
@@ -60,11 +60,18 @@ platform/
 │   │   ├── gravacao.py            grava no banco
 │   │   └── __main__.py            o consumidor MQTT
 │   │
-│   └── templates/              ← O HTML
-│       ├── base.html              o esqueleto comum
-│       ├── index.html             a lista de colmeias
-│       ├── hive.html              a página de uma colmeia
-│       └── _panel.html            o pedaço que se atualiza sozinho
+│   ├── templates/              ← O HTML, uma pasta por arquivo de rota
+│   │   ├── base.html              o esqueleto comum
+│   │   ├── painel/                as telas de rotas/painel.py:
+│   │   │   ├── colmeias.html         a lista de colmeias
+│   │   │   ├── colmeia.html          a página de uma colmeia
+│   │   │   └── _fragmento_da_colmeia.html   o pedaço que se atualiza sozinho
+│   │   ├── cadastros/  meliponarios/  colmeias/  nos/  autenticacao/  publico/
+│   │   └── ...                    (mesma regra: a pasta tem o nome do arquivo da rota)
+│   │
+│   └── static/                 ← O QUE O NAVEGADOR BAIXA COMO ESTÁ
+│       ├── estilo.css             a aparência de todas as páginas
+│       └── graficos.js            desenha os gráficos da página da colmeia
 │
 ├── migrations/                 ← AS MUDANÇAS DE ESTRUTURA DO BANCO
 └── tests/                      ← OS TESTES
@@ -173,20 +180,30 @@ fato executado naquele banco. Precisa mudar? Crie outra.
 Templates são HTML com buracos preenchidos pelo Python. A linguagem é o Jinja:
 
 ```html
-{% for row in overview %}
+{% for linha in visao_geral %}
   <tr>
-    <td>{{ row.hive.name }}</td>
-    <td>{{ row.latest.temp_in_c | num(1, ' °C') }}</td>
+    <td>{{ linha.colmeia.name }}</td>
+    <td>{{ linha.ultima.temp_in_c | numero(1, ' °C') }}</td>
   </tr>
 {% endfor %}
 ```
 
 - `{{ ... }}` insere um valor
 - `{% ... %}` é lógica (`if`, `for`)
-- `| num(1, ' °C')` é um **filtro**: formata o valor
+- `| numero(1, ' °C')` é um **filtro**: formata o valor
 
-`base.html` é o esqueleto (cabeçalho, CSS, navegação) e as outras páginas o estendem com
-`{% extends "base.html" %}`.
+`base.html` é o esqueleto (cabeçalho, navegação) e as outras páginas o estendem com
+`{% extends "base.html" %}`. A aparência mora em `static/estilo.css`, e o JavaScript dos
+gráficos em `static/graficos.js`: o template fica só com HTML.
+
+**Para achar o template de uma tela**, olhe o `render_template` da rota: o nome da pasta é
+o nome do arquivo da rota. `rotas/nos.py` desenha `templates/nos/vincular.html`.
+
+**Nome errado no template é erro, não silêncio.** Por padrão o Jinja trata uma variável
+que não existe como vazia — o pedaço da tela simplesmente some. Aqui o `criar_app` liga o
+modo estrito (`StrictUndefined`), e um nome errado vira `UndefinedError` na hora: o teste
+que abre a página quebra. Foi assim que descobrimos, tarde, que as flags de qualidade
+tinham sumido do painel numa tradução.
 
 ### A sessão do banco dura a requisição inteira
 
@@ -197,9 +214,9 @@ atributo — e esse momento, no caso de um template, é depois da view.
 Por isso a sessão está amarrada à requisição, e não à view:
 
 ```python
-@bp.route("/colmeia/<int:hive_id>")
+@bp.route("/colmeia/<int:colmeia_id>")
 @login_required
-def detalhe_da_colmeia(hive_id: int):
+def detalhe_da_colmeia(colmeia_id: int):
     session = sessao_do_request()          # abre na primeira chamada da requisição
     ...
 ```

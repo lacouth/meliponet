@@ -118,12 +118,12 @@ Agora suba o servidor e abra uma colmeia.
 <details>
 <summary>Resposta</summary>
 
-`templates/hive.html` não tem os botões escritos à mão:
+`templates/painel/colmeia.html` não tem os botões escritos à mão:
 
 ```html
-{% for key, spec in windows.items() %}
-  <a href="{{ url_for('dashboard.hive_detail', hive_id=hive.id, janela=key) }}"
-     class="{{ 'on' if key == window else '' }}">{{ spec[0] }}</a>
+{% for chave, janela_spec in janelas.items() %}
+  <a href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=colmeia.id, janela=chave) }}"
+     class="{{ 'on' if chave == janela else '' }}">{{ janela_spec[0] }}</a>
 {% endfor %}
 ```
 

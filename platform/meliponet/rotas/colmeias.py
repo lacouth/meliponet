@@ -63,7 +63,7 @@ def editar(colmeia_id: int):
         return redirect(url_for("cadastros.index"))
 
     return render_template(
-        "manage/hive_edit.html",
+        "colmeias/editar.html",
         colmeia=colmeia,
         # O campo `datetime-local` do HTML tem formato proprio, e a conversao e da
         # rota: o template escreve o que recebe, sem saber de fuso.

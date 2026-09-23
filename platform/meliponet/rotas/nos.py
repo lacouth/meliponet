@@ -60,7 +60,7 @@ def vincular(no_id: int):
         colmeia_atual = vinculo_atual.hive.name
 
     return render_template(
-        "manage/assign.html",
+        "nos/vincular.html",
         no_id=no_id,
         no_label=no.node_id,
         colmeia_atual=colmeia_atual,

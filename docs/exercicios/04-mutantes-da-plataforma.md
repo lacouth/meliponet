@@ -122,7 +122,7 @@ E o efeito visual, que nenhum teste vê mas o docstring descreve: com os pontos 
 encostados, **o Chart.js liga os dois por uma reta** e o buraco desaparece. O gráfico passa
 a afirmar medições que ninguém fez — bem em cima do intervalo em que o sistema falhou.
 
-É por isso que a `spanGaps` fica desligada no `_panel.html` e a reamostragem percorre
+É por isso que a `spanGaps` fica desligada em `static/graficos.js` e a reamostragem percorre
 todos os baldes: são as duas metades da mesma decisão. Quebrar qualquer uma esconde a
 perda, e a completude que o projeto promete medir vira ficção.
 </details>

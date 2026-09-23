@@ -50,4 +50,4 @@ def editar(meliponario_id: int):
         flash("Meliponário atualizado.", "ok")
         return redirect(url_for("cadastros.index"))
 
-    return render_template("manage/apiary_edit.html", meliponario=meliponario)
+    return render_template("meliponarios/editar.html", meliponario=meliponario)

@@ -38,4 +38,4 @@ def index():
         "nodes": _quantos(session, No),
     }
 
-    return render_template("public/index.html", numeros=numeros, especies=ESPECIES)
+    return render_template("publico/inicio.html", numeros=numeros, especies=ESPECIES)

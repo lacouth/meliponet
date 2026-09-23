@@ -1,0 +1,55 @@
+{# Fragmento recarregado pelo HTMX a cada 60 s: os cards e os gráficos. Os dados do
+   gráfico vão num bloco JSON, e quem desenha é static/graficos.js — que roda de novo a
+   cada troca e destrói os gráficos anteriores. #}
+
+<div class="grid">
+  <div class="card stat">
+    <div class="label">Temperatura interna</div>
+    <div class="value">{{ ultima.temp_in_c | numero(1, ' °C') if ultima else '—' }}</div>
+    <div class="note">faixa de cria saudável ≈ 30 °C</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Temperatura externa</div>
+    <div class="value">{{ ultima.temp_out_c | numero(1, ' °C') if ultima else '—' }}</div>
+    <div class="note">{{ ultima.rh_out_pct | numero(0, '% UR') if ultima else '—' }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Diferencial térmico</div>
+    <div class="value">{{ ultima.diferencial_termico_c | numero(1, ' °C') if ultima else '—' }}</div>
+    <div class="note">esforço termorregulatório da colônia</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Peso</div>
+    <div class="value">{{ ultima.weight_kg | numero(2, ' kg') if ultima else '—' }}</div>
+    <div class="note">{{ ultima.vbat_v | numero(2, ' V na bateria') if ultima else '—' }}</div>
+  </div>
+</div>
+
+<p class="live" style="margin-top: 14px;">
+  Última leitura {{ ultima.time | hora_local if ultima else '—' }} ·
+  {{ completude.received }} de {{ completude.expected }} mensagens na janela
+  {%- if completude.gaps %}, {{ completude.gaps }} perdida(s){% endif %}
+  {%- if ultima and ultima.quality_flags %} ·
+    <span class="flags">
+      {% for flag in ultima.quality_flags.split(',') %}<span class="flag">{{ flag }}</span>{% endfor %}
+    </span>
+  {%- endif %}
+</p>
+
+{% if quantos_pontos %}
+<h2>Temperatura e diferencial</h2>
+<div class="card"><div class="chart-wrap"><canvas id="grafico-temp"></canvas></div></div>
+
+<h2>Peso</h2>
+<div class="card"><div class="chart-wrap"><canvas id="grafico-peso"></canvas></div></div>
+
+<h2>Umidade relativa</h2>
+<div class="card"><div class="chart-wrap"><canvas id="grafico-umidade"></canvas></div></div>
+
+<script type="application/json" id="dados-do-grafico">{{ grafico | tojson }}</script>
+<script src="{{ url_for('static', filename='graficos.js') }}"></script>
+{% else %}
+<div class="card empty" style="margin-top: 18px;">
+  Nenhuma leitura nesta janela.
+</div>
+{% endif %}

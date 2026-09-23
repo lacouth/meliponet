@@ -85,7 +85,8 @@ Ordem:
    plataforma aceite.
 4. Plataforma: `modelos.py` (a coluna), **uma migração Alembic**, e
    `ingestao/gravacao.py` → `CAMPOS_DE_METRICA`.
-5. Interface: `servicos/serie.py` → `COLUNAS_DE_METRICA`, e `templates/_panel.html`.
+5. Interface: `servicos/serie.py` → `COLUNAS_DE_METRICA`; o card em
+   `templates/painel/_fragmento_da_colmeia.html` e a linha do gráfico em `static/graficos.js`.
 6. Só então o firmware: o terceiro endereço I²C, a leitura, o campo na mensagem e a flag
    de falha correspondente.
 
@@ -142,7 +143,7 @@ distinguir as duas, ou o produtor desliga o alerta na primeira semana.
 <details>
 <summary>Resposta</summary>
 
-`servicos/serie.py`. **Não** no template, e **não** em JavaScript no `_panel.html`.
+`servicos/serie.py`. **Não** no template, e **não** em `static/graficos.js`.
 
 A razão é a mesma de a série já ser reamostrada em Python: o que vive no serviço pode ser
 chamado pela página, pelo relatório em PDF, por um script de exportação e por um teste,

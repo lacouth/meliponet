@@ -167,7 +167,7 @@ autenticada passa.
 **Os formulários não têm proteção contra CSRF.**
 
 *Onde:* todos os `POST` da plataforma. Não há Flask-WTF nem token nos formulários de
-`templates/manage/`.
+`templates/cadastros/`, `meliponarios/`, `colmeias/` e `nos/`.
 
 *Sintoma:* nenhum, no uso normal — e é isso que o torna fácil de esquecer. Uma página
 qualquer aberta noutra aba pode submeter um formulário para a plataforma usando a sessão
