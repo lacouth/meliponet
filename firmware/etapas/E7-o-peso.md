@@ -11,6 +11,12 @@ Por isso esta etapa é a mais fatiada do roteiro: seis passos, cada um provando 
 só. Pular direto para "calibrar" é a forma mais rápida de passar dois dias calibrando um
 problema de solda.
 
+> **Ainda sem a célula de carga e o HX711?** Pule esta etapa por enquanto: o peso já vem
+> simulado da [etapa S](S-os-sensores-simulados.md), e o resto do roteiro funciona com ele.
+> Quando o hardware chegar, volte aqui. Ao terminar E7, a leitura de verdade passa a
+> preencher o peso, **ao lado** da simulada — a chave de S.4 continua escolhendo entre as
+> duas, e nada fora da função de leitura muda.
+
 > **O conceito: a célula de carga não mede quilos.**
 > Ela é um pedaço de metal que se deforma sob peso, com extensômetros colados que mudam de
 > resistência ao deformar. O que sai dali é uma variação de tensão minúscula — milivolts.

@@ -97,6 +97,11 @@ ao fim, você desliga e religa a placa e o ponto seguinte continua a série — 
 Este é o critério de pronto da etapa inteira, e o primeiro que você não consegue conferir
 olhando: precisa deixar rodando e voltar depois.
 
+> **Com os sensores simulados da etapa S, esta hora vale — pela metade.** Ela prova o
+> laço, o intervalo, a `seq` que sobrevive ao reset e o envio, que são o assunto desta
+> etapa. Não prova nada sobre os sensores, porque eles não estão lá. Quando o hardware
+> chegar e você terminar E4 e E7, repita E8.5 com a chave em "real": é a hora que conta.
+
 ---
 
 ## Pistas

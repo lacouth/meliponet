@@ -253,4 +253,5 @@ saída que você teve o cuidado de produzir antes de precisar dela.
 **O que não pode travar o nó:** rede fora e relógio não sincronizado são situações
 normais de campo, não erros. O nó continua medindo nas duas.
 
-→ Próximo: [E4 a E6 — a primeira mensagem](E4-E6-a-primeira-mensagem.md)
+→ Próximo: [E4 a E6 — a primeira mensagem](E4-E6-a-primeira-mensagem.md), se os sensores
+já chegaram. Se ainda não: [S — os sensores simulados](S-os-sensores-simulados.md).
