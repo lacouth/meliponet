@@ -1,64 +1,76 @@
 """Plataforma web MelipoNet."""
 
-from __future__ import annotations
-
 from flask import Flask
 from flask_login import LoginManager
+from jinja2 import StrictUndefined
 
-from meliponet.config import DISPLAY_TIMEZONE, Config
+from meliponet.configuracao import FUSO_DE_EXIBICAO, Configuracao
 
 
-def create_app(config: Config | None = None) -> Flask:
+def criar_app(configuracao: Configuracao | None = None) -> Flask:
     """Fabrica da aplicacao.
 
-    Sem estado global de configuracao: o app e montado a partir de um :class:`Config`
-    explicito, o que permite aos testes criarem instancias isoladas com bancos proprios
-    em vez de compartilharem um singleton.
+    Sem estado global de configuracao: o app e montado a partir de uma
+    :class:`Configuracao` explicita, o que permite aos testes criarem instancias
+    isoladas com bancos proprios em vez de compartilharem um singleton.
     """
-    from meliponet.blueprints.api import bp as api_bp
-    from meliponet.blueprints.auth import bp as auth_bp
-    from meliponet.blueprints.dashboard import bp as dashboard_bp
-    from meliponet.blueprints.manage import bp as manage_bp
-    from meliponet.blueprints.public import bp as public_bp
-    from meliponet.db import create_all, init_engine, session_scope
-    from meliponet.models import User
+    from meliponet.banco import (
+        criar_tabelas,
+        iniciar_banco,
+        registrar_sessao_por_request,
+        sessao_do_request,
+    )
+    from meliponet.modelos import Usuario
+    from meliponet.rotas import (
+        api,
+        autenticacao,
+        cadastros,
+        colmeias,
+        meliponarios,
+        nos,
+        painel,
+        publico,
+    )
 
-    config = config or Config.from_env()
+    configuracao = configuracao or Configuracao.do_ambiente()
 
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = config.secret_key
-    app.config["MELIPONET"] = config
-    app.config["DISPLAY_TIMEZONE"] = DISPLAY_TIMEZONE
+    # Por padrao o Jinja trata uma variavel inexistente como vazia, em silencio: um nome
+    # errado no template some da tela sem erro nenhum. Foi assim que as flags de
+    # qualidade sumiram do painel numa traducao. Com `StrictUndefined`, o nome errado
+    # vira um erro na hora -- e o teste que abre a pagina quebra.
+    app.jinja_env.undefined = StrictUndefined
+    app.config["SECRET_KEY"] = configuracao.secret_key
+    app.config["MELIPONET"] = configuracao
+    app.config["FUSO_DE_EXIBICAO"] = FUSO_DE_EXIBICAO
 
-    engine = init_engine(config.database_url)
-    create_all(engine)
+    engine = iniciar_banco(configuracao.database_url)
+    criar_tabelas(engine)
+    registrar_sessao_por_request(app)
 
     login_manager = LoginManager()
-    login_manager.login_view = "auth.login"
+    login_manager.login_view = "autenticacao.entrar"
     login_manager.login_message = "Entre para acessar esta página."
     login_manager.login_message_category = "erro"
     login_manager.init_app(app)
 
     @login_manager.user_loader
-    def load_user(user_id: str) -> User | None:
-        # A sessao do request e fechada aqui; `expire_on_commit=False` mantem os
-        # atributos ja carregados acessiveis nos templates depois disso.
-        with session_scope() as session:
-            user = session.get(User, int(user_id))
-            if user is not None:
-                # A organizacao e lida em quase toda pagina; carregar aqui evita um
-                # DetachedInstanceError no template.
-                _ = user.organization.name
-            return user
+    def carregar_usuario(usuario_id: str) -> Usuario | None:
+        return sessao_do_request().get(Usuario, int(usuario_id))
 
     from meliponet import cli
 
     cli.register(app)
 
-    app.register_blueprint(api_bp)
-    app.register_blueprint(public_bp)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(dashboard_bp)
-    app.register_blueprint(manage_bp)
+    # Cada arquivo de `rotas/` e um grupo de telas (um "blueprint"), e so passa a
+    # responder depois de registrado aqui.
+    app.register_blueprint(api.bp)
+    app.register_blueprint(publico.bp)
+    app.register_blueprint(autenticacao.bp)
+    app.register_blueprint(painel.bp)
+    app.register_blueprint(cadastros.bp)
+    app.register_blueprint(meliponarios.bp)
+    app.register_blueprint(colmeias.bp)
+    app.register_blueprint(nos.bp)
 
     return app

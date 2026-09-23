@@ -49,7 +49,7 @@ export DATABASE_URL="sqlite:///$PWD/../meliponet-dev.sqlite3"
 
 # primeiro usuário (a interface exige login, e criar conta exige estar logado —
 # a conta inicial só pode nascer do terminal do servidor)
-.venv/bin/python -m flask --app "meliponet:create_app" criar-usuario \
+.venv/bin/python -m flask --app "meliponet:criar_app" criar-usuario \
   --email voce@exemplo.br --nome "Seu Nome" --organizacao "Seu Meliponário" --perfil admin
 
 # 48 h de histórico sintético, com lacunas e falhas de sensor injetadas
@@ -57,7 +57,7 @@ cd .. && platform/.venv/bin/python -m simulator --transporte direto --historico 
   --organizacao "Seu Meliponário"
 
 # servidor em http://127.0.0.1:5000
-cd platform && .venv/bin/python -m flask --app "meliponet:create_app" run
+cd platform && .venv/bin/python -m flask --app "meliponet:criar_app" run
 ```
 
 Para ver o painel se atualizando sozinho, deixe o simulador emitindo em paralelo:
@@ -98,7 +98,7 @@ prontos em `contracts/exemplos/`.
 | `pesquisador` | todas as organizações | não |
 | `admin` | todas as organizações | sim |
 
-O isolamento vive num helper único, `meliponet/services/scope.py`. A razão é o modo de
+O isolamento vive num helper único, `meliponet/servicos/escopo.py`. A razão é o modo de
 falha: uma consulta que esquece o filtro não quebra nem levanta erro — ela apenas mostra a
 um meliponicultor as colmeias de outro.
 

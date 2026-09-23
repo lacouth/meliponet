@@ -32,18 +32,18 @@ platform/.venv/bin/pytest platform/tests -q
 
 ## Mutação A — o escopo sem filtro
 
-**Arquivo:** `platform/meliponet/services/scope.py`, função `hives_for`.
+**Arquivo:** `platform/meliponet/servicos/escopo.py`, função `colmeias_visiveis`.
 
 ```python
 # antes
-    statement = select(Hive).join(Apiary, Hive.apiary_id == Apiary.id)
-    if not user.role.sees_everything:
-        statement = statement.where(Apiary.organization_id == user.organization_id)
-    return statement
+    consulta = select(Colmeia).join(Meliponario, Colmeia.apiary_id == Meliponario.id)
+    if not usuario.role.ve_tudo:
+        consulta = consulta.where(Meliponario.organization_id == usuario.organization_id)
+    return consulta
 
 # depois
-    statement = select(Hive).join(Apiary, Hive.apiary_id == Apiary.id)
-    return statement
+    consulta = select(Colmeia).join(Meliponario, Colmeia.apiary_id == Meliponario.id)
+    return consulta
 ```
 
 Agora todo mundo vê as colmeias de todo mundo. Antes de rodar, responda: **quantos testes
@@ -55,14 +55,14 @@ caem, e o painel principal (`/colmeias`) passa a vazar colmeia alheia?**
 **Cinco** testes falham:
 
 ```
-test_scope.py::test_meliponicultor_ve_apenas_a_propria_organizacao
-test_scope.py::test_colmeia_alheia_nao_e_visivel
-test_scope.py::test_escopo_acompanha_colmeia_nova
+test_escopo.py::test_meliponicultor_ve_apenas_a_propria_organizacao
+test_escopo.py::test_colmeia_alheia_nao_e_visivel
+test_escopo.py::test_escopo_acompanha_colmeia_nova
 test_web.py::test_colmeia_alheia_responde_404
 test_web.py::test_nao_se_edita_cadastro_alheio
 ```
 
-Repare na divisão, que é deliberada: três em `test_scope.py`, que testam a **regra
+Repare na divisão, que é deliberada: três em `test_escopo.py`, que testam a **regra
 isolada**, e dois em `test_web.py`, que testam se as **rotas de fato a aplicam**. O
 cabeçalho de `test_web.py` explica por que os dois são necessários: *"a regra certa num
 helper que ninguém chama não protege nada"*.
@@ -75,8 +75,8 @@ platform/.venv/bin/pytest platform/tests/test_web.py::test_dashboard_lista_apena
 
 **Ele passa** — com o filtro removido. Por quê?
 
-Porque o painel `/colmeias` não usa `hives_for`. Abra `blueprints/dashboard.py`, função
-`index`: ele parte de `scope.apiaries_for(current_user)` e chega às colmeias pela relação
+Porque o painel `/colmeias` não usa `colmeias_visiveis`. Abra `rotas/painel.py`, função
+`index`: ele parte de `escopo.meliponarios_visiveis(current_user)` e chega às colmeias pela relação
 `apiary.hives`. O isolamento ali vem de **outro** helper, que você não quebrou.
 
 A lição é desconfortável e vale mais que o resto do exercício: **"o teste passou" não
@@ -89,16 +89,16 @@ para cada.
 
 ## Mutação B — a lacuna some do gráfico
 
-**Arquivo:** `platform/meliponet/services/series.py`, função `_resample`.
+**Arquivo:** `platform/meliponet/servicos/serie.py`, função `_reamostrar`.
 
 ```python
 # antes
-        members = buckets.get(bucket_time, [])
+        medicoes = baldes.get(balde, [])
 
 # depois
-        members = buckets.get(bucket_time, [])
-        if not members:
-            bucket_time += step
+        medicoes = baldes.get(balde, [])
+        if not medicoes:
+            balde += passo
             continue
 ```
 
@@ -111,8 +111,8 @@ inofensiva: menos pontos, JSON menor, gráfico mais rápido.
 **Dois** testes falham:
 
 ```
-test_series.py::test_lacuna_vira_null_e_nao_ponto_ausente
-test_series.py::test_serie_cobre_a_janela_inteira
+test_serie.py::test_lacuna_vira_null_e_nao_ponto_ausente
+test_serie.py::test_serie_cobre_a_janela_inteira
 ```
 
 O primeiro é o esperado. O segundo pega o efeito colateral: a grade de pontos deixa de
@@ -122,7 +122,7 @@ E o efeito visual, que nenhum teste vê mas o docstring descreve: com os pontos 
 encostados, **o Chart.js liga os dois por uma reta** e o buraco desaparece. O gráfico passa
 a afirmar medições que ninguém fez — bem em cima do intervalo em que o sistema falhou.
 
-É por isso que a `spanGaps` fica desligada no `_panel.html` e a reamostragem percorre
+É por isso que a `spanGaps` fica desligada em `static/graficos.js` e a reamostragem percorre
 todos os baldes: são as duas metades da mesma decisão. Quebrar qualquer uma esconde a
 perda, e a completude que o projeto promete medir vira ficção.
 </details>
@@ -131,16 +131,16 @@ perda, e a completude que o projeto promete medir vira ficção.
 
 ## Mutação C — a checagem de duplicata sai
 
-**Arquivo:** `platform/meliponet/ingest/store.py`, função `store()`. Apague o bloco:
+**Arquivo:** `platform/meliponet/ingestao/gravacao.py`, função `gravar()`. Apague o bloco:
 
 ```python
-    already = session.scalar(
-        select(Measurement.id).where(
-            Measurement.node_id == telemetry.node_id, Measurement.seq == telemetry.seq
+    ja_existe = session.scalar(
+        select(Medicao.id).where(
+            Medicao.node_id == telemetria.node_id, Medicao.seq == telemetria.seq
         )
     )
-    if already is not None:
-        return StoreResult(stored=False, duplicate=True, measurement_id=already)
+    if ja_existe is not None:
+        return ResultadoDaGravacao(stored=False, duplicate=True, measurement_id=ja_existe)
 ```
 
 Um nó que drena o spool depois de uma queda reenvia mensagens que já chegaram. Sem essa
@@ -153,14 +153,14 @@ checagem, a série ganha pontos duplicados a cada reconexão — certo?
 `test_reenvio_do_spool_e_idempotente`, que existe exatamente para esse cenário.
 
 Antes de concluir que o teste é inútil, entenda **por que** ele passa. Logo abaixo, no
-mesmo `store()`:
+mesmo `gravar()`:
 
 ```python
     try:
         session.flush()
     except IntegrityError:
         session.rollback()
-        return StoreResult(stored=False, duplicate=True)
+        return ResultadoDaGravacao(stored=False, duplicate=True)
 ```
 
 A restrição `UNIQUE (node_id, seq)` no banco é a **autoridade final**, e o `except` a trata
@@ -182,7 +182,7 @@ defesa; a segunda continuou lá e segurou o caso.
 
 A pergunta certa passa a ser: **então o `SELECT` serve para quê?** Duas coisas:
 
-1. `StoreResult.measurement_id` deixa de ser preenchido nos duplicados — informação
+1. `ResultadoDaGravacao.measurement_id` deixa de ser preenchido nos duplicados — informação
    perdida para quem chama.
 2. Sem ele, **todo** reenvio de spool provoca um `session.rollback()`. Um rollback desfaz
    a transação inteira, não só a linha recusada. Num ingestor que processasse várias

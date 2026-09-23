@@ -16,11 +16,14 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from meliponet.config import Config
-from meliponet.models import Base
+# O import de `modelos_futuros` registra as tabelas da Fase 4 no `Base.metadata`. Sem
+# ele o autogenerate as veria no banco e fora do codigo, e proporia apaga-las.
+from meliponet import modelos_futuros  # noqa: F401
+from meliponet.configuracao import Configuracao
+from meliponet.modelos import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", Config.from_env().database_url)
+config.set_main_option("sqlalchemy.url", Configuracao.do_ambiente().database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -29,15 +32,18 @@ target_metadata = Base.metadata
 
 
 def render_item(type_, obj, autogen_context):
-    """Renderiza ``UtcDateTime`` como o tipo SQL que ele de fato e.
+    """Renderiza ``DataHoraUtc`` como o tipo SQL que ele de fato e.
 
-    Sem isto, o autogenerate escreve ``meliponet.models.UtcDateTime()`` no arquivo de
+    Sem isto, o autogenerate escreve ``meliponet.modelos.DataHoraUtc()`` no arquivo de
     migracao, que nem sequer importa esse modulo. Renderizar o tipo subjacente resolve
     o import e, mais importante, mantem as migracoes independentes do codigo da
     aplicacao: uma migracao antiga precisa continuar rodando anos depois, mesmo que a
     classe tenha sido renomeada ou removida.
+
+    A comparacao e pelo *nome* da classe, entao renomea-la exige mexer aqui -- e nenhum
+    teste pega o esquecimento: o autogenerate apenas volta a escrever o nome errado.
     """
-    if type_ == "type" and obj.__class__.__name__ == "UtcDateTime":
+    if type_ == "type" and obj.__class__.__name__ == "DataHoraUtc":
         # `sa` ja vem importado pelo template script.py.mako.
         return "sa.DateTime(timezone=True)"
     return False

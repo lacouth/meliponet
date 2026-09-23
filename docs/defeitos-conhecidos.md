@@ -48,21 +48,21 @@ corrigir agora, escrita para que a próxima pessoa não tropece.
 
 **Medições anteriores ao vínculo ficam órfãs para sempre.**
 
-*Onde:* `platform/meliponet/ingest/store.py`, `store()`.
+*Onde:* `platform/meliponet/ingestao/gravacao.py`, `gravar()`.
 
 *Sintoma:* liga-se o nó em campo antes de vinculá-lo a uma colmeia na interface. As
 leituras desse período existem no banco, mas o gráfico da colmeia começa só a partir do
 vínculo. Nada quebra, nada avisa; o gráfico só começa mais tarde do que se esperava.
 
 *Por que acontece:* o `hive_id` é carimbado na linha da medição no instante da ingestão,
-por `resolve_hive()`. Sem vínculo naquele instante, a coluna fica `NULL` — e vincular
+por `colmeia_no_instante()`. Sem vínculo naquele instante, a coluna fica `NULL` — e vincular
 depois não reprocessa o passado. A interface promete o contrário: o texto de "Nós
 aguardando vínculo" diz que as leituras "passam a aparecer nos gráficos assim que o
 vínculo existir", o que só vale para o que chegar depois.
 
 *Contorno hoje:* vincule o nó à colmeia **antes** de deixá-lo publicando.
 
-*Como corrigir:* ao criar um `NodeAssignment`, reatribuir as medições daquele nó que
+*Como corrigir:* ao criar um `Vinculo`, reatribuir as medições daquele nó que
 caem dentro do período e ainda estão com `hive_id IS NULL`. São poucas linhas em
 `manage.assign_node`, e o teste é direto: ingerir duas medições, vincular, conferir que
 as duas aparecem em `series()`. Corrigir o texto da interface faz parte da correção.
@@ -76,7 +76,7 @@ as duas aparecem em `series()`. Corrigir o texto da interface faz parte da corre
 **O Last Will é publicado e ninguém o assina.**
 
 *Onde:* o contrato reserva o tópico `meliponet/v1/<node_id>/status` para o Last Will do
-nó, e nada em `platform/meliponet/ingest/` assina esse tópico.
+nó, e nada em `platform/meliponet/ingestao/` assina esse tópico.
 
 *Sintoma:* um nó que morre em campo não gera aviso nenhum. "O nó parou de enviar" segue
 indistinguível de "ainda não chegou a hora de enviar", que é exatamente o problema que o
@@ -93,7 +93,7 @@ antes e barato — e dá sentido à etapa de MQTT do roteiro do nó.
 **Os agregados contínuos são criados e nunca consultados.**
 
 *Onde:* `platform/meliponet/db.py` cria `measurements_1h` e `measurements_1d`;
-`platform/meliponet/services/series.py` sempre lê a tabela bruta e reamostra em Python.
+`platform/meliponet/servicos/serie.py` sempre lê a tabela bruta e reamostra em Python.
 
 *Sintoma:* nenhum hoje — funciona e responde rápido com meses de dados de poucas
 colmeias. Vira problema com dezenas de nós e anos de série, e vira problema de uma vez,
@@ -111,7 +111,7 @@ reamostragem continuam valendo e são a rede de segurança da mudança.
 
 **O registro fotográfico do vínculo não tem como ser anexado.**
 
-*Onde:* `platform/meliponet/models.py`, `NodeAssignment.photo_path`. A coluna existe; não
+*Onde:* `platform/meliponet/modelos.py`, `Vinculo.photo_path`. A coluna existe; não
 há upload em nenhuma tela, nem rota que a preencha.
 
 *Sintoma:* a docstring do próprio modelo diz que o registro fotográfico é um dos
@@ -133,13 +133,13 @@ descartável, então precisa de volume.
 *Onde:* não existe. `platform/meliponet/cli.py` cria usuários pelo terminal; nenhuma
 rota, tela ou comando altera um depois.
 
-*Sintoma:* `models.py` e `services/scope.py` dizem, os dois, que o `ADMIN` "administra
+*Sintoma:* `modelos.py` e `servicos/escopo.py` dizem, os dois, que o `ADMIN` "administra
 cadastros **e usuários**". A segunda metade não existe: não dá para criar usuário pela
 web, trocar a senha de alguém que a esqueceu, mudar um perfil de meliponicultor para
 pesquisador, corrigir a organização de quem foi criado na errada, nem desativar quem
 saiu do projeto. Tudo isso hoje exige acesso ao terminal do servidor — ou SQL na mão.
 
-*Como corrigir:* uma tela de usuários sob `can_manage`, com o cuidado óbvio de um admin
+*Como corrigir:* uma tela de usuários sob `pode_gerenciar`, com o cuidado óbvio de um admin
 não conseguir rebaixar ou desativar a si mesmo e deixar a instalação sem ninguém que
 administre. Ver também [D-15](#d-15): desativar só terá efeito real junto com aquilo.
 
@@ -149,7 +149,7 @@ administre. Ver também [D-15](#d-15): desativar só terá efeito real junto com
 
 **Desativar um usuário no banco não encerra a sessão dele.**
 
-*Onde:* `platform/meliponet/blueprints/auth.py` verifica `is_active` apenas no login, e o
+*Onde:* `platform/meliponet/rotas/autenticacao.py` verifica `is_active` apenas no login, e o
 login é feito com `remember=True`. O `user_loader` não reverifica.
 
 *Sintoma:* marcar `is_active = false` — hoje, por SQL — não expulsa ninguém. Quem já
@@ -167,7 +167,7 @@ autenticada passa.
 **Os formulários não têm proteção contra CSRF.**
 
 *Onde:* todos os `POST` da plataforma. Não há Flask-WTF nem token nos formulários de
-`templates/manage/`.
+`templates/cadastros/`, `meliponarios/`, `colmeias/` e `nos/`.
 
 *Sintoma:* nenhum, no uso normal — e é isso que o torna fácil de esquecer. Uma página
 qualquer aberta noutra aba pode submeter um formulário para a plataforma usando a sessão
@@ -184,8 +184,8 @@ que recuse um `POST` sem token.
 
 **Nó e vínculo não podem ser corrigidos depois de criados.**
 
-*Onde:* `platform/meliponet/blueprints/manage.py`. Meliponário e colmeia ganharam tela de
-edição; nó e `NodeAssignment` não.
+*Onde:* `platform/meliponet/rotas/nos.py` e `servicos/vinculos.py`. Meliponário e colmeia
+ganharam tela de edição; nó e `Vinculo` não.
 
 *Sintoma:* o `label` e a `firmware_version` do nó só são preenchidos pela ingestão e não
 têm onde ser ajustados. Pior é o vínculo: `sensor_placement`, `protocol_notes` e o
@@ -205,7 +205,7 @@ gravadas, então a edição precisa deixar isso explícito na tela.
 
 **O admin não cadastra meliponário para outra organização.**
 
-*Onde:* `platform/meliponet/blueprints/manage.py`, `create_apiary`, que grava sempre
+*Onde:* `platform/meliponet/rotas/meliponarios.py`, `criar`, que grava sempre
 `organization_id=current_user.organization_id`; o formulário não tem seletor de
 organização.
 
@@ -216,7 +216,7 @@ operações irmãs seguem regras diferentes, e a única saída é criar um usuá
 organização de destino.
 
 *Como corrigir:* um seletor de organização visível apenas para quem tem
-`sees_everything`, com a organização do próprio usuário como padrão. Depende de haver uma
+`ve_tudo`, com a organização do próprio usuário como padrão. Depende de haver uma
 consulta de organizações, que hoje não existe.
 
 ---
@@ -225,7 +225,7 @@ consulta de organizações, que hoje não existe.
 
 **Calibrações e alertas existem no modelo e não têm tela.**
 
-*Onde:* `platform/meliponet/models.py`: `Calibration`, `AlertRule` e `Alert`. As tabelas
+*Onde:* `platform/meliponet/modelos.py`: `Calibration`, `AlertRule` e `Alert`. As tabelas
 são criadas pela migração e nada no código as lê ou escreve.
 
 *Sintoma:* nenhum hoje, porque nada depende delas — o risco é o inverso: alguém lê o
@@ -249,7 +249,7 @@ ninguém. Quando a Fase 4 chegar, as telas entram e esta entrada sai.
 | # | Defeito | Corrigido em |
 |---|---|---|
 | D-09 | O docstring do `contracts/canonical.py` apontava para `firmware/lib/MelipoNet/TelemetryCodec`, pasta que nunca existiu — e o `canonical.py` é a primeira coisa que alguém lê ao mexer no contrato | 2026-09-03 — corrigido para `firmware/lib/MelipoCore/Telemetria`, junto com a renomeação dos arquivos do firmware |
-| D-12 | O administrador recebia 403 ao vincular ou desvincular um nó de outra organização, embora a tela lhe mostrasse o nó e o botão: duas views comparavam `organization_id` na mão em vez de passar pelo módulo de escopo. Junto ia um defeito mais silencioso — o vínculo carimbava no nó a organização de quem estava logado, então um admin que adotasse um nó para a colmeia de outra organização levava o nó consigo, e o dono legítimo deixava de enxergá-lo | 2026-09-02 — `manageable_nodes_for` e `can_manage_node` em `services/scope.py`, e a organização do nó passa a ser a da colmeia |
+| D-12 | O administrador recebia 403 ao vincular ou desvincular um nó de outra organização, embora a tela lhe mostrasse o nó e o botão: duas views comparavam `organization_id` na mão em vez de passar pelo módulo de escopo. Junto ia um defeito mais silencioso — o vínculo carimbava no nó a organização de quem estava logado, então um admin que adotasse um nó para a colmeia de outra organização levava o nó consigo, e o dono legítimo deixava de enxergá-lo | 2026-09-02 — `nos_gerenciaveis` e `pode_gerenciar_no` em `servicos/escopo.py`, e a organização do nó passa a ser a da colmeia |
 | D-04 | `tara` gravava o novo zero na NVS mas não o passava para o objeto da célula: a leitura logo após a tara saía com o offset antigo, e só um reinício fazia a tara valer — o que leva a pessoa a repetir a tara achando que não pegou | 2026-09-02 — `setCalibration()` no comando `tara`, como o `calibrar` já fazia |
 | D-11 | O CI da plataforma quebrado desde a Fase 2: `pip install -e platform[dev]` falhava com "Multiple top-level packages discovered in a flat-layout", porque `pyproject.toml` não declarava o que empacotar e o Alembic trouxe `migrations/` para o lado de `meliponet/`. Passou despercebido por doze commits porque um ambiente virtual criado antes de `migrations/` existir continua funcionando — só instalação limpa falha | 2026-09-02 — `[tool.setuptools.packages.find]` em `platform/pyproject.toml` |
 | D-00 | Sem comando serial para as credenciais do broker MQTT: um nó de campo não conseguia autenticar num broker com `allow_anonymous false`, e a única saída era liberar acesso anônimo no broker | 2026-09-02 — comandos `mqtt <usuario> <senha>` e `broker <host> [porta]` |

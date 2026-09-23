@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Cadastros — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>Cadastros</h1>
+<p class="sub">Meliponários, colmeias e vínculo dos nós sensores.</p>
+
+{% if not pode_gerenciar %}
+<div class="card">
+  <p class="sub" style="margin:0;">
+    Seu perfil vê os cadastros mas não os altera. Quem instalou o nó na caixa é quem
+    sabe onde cada sensor ficou — por isso o cadastro de campo é editado por quem
+    administra o meliponário, e não por quem analisa os dados.
+  </p>
+</div>
+{% endif %}
+
+{% if pendentes %}
+<h2>Nós aguardando vínculo</h2>
+<p class="sub">
+  Estes nós enviaram telemetria válida mas ainda não pertencem a nenhuma colmeia. As
+  leituras já estão guardadas e passam a aparecer nos gráficos assim que o vínculo
+  existir — nenhum dado foi perdido.
+</p>
+<div class="card">
+  {% for no in pendentes %}
+    <div style="display:flex; align-items:center; gap:12px; padding:6px 0;">
+      <code>{{ no.node_id }}</code>
+      <span class="pill">visto {{ no.last_seen_at | hora_local }}</span>
+      <a class="btn ghost" style="margin-left:auto"
+         href="{{ url_for('nos.vincular', no_id=no.id) }}">Vincular a uma colmeia</a>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2>Meliponários e colmeias</h2>
+{% for meliponario in meliponarios %}
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex; align-items:baseline; gap:10px;">
+    <strong>{{ meliponario.name }}</strong>
+    <span class="pill">{{ meliponario.municipality or 'sem município' }}</span>
+    {% if pode_gerenciar %}
+    <a class="btn ghost" style="margin-left:auto"
+       href="{{ url_for('meliponarios.editar', meliponario_id=meliponario.id) }}">Editar</a>
+    {% endif %}
+  </div>
+  {% if meliponario.hives %}
+  <table style="margin-top:10px;">
+    <thead><tr><th>Colmeia</th><th>Espécie</th><th>Caixa</th><th></th></tr></thead>
+    <tbody>
+      {% for colmeia in meliponario.hives %}
+      <tr>
+        <td><a class="hive" href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=colmeia.id) }}">{{ colmeia.name }}</a></td>
+        <td><em>{{ colmeia.species or '—' }}</em></td>
+        <td>{{ colmeia.box_type or '—' }}</td>
+        <td style="text-align:right">
+          {% if pode_gerenciar %}
+          <a class="btn ghost" href="{{ url_for('colmeias.editar', colmeia_id=colmeia.id) }}">Editar</a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="sub" style="margin:10px 0 0;">Nenhuma colmeia neste meliponário ainda.</p>
+  {% endif %}
+
+  {% if pode_gerenciar %}
+  <form method="post" action="{{ url_for('colmeias.criar') }}" style="margin-top:14px;">
+    <input type="hidden" name="meliponario_id" value="{{ meliponario.id }}">
+    <div class="form-row">
+      <label class="field"><span>Nova colmeia</span>
+        <input name="nome" required placeholder="Colmeia 05"></label>
+      <label class="field"><span>Espécie</span>
+        <select name="especie">
+          <option value="">—</option>
+          {% for nome in especies %}<option>{{ nome }}</option>{% endfor %}
+        </select></label>
+      <label class="field"><span>Tipo de caixa</span>
+        <input name="caixa" placeholder="INPA"></label>
+      <label class="field"><span>Instalada em (em branco = agora)</span>
+        <input type="datetime-local" name="instalado_em"></label>
+    </div>
+    <button type="submit">Adicionar colmeia</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}
+<div class="card empty">Nenhum meliponário cadastrado ainda.</div>
+{% endfor %}
+
+{% if pode_gerenciar %}
+<h2>Novo meliponário</h2>
+<form method="post" action="{{ url_for('meliponarios.criar') }}" class="card">
+  <div class="form-row">
+    <label class="field"><span>Nome</span><input name="nome" required></label>
+    <label class="field"><span>Município</span><input name="municipio" placeholder="João Pessoa"></label>
+    <label class="field"><span>Latitude</span><input name="latitude" placeholder="-7.1408"></label>
+    <label class="field"><span>Longitude</span><input name="longitude" placeholder="-34.8556"></label>
+  </div>
+  <button type="submit">Cadastrar meliponário</button>
+</form>
+{% endif %}
+
+<h2>Nós sensores</h2>
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead><tr><th>Nó</th><th>Colmeia atual</th><th>Última mensagem</th><th></th></tr></thead>
+    <tbody>
+      {% for no in nos %}
+      {% set vinculo = no.vinculo_atual %}
+      <tr>
+        <td><code>{{ no.node_id }}</code></td>
+        <td>{{ vinculo.hive.name if vinculo else '—' }}</td>
+        <td>{{ no.last_seen_at | hora_local }}</td>
+        <td style="text-align:right">
+          {% if pode_gerenciar %}
+          <a class="btn ghost" href="{{ url_for('nos.vincular', no_id=no.id) }}">
+            {{ 'Remanejar' if vinculo else 'Vincular' }}</a>
+          {% if vinculo %}
+          <form method="post" action="{{ url_for('nos.desvincular', no_id=no.id) }}"
+                style="display:inline">
+            <button class="btn ghost" type="submit">Desvincular</button>
+          </form>
+          {% endif %}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">Nenhum nó registrado ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

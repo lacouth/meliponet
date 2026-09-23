@@ -64,7 +64,7 @@ nenhum erro em lugar nenhum.
 
 ## Onde a mensagem é conferida
 
-Na fronteira, e só ali: `platform/meliponet/ingest/telemetry.py`. Tudo que chega vem de um
+Na fronteira, e só ali: `platform/meliponet/ingestao/telemetria.py`. Tudo que chega vem de um
 nó em campo e não é confiável — pode estar truncado por um buffer pequeno, vir de um
 firmware antigo ou trazer um valor fisicamente impossível.
 

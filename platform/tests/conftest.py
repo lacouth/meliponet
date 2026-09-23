@@ -22,16 +22,16 @@ for path in (REPO_ROOT, REPO_ROOT / "platform", CONTRACTS_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from meliponet.config import Config  # noqa: E402
-from meliponet.db import create_all, init_engine, session_scope  # noqa: E402
-from meliponet.models import (  # noqa: E402
-    Apiary,
-    Hive,
-    Node,
-    NodeAssignment,
-    Organization,
-    Role,
-    User,
+from meliponet.banco import abrir_sessao, criar_tabelas, iniciar_banco  # noqa: E402
+from meliponet.configuracao import Configuracao  # noqa: E402
+from meliponet.modelos import (  # noqa: E402
+    Colmeia,
+    Meliponario,
+    No,
+    Organizacao,
+    Perfil,
+    Usuario,
+    Vinculo,
 )
 
 
@@ -43,98 +43,110 @@ def exemplos_dir() -> Path:
 @pytest.fixture
 def db(tmp_path):
     """Banco isolado por teste, para que um nao enxergue as linhas do outro."""
-    engine = init_engine(f"sqlite:///{tmp_path / 'test.sqlite3'}")
-    create_all(engine)
+    engine = iniciar_banco(f"sqlite:///{tmp_path / 'test.sqlite3'}")
+    criar_tabelas(engine)
     return engine
 
 
-@dataclass(frozen=True, slots=True)
-class Fixture:
-    """Ids de um cenario montado, para os testes referenciarem sem reabrir sessao."""
+@dataclass
+class Cenario:
+    """Ids de um cenario montado, para os testes referenciarem sem reabrir sessao.
 
-    organization_id: int
-    other_organization_id: int
-    apiary_id: int
-    hive_id: int
-    other_hive_id: int
-    node_pk: int
+    `no_pk` e a chave do no no banco (a coluna `id`); `node_id` e o identificador do
+    contrato, o que o no escreve na mensagem ("A4C13800").
+    """
+
+    organizacao_id: int
+    outra_organizacao_id: int
+    meliponario_id: int
+    colmeia_id: int
+    outra_colmeia_id: int
+    no_pk: int
     node_id: str
-    installed_at: datetime
+    instalado_em: datetime
 
 
 @pytest.fixture
-def scenario(db) -> Fixture:
+def cenario(db) -> Cenario:
     """Duas organizacoes, uma colmeia em cada, e um no vinculado a primeira.
 
     Ter *duas* organizacoes desde a base e deliberado: e a unica forma de um teste
     provar que o escopo isola de verdade. Um cenario com uma organizacao so passaria
     igual com o filtro ausente.
     """
-    installed_at = datetime.now(UTC) - timedelta(days=30)
+    instalado_em = datetime.now(UTC) - timedelta(days=30)
 
-    with session_scope() as session:
-        org = Organization(name="Meliponicultores da Paraíba")
-        other = Organization(name="Cooperativa do Brejo")
-        session.add_all([org, other])
+    with abrir_sessao() as session:
+        organizacao = Organizacao(name="Meliponicultores da Paraíba")
+        outra = Organizacao(name="Cooperativa do Brejo")
+        session.add_all([organizacao, outra])
         session.flush()
 
-        apiary = Apiary(organization_id=org.id, name="Meliponário Mata do Buraquinho")
-        other_apiary = Apiary(organization_id=other.id, name="Meliponário do Brejo")
-        session.add_all([apiary, other_apiary])
+        meliponario = Meliponario(
+            organization_id=organizacao.id, name="Meliponário Mata do Buraquinho"
+        )
+        outro_meliponario = Meliponario(organization_id=outra.id, name="Meliponário do Brejo")
+        session.add_all([meliponario, outro_meliponario])
         session.flush()
 
-        hive = Hive(apiary_id=apiary.id, name="Colmeia 01", species="Melipona scutellaris")
-        other_hive = Hive(apiary_id=other_apiary.id, name="Colmeia alheia")
-        session.add_all([hive, other_hive])
+        colmeia = Colmeia(
+            apiary_id=meliponario.id, name="Colmeia 01", species="Melipona scutellaris"
+        )
+        outra_colmeia = Colmeia(apiary_id=outro_meliponario.id, name="Colmeia alheia")
+        session.add_all([colmeia, outra_colmeia])
         session.flush()
 
-        node = Node(node_id="A4C13800", organization_id=org.id)
-        session.add(node)
+        no = No(node_id="A4C13800", organization_id=organizacao.id)
+        session.add(no)
         session.flush()
 
         session.add(
-            NodeAssignment(node_id=node.id, hive_id=hive.id, installed_at=installed_at)
+            Vinculo(node_id=no.id, hive_id=colmeia.id, installed_at=instalado_em)
         )
 
-        return Fixture(
-            organization_id=org.id,
-            other_organization_id=other.id,
-            apiary_id=apiary.id,
-            hive_id=hive.id,
-            other_hive_id=other_hive.id,
-            node_pk=node.id,
-            node_id=node.node_id,
-            installed_at=installed_at,
+        return Cenario(
+            organizacao_id=organizacao.id,
+            outra_organizacao_id=outra.id,
+            meliponario_id=meliponario.id,
+            colmeia_id=colmeia.id,
+            outra_colmeia_id=outra_colmeia.id,
+            no_pk=no.id,
+            node_id=no.node_id,
+            instalado_em=instalado_em,
         )
 
 
 @pytest.fixture
-def make_user(db):
+def criar_usuario(db):
     """Fabrica de usuarios, para os testes de escopo montarem cada perfil."""
 
-    def _make(organization_id: int, role: Role = Role.MELIPONICULTOR, email: str | None = None):
-        with session_scope() as session:
-            user = User(
-                organization_id=organization_id,
-                email=email or f"{role.value}-{organization_id}@exemplo.br",
-                name=role.label,
-                role=role,
+    def _criar(
+        organizacao_id: int,
+        perfil: Perfil = Perfil.MELIPONICULTOR,
+        email: str | None = None,
+    ):
+        with abrir_sessao() as session:
+            usuario = Usuario(
+                organization_id=organizacao_id,
+                email=email or f"{perfil.value}-{organizacao_id}@exemplo.br",
+                name=perfil.label,
+                role=perfil,
             )
-            user.set_password("senha-de-teste")
-            session.add(user)
+            usuario.set_password("senha-de-teste")
+            session.add(usuario)
             session.flush()
-            return user
+            return usuario
 
-    return _make
+    return _criar
 
 
 @pytest.fixture
-def app(db, scenario):
+def app(db, cenario):
     """Aplicacao Flask ligada ao banco do teste."""
-    from meliponet import create_app
+    from meliponet import criar_app
 
-    application = create_app(
-        Config(
+    application = criar_app(
+        Configuracao(
             database_url=str(db.url),
             secret_key="teste",
             mqtt_host="localhost",

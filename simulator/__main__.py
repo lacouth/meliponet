@@ -142,23 +142,23 @@ def resume_state(hives: list[HiveSimulator]) -> None:
     sobreviver a um reset sem colidir com o que ja mandou. Retomar tambem peso e
     bateria evita um degrau artificial na serie a cada reinicio.
     """
-    from meliponet.db import session_scope
-    from meliponet.models import Measurement
+    from meliponet.banco import abrir_sessao
+    from meliponet.modelos import Medicao
     from sqlalchemy import func, select
 
-    with session_scope() as session:
+    with abrir_sessao() as session:
         for hive in hives:
             last_seq = session.scalar(
-                select(func.max(Measurement.seq)).where(Measurement.node_id == hive.node_id)
+                select(func.max(Medicao.seq)).where(Medicao.node_id == hive.node_id)
             )
             if last_seq is None:
                 continue
             hive.seq = last_seq
 
             last = session.scalar(
-                select(Measurement)
-                .where(Measurement.node_id == hive.node_id)
-                .order_by(Measurement.time.desc())
+                select(Medicao)
+                .where(Medicao.node_id == hive.node_id)
+                .order_by(Medicao.time.desc())
                 .limit(1)
             )
             if last is not None:
@@ -177,16 +177,16 @@ def seed_database(hives: list[HiveSimulator], organization: str, history_hours: 
     o comportamento correto do modelo, ja que a colmeia de uma leitura e resolvida pelo
     instante da medicao, mas nao e o que se quer de um seed de demonstracao.
     """
-    from meliponet.db import session_scope
-    from meliponet.models import Apiary, Hive, Node, NodeAssignment, Organization
+    from meliponet.banco import abrir_sessao
+    from meliponet.modelos import Colmeia, Meliponario, No, Organizacao, Vinculo
     from sqlalchemy import select
 
     installed_at = datetime.now(UTC) - timedelta(hours=history_hours + 1)
 
-    with session_scope() as session:
-        org = session.scalar(select(Organization).where(Organization.name == organization))
+    with abrir_sessao() as session:
+        org = session.scalar(select(Organizacao).where(Organizacao.name == organization))
         if org is None:
-            org = Organization(name=organization)
+            org = Organizacao(name=organization)
             session.add(org)
             session.flush()
 
@@ -197,12 +197,12 @@ def seed_database(hives: list[HiveSimulator], organization: str, history_hours: 
             # por organizacao, um seed pedido para a organizacao B encontraria o
             # meliponario da organizacao A e penduraria as colmeias dela la.
             apiary = session.scalar(
-                select(Apiary).where(
-                    Apiary.name == name, Apiary.organization_id == org.id
+                select(Meliponario).where(
+                    Meliponario.name == name, Meliponario.organization_id == org.id
                 )
             )
             if apiary is None:
-                apiary = Apiary(
+                apiary = Meliponario(
                     organization_id=org.id,
                     name=name,
                     municipality=municipality,
@@ -214,16 +214,16 @@ def seed_database(hives: list[HiveSimulator], organization: str, history_hours: 
             apiaries.append(apiary)
 
         for index, sim in enumerate(hives):
-            node = session.scalar(select(Node).where(Node.node_id == sim.node_id))
-            if node is not None and node.current_assignment is not None:
+            node = session.scalar(select(No).where(No.node_id == sim.node_id))
+            if node is not None and node.vinculo_atual is not None:
                 continue
 
             apiary = apiaries[index % len(apiaries)]
             hive = session.scalar(
-                select(Hive).where(Hive.name == sim.name, Hive.apiary_id == apiary.id)
+                select(Colmeia).where(Colmeia.name == sim.name, Colmeia.apiary_id == apiary.id)
             )
             if hive is None:
-                hive = Hive(
+                hive = Colmeia(
                     apiary_id=apiary.id,
                     name=sim.name,
                     species=sim.species,
@@ -233,13 +233,13 @@ def seed_database(hives: list[HiveSimulator], organization: str, history_hours: 
                 session.flush()
 
             if node is None:
-                node = Node(node_id=sim.node_id, label=f"MelipoSense {sim.node_id}")
+                node = No(node_id=sim.node_id, label=f"MelipoSense {sim.node_id}")
                 session.add(node)
                 session.flush()
             node.organization_id = org.id
 
             session.add(
-                NodeAssignment(
+                Vinculo(
                     node_id=node.id,
                     hive_id=hive.id,
                     installed_at=installed_at,
@@ -264,12 +264,12 @@ class DirectPublisher:
     """Entrega a mensagem ao mesmo pipeline de ingestao, sem passar pelo broker."""
 
     def __init__(self) -> None:
-        from meliponet.ingest.__main__ import handle_message
+        from meliponet.ingestao.__main__ import tratar_mensagem
 
-        self._handle = handle_message
+        self._tratar = tratar_mensagem
 
     def publish(self, node_id: str, payload: str) -> None:
-        self._handle(payload.encode("utf-8"), f"meliponet/v1/{node_id}/telemetry")
+        self._tratar(payload.encode("utf-8"), f"meliponet/v1/{node_id}/telemetry")
 
     def close(self) -> None:
         pass
@@ -413,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     # A telemetria de cada leitura polui a saida do simulador; o que importa aqui e o
     # progresso da geracao.
-    logging.getLogger("meliponet.ingest").setLevel(logging.WARNING)
+    logging.getLogger("meliponet.ingestao").setLevel(logging.WARNING)
 
     args = parse_args(argv)
     faults = {f.strip() for f in args.falhas.split(",") if f.strip()}
@@ -422,23 +422,23 @@ def main(argv: list[str] | None = None) -> int:
         print(f"falhas desconhecidas: {', '.join(sorted(unknown))}", file=sys.stderr)
         return 2
 
-    from meliponet.config import Config
-    from meliponet.db import create_all, init_engine
+    from meliponet.banco import criar_tabelas, iniciar_banco
+    from meliponet.configuracao import Configuracao
 
-    config = Config.from_env()
+    config = Configuracao.do_ambiente()
     hives = build_hives(args.colmeias)
 
     if args.transporte == "direto":
-        engine = init_engine(config.database_url)
-        create_all(engine)
+        engine = iniciar_banco(config.database_url)
+        criar_tabelas(engine)
         seed_database(hives, args.organizacao, args.historico)
         resume_state(hives)
         publisher: DirectPublisher | HttpPublisher | MqttPublisher = DirectPublisher()
     elif args.transporte == "http":
         # O cadastro precisa existir para a telemetria pousar numa colmeia; a gravacao
         # da telemetria em si e do servidor que atende o POST.
-        engine = init_engine(config.database_url)
-        create_all(engine)
+        engine = iniciar_banco(config.database_url)
+        criar_tabelas(engine)
         seed_database(hives, args.organizacao, args.historico)
         resume_state(hives)
         publisher = HttpPublisher(args.url, config.token_ingestao)
@@ -446,8 +446,8 @@ def main(argv: list[str] | None = None) -> int:
         # No modo MQTT o simulador nao toca no banco: quem grava e o ingestor, como em
         # producao. Mas o cadastro precisa existir para a telemetria pousar numa
         # colmeia, entao ele e feito uma vez aqui.
-        engine = init_engine(config.database_url)
-        create_all(engine)
+        engine = iniciar_banco(config.database_url)
+        criar_tabelas(engine)
         seed_database(hives, args.organizacao, args.historico)
         resume_state(hives)
         publisher = MqttPublisher(

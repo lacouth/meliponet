@@ -67,7 +67,7 @@ pessoa reamostrar do jeito dela.
 
 Recomendação: comece pelo **cru**, e diga no CSV qual é. Se exportar reamostrado, o
 cabeçalho ou o nome do arquivo precisa dizer o passo — senão o número vira uma média
-anônima. Reaproveitar `series_service.series()` é conveniente; conveniência não é o critério
+anônima. Reaproveitar `servico_de_serie.serie()` é conveniente; conveniência não é o critério
 aqui.
 
 **2.** Campo **vazio**, não `0`, não `NaN`, não `null`. É a mesma regra que atravessa o
@@ -81,7 +81,7 @@ Este é o ponto do exercício inteiro que mais merece um teste.
 vendo. Exportar "tudo" precisa de um teto — trinta nós com anos de série não cabem numa
 resposta HTTP.
 
-Se seguir a janela, aproveite a validação que `hive_detail` já faz (janela desconhecida cai
+Se seguir a janela, aproveite a validação que `detalhe_da_colmeia` já faz (janela desconhecida cai
 no padrão). Repetir esse `if` numa terceira rota é sinal de que ele merece virar um
 ajudante.
 </details>
@@ -105,7 +105,7 @@ vírgulas** — é a decisão 2 tomando forma. E o horário tem o `Z`.
 
 ## Passo 3 — os testes do serviço
 
-Em `platform/tests/test_series.py` (a função ainda é de serviço; ela não sabe o que é HTTP).
+Em `platform/tests/test_serie.py` (a função ainda é de serviço; ela não sabe o que é HTTP).
 Três testes:
 
 | O que afirma | Por que importa |
@@ -119,7 +119,7 @@ não uma lista vazia nem um erro. Um arquivo com cabeçalho e nenhuma linha é u
 legítima: diz "não há dados neste período", que é diferente de "a exportação falhou".
 
 ```bash
-platform/.venv/bin/pytest platform/tests/test_series.py -q
+platform/.venv/bin/pytest platform/tests/test_serie.py -q
 ```
 
 **Todos têm de falhar** — a função nem existe ainda. Repare em *como* falham: um
@@ -127,7 +127,7 @@ platform/.venv/bin/pytest platform/tests/test_series.py -q
 
 ## Passo 4 — a função, no serviço
 
-Em `services/series.py`, ou num `services/export.py` novo. Ela recebe a sessão e o que
+Em `servicos/serie.py`, ou num `servicos/exportacao.py` novo. Ela recebe a sessão e o que
 precisa saber da colmeia, e devolve as linhas. **Sem `request`, sem `current_user`, sem
 saber o que é um cabeçalho HTTP.**
 
@@ -168,10 +168,10 @@ Ainda **não abra o PR**: ele é o fim do exercício 08.
 ## Pistas
 
 <details>
-<summary>Onde ponho a função: em `series.py` ou num `export.py` novo?</summary>
+<summary>Onde ponho a função: em `serie.py` ou num `exportacao.py` novo?</summary>
 
 As duas se defendem, e a escolha vai na descrição do PR como uma quarta decisão. Em
-`series.py` ela fica perto de quem já sabe montar série; num `export.py` ela fica perto do
+`serie.py` ela fica perto de quem já sabe montar série; num `exportacao.py` ela fica perto do
 que vier depois (exportar para outros formatos, exportar várias colmeias). Escolha e diga
 por quê.
 </details>

@@ -44,7 +44,9 @@ Leia antes: [O sistema](guia/01-o-sistema.md) e [A mensagem](guia/02-a-mensagem.
 ## Bloco B — Mexer com segurança (~2 h)
 
 Leia antes: [A plataforma](guia/03-a-plataforma.md) e
-[Como trabalhamos](guia/05-como-trabalhamos.md).
+[Como trabalhamos](guia/05-como-trabalhamos.md). Tenha à mão
+[Os conceitos, no código](guia/07-conceitos-no-codigo.md): cada exercício deste bloco treina
+um conceito do mapa, e o mapa diz onde ele mora.
 
 | # | Exercício | Tempo |
 |---|---|---|
@@ -90,6 +92,11 @@ Você já sabe, do Bloco A, qual mensagem a plataforma aceita e como ela respond
 mensagem está errada. Agora é fazer o seu nó produzi-la.
 
 ## Bloco D — Contribuir
+
+Antes de começar uma funcionalidade sua, leia a
+[receita](guia/07-conceitos-no-codigo.md#receita-uma-funcionalidade-nova): em que ordem
+se mexe em teste, serviço, rota e template, com um exemplo de verdade tirado dos defeitos
+conhecidos.
 
 | # | Exercício | Tipo |
 |---|---|---|

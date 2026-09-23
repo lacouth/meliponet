@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Editar {{ colmeia.name }} — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>Editar colmeia</h1>
+<p class="sub">Em <strong>{{ colmeia.apiary.name }}</strong>.</p>
+
+<form method="post" class="card" style="max-width:620px;">
+  <label class="field"><span>Nome</span>
+    <input name="nome" required value="{{ colmeia.name }}"></label>
+
+  <div class="form-row">
+    <label class="field"><span>Espécie</span>
+      <select name="especie">
+        <option value="">—</option>
+        {% for nome in especies %}
+        <option {% if nome == colmeia.species %}selected{% endif %}>{{ nome }}</option>
+        {% endfor %}
+        {% if colmeia.species and colmeia.species not in especies %}
+        <option selected>{{ colmeia.species }}</option>
+        {% endif %}
+      </select></label>
+    <label class="field"><span>Tipo de caixa</span>
+      <input name="caixa" value="{{ colmeia.box_type or '' }}" placeholder="INPA"></label>
+  </div>
+
+  <label class="field">
+    <span>Instalada em (horário local)</span>
+    <input type="datetime-local" name="instalado_em" value="{{ instalado_em }}">
+  </label>
+
+  <label class="field">
+    <span>Observações</span>
+    <textarea name="observacoes"
+      placeholder="Origem da colônia, manejos feitos, o que for útil para interpretar a série.">{{ colmeia.notes or '' }}</textarea>
+  </label>
+
+  <p class="sub" style="font-size:13px;">
+    A data de instalação é a que delimita a partir de quando a série desta colmeia vale.
+    Quando a colmeia é cadastrada semanas depois de instalada, é aqui que a data
+    verdadeira entra.
+  </p>
+
+  <button type="submit">Salvar</button>
+  <a class="btn ghost" href="{{ url_for('cadastros.index') }}">Cancelar</a>
+</form>
+
+{% endblock %}

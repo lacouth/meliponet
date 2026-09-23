@@ -54,15 +54,15 @@ teste existe: sem ele, você não saberia distinguir "a rota protege" de "a rota
 
 ## Passo 2 — a rota, com o escopo
 
-Em `blueprints/dashboard.py`. Use **`_load_hive`**
-(`platform/meliponet/blueprints/dashboard.py:95`), que já resolve escopo e 404 de uma vez
+Em `rotas/painel.py`. Use **`_colmeia_visivel`**
+(`platform/meliponet/rotas/painel.py:95`), que já resolve escopo e 404 de uma vez
 — não escreva uma consulta nova. O comentário dentro dele explica por quê.
 
 Comece devolvendo **texto puro**, sem se preocupar com cabeçalho nenhum. O objetivo deste
 passo é só um: os dois testes do passo 1 passam.
 
 **Confira:** `pytest platform/tests/test_web.py -q` verde, e
-`pytest platform/tests/test_series.py -q` continua verde.
+`pytest platform/tests/test_serie.py -q` continua verde.
 
 ## Passo 3 — os cabeçalhos HTTP
 
@@ -113,7 +113,7 @@ PR revisável: quem revisa precisa poder discordar da decisão, não só do cód
 
 - [ ] O teste da colmeia alheia devolve **404**, e você sabe dizer por que não é 403
 - [ ] Os dois testes falharam antes e passam depois
-- [ ] A rota usa `_load_hive`, e não uma consulta nova
+- [ ] A rota usa `_colmeia_visivel`, e não uma consulta nova
 - [ ] A montagem das linhas continua no serviço, não migrou para a view
 - [ ] Você abriu o arquivo numa planilha
 - [ ] O PR descreve as decisões, não só a mudança
@@ -161,7 +161,7 @@ requisição HTTP para gerá-las.
 
 ## O que levar daqui
 
-**Toda rota nova é uma porta nova para o escopo.** A regra concentrada em `scope.py` só
+**Toda rota nova é uma porta nova para o escopo.** A regra concentrada em `escopo.py` só
 protege quem a chama — e uma rota de exportação que a esquece vaza a série inteira de outra
 organização, sem erro nenhum.
 

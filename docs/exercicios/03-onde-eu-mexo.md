@@ -13,7 +13,7 @@ conferido sem placa.
 Este exercício treina a pergunta que resolve isso:
 **do que isso precisa para funcionar?**
 
-- Precisa só de aritmética? É lógica pura — `services/` na plataforma, e no seu nó uma
+- Precisa só de aritmética? É lógica pura — `servicos/` na plataforma, e no seu nó uma
   função que não fala com sensor nenhum. É onde a conferência é fácil.
 - Precisa do banco? É serviço.
 - Precisa da requisição HTTP? É view.
@@ -44,17 +44,17 @@ gabaritos de serem a primeira vez que você vê esses nomes:
 |---|---|---|
 | `contracts/telemetry.v1.schema.json` | `required` e `additionalProperties` | quais campos a plataforma **aceita** |
 | `contracts/mensagem.py:29` | `ORDEM_DOS_CAMPOS` e `CASAS_DECIMAIS` | como o campo é **escrito** na mensagem |
-| `platform/meliponet/ingest/store.py:24` | `METRIC_FIELDS` | quais campos são **gravados** no banco |
-| `platform/meliponet/services/series.py:39` | `METRIC_COLUMNS` | quais campos viram **série** para o gráfico |
-| `platform/meliponet/models.py` | as colunas de `Measurement` | onde o campo **mora** |
+| `platform/meliponet/ingestao/gravacao.py:24` | `CAMPOS_DE_METRICA` | quais campos são **gravados** no banco |
+| `platform/meliponet/servicos/serie.py:39` | `COLUNAS_DE_METRICA` | quais campos viram **série** para o gráfico |
+| `platform/meliponet/modelos.py` | as colunas de `Medicao` | onde o campo **mora** |
 
 **Confira:** são quatro listas de nomes de campo, em quatro arquivos, e elas precisam
-concordar. Um campo que está no schema e falta em `METRIC_FIELDS` é aceito e descartado em
+concordar. Um campo que está no schema e falta em `CAMPOS_DE_METRICA` é aceito e descartado em
 silêncio — a mensagem responde `201` e a coluna fica `NULL` para sempre. Segure essa
 informação: ela é a resposta da armadilha do pedido 1.
 
 > **O conceito: migração.** Duas dessas listas descrevem o **formato** dos dados; a coluna
-> em `models.py` descreve a **tabela**. Mudar a classe em Python não muda o banco que já
+> em `modelos.py` descreve a **tabela**. Mudar a classe em Python não muda o banco que já
 > existe — nenhum banco se reorganiza porque um programa passou a esperar outra coisa. Quem
 > muda a tabela é uma **migração**: um arquivo versionado em `platform/migrations/` que diz
 > o que fazer para sair da estrutura antiga e chegar na nova. É o `alembic upgrade head` do
@@ -83,17 +83,25 @@ Ordem:
 2. `contracts/mensagem.py` — `ORDEM_DOS_CAMPOS` e `CASAS_DECIMAIS`.
 3. `contracts/exemplos/` — um exemplo com o campo, que os testes passam a exigir que a
    plataforma aceite.
-4. Plataforma: `models.py` (a coluna), **uma migração Alembic**, e
-   `ingest/store.py` → `METRIC_FIELDS`.
-5. Interface: `services/series.py` → `METRIC_COLUMNS`, e `templates/_panel.html`.
+4. Plataforma: `modelos.py` (a coluna), **uma migração Alembic**, e
+   `ingestao/gravacao.py` → `CAMPOS_DE_METRICA`.
+5. Interface: `servicos/serie.py` → `COLUNAS_DE_METRICA`; o card em
+   `templates/painel/_fragmento_da_colmeia.html` e a linha do gráfico em `static/graficos.js`.
 6. Só então o firmware: o terceiro endereço I²C, a leitura, o campo na mensagem e a flag
    de falha correspondente.
 
 *Teste:* `test_contract.py` já cobre o exemplo novo dos dois lados. Some um teste em
-`test_series.py` se a métrica entrar nos gráficos.
+`test_serie.py` se a métrica entrar nos gráficos.
 
-*Armadilha:* esquecer `METRIC_FIELDS` em `store.py` faz a mensagem ser aceita e o campo
+*Armadilha:* esquecer `CAMPOS_DE_METRICA` em `gravacao.py` faz a mensagem ser aceita e o campo
 ser **silenciosamente descartado** na gravação. Nada quebra; a coluna fica sempre `NULL`.
+
+Hoje existe uma rede para essa queda: `test_toda_metrica_do_contrato_e_gravada`, em
+`test_contract.py`, falha quando um campo entra no schema e não entra em
+`CAMPOS_DE_METRICA`. Ela não dispensa o raciocínio — dispensa perder a tarde. Repare que as
+duas listas **não** são iguais e não devem ser: `rssi` é gravado e não vira série, e `snr`
+e `sound_rms` já têm coluna e ainda não estão no contrato. A regra é de contenção, não de
+igualdade, e há um teste para cada metade dela.
 </details>
 
 ---
@@ -108,13 +116,13 @@ ser **silenciosamente descartado** na gravação. Nada quebra; a coluna fica sem
 Duas peças bem separadas, e a separação é o ponto:
 
 **A regra** — "caiu mais de 2 kg entre duas leituras?" — precisa só de aritmética sobre
-uma lista de pontos. É lógica pura: um `services/alerts.py` novo, testável sem banco e sem
-servidor, no mesmo espírito de `services/series.py`.
+uma lista de pontos. É lógica pura: um `servicos/alertas.py` novo, testável sem banco e sem
+servidor, no mesmo espírito de `servicos/serie.py`.
 
 **O envio do e-mail** precisa de rede e de configuração. É outra camada, e não pode morar
 junto: um teste da regra não pode depender de um servidor SMTP.
 
-O modelo já está preparado: `AlertRule` e `Alert` existem em `models.py` e hoje não são
+O modelo já está preparado: `AlertRule` e `Alert` existem em `modelos.py` e hoje não são
 lidos por ninguém — está registrado como [D-19](../defeitos-conhecidos.md#d-19). Antes de
 criar tabela nova, leia o que já existe.
 
@@ -135,13 +143,13 @@ distinguir as duas, ou o produtor desliga o alerta na primeira semana.
 <details>
 <summary>Resposta</summary>
 
-`services/series.py`. **Não** no template, e **não** em JavaScript no `_panel.html`.
+`servicos/serie.py`. **Não** no template, e **não** em `static/graficos.js`.
 
 A razão é a mesma de a série já ser reamostrada em Python: o que vive no serviço pode ser
 chamado pela página, pelo relatório em PDF, por um script de exportação e por um teste,
 sem subir servidor nenhum. Calculando no navegador, só a página teria a média.
 
-*Teste:* `test_series.py`, com uma série de valor constante (a média móvel tem de ser a
+*Teste:* `test_serie.py`, com uma série de valor constante (a média móvel tem de ser a
 mesma constante) e uma com um degrau (a média tem de subir suavizada). E o caso que
 importa neste projeto: **o que a média faz com uma lacuna?** Se ela preencher o buraco, a
 média desfaz visualmente a perda que o gráfico existe para mostrar — decida isso de
@@ -159,11 +167,11 @@ propósito e escreva o teste que fixa a decisão.
 
 Três camadas, uma decisão em cada:
 
-1. **`services/`** — a montagem das linhas. Sem saber o que é HTTP.
-2. **`blueprints/dashboard.py`** — a rota, o cabeçalho `Content-Type` e o nome do arquivo.
-3. **`services/scope.py`** — o filtro. E aqui está o ponto: o perfil `pesquisador`
+1. **`servicos/`** — a montagem das linhas. Sem saber o que é HTTP.
+2. **`rotas/painel.py`** — a rota, o cabeçalho `Content-Type` e o nome do arquivo.
+3. **`servicos/escopo.py`** — o filtro. E aqui está o ponto: o perfil `pesquisador`
    **vê tudo**, então esse pedido é legítimo para ele e seria um vazamento para um
-   `meliponicultor`. Passe por `scope.hives_for(current_user)`; nunca por `select(Hive)`.
+   `meliponicultor`. Passe por `escopo.colmeias_visiveis(current_user)`; nunca por `select(Colmeia)`.
 
 *Teste:* `test_web.py` — um meliponicultor baixando o CSV recebe só as próprias colmeias;
 um pesquisador recebe todas. Sem os dois testes, o filtro pode estar ausente e nada acusa:
@@ -186,8 +194,8 @@ Antes de mexer em qualquer coisa: **meça**. "Demora" pode ser a consulta, a rea
 em Python, o volume de JSON indo para o navegador, ou o Chart.js desenhando milhares de
 pontos. São quatro correções diferentes.
 
-O suspeito já está documentado: [D-07](../defeitos-conhecidos.md#d-07) — `db.py` cria os
-**agregados contínuos** `measurements_1h` e `measurements_1d`, e `services/series.py`
+O suspeito já está documentado: [D-07](../defeitos-conhecidos.md#d-07) — `banco.py` cria os
+**agregados contínuos** `measurements_1h` e `measurements_1d`, e `servicos/serie.py`
 **sempre** lê a tabela bruta e reamostra em Python. Trinta dias a cada 5 minutos são quase
 nove mil linhas por métrica para desenhar algumas centenas de pixels.
 
@@ -199,9 +207,9 @@ nove mil linhas por métrica para desenhar algumas centenas de pixels.
 > que o defeito não aparece no desenvolvimento. Verbetes no
 > [glossário](../guia/06-glossario.md).
 
-*Onde:* `services/series.py`, escolhendo a fonte pela janela.
+*Onde:* `servicos/serie.py`, escolhendo a fonte pela janela.
 
-*Teste:* os testes de lacuna e de reamostragem que já existem em `test_series.py` **são a
+*Teste:* os testes de lacuna e de reamostragem que já existem em `test_serie.py` **são a
 rede de segurança** — o contrato de `series()` não muda, então eles precisam continuar
 passando. É o padrão a procurar sempre: uma mudança de desempenho que faz um teste de
 comportamento cair não é otimização, é regressão.
@@ -219,15 +227,15 @@ comportamento cair não é otimização, é regressão.
 Este pedido é uma armadilha, e a resposta certa é **fazer uma pergunta antes de escrever
 código**: apagar o *nó* ou apagar as *medições*?
 
-- `Measurement.node_id` é **texto**, não uma chave estrangeira. O comentário em
-  `models.py` diz por quê: "uma leitura precisa continuar rastreável ao nó mesmo que o
+- `Medicao.node_id` é **texto**, não uma chave estrangeira. O comentário em
+  `modelos.py` diz por quê: "uma leitura precisa continuar rastreável ao nó mesmo que o
   cadastro dele seja removido". Ou seja, apagar a linha de `nodes` **não** apaga as
   medições, de propósito.
 - As medições daquela colmeia são dado científico coletado. Apagá-las abre uma lacuna
   permanente na série — e completude é justamente o que o projeto se compromete a medir.
 
 Quase sempre o que se quer é **marcar o nó como inativo** e encerrar o vínculo
-(`NodeAssignment.removed_at`), preservando a série. Se for mesmo para apagar, é uma
+(`Vinculo.removed_at`), preservando a série. Se for mesmo para apagar, é uma
 decisão de projeto com prestação de contas, não uma rota nova.
 
 *Lição:* nem todo pedido vira código. A regra do guia — **quando não souber, pergunte

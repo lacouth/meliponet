@@ -18,7 +18,7 @@ dependencies = [
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6"]
 
 [project.scripts]
-meliponet-ingest = "meliponet.ingest.__main__:main"
+meliponet-ingest = "meliponet.ingestao.__main__:main"
 
 # Sem esta secao o setuptools tenta adivinhar o que empacotar, encontra `meliponet/` e
 # `migrations/` lado a lado e se recusa a continuar ("Multiple top-level packages

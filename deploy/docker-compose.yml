@@ -39,7 +39,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    command: gunicorn --bind 0.0.0.0:8000 --workers 3 "meliponet:create_app()"
+    command: gunicorn --bind 0.0.0.0:8000 --workers 3 "meliponet:criar_app()"
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-meliponet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-meliponet}
       SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY em deploy/.env}

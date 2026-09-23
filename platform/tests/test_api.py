@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 
-from meliponet.config import Config
-from meliponet.db import session_scope
-from meliponet.models import IngestReject, Measurement
+from meliponet.banco import abrir_sessao
+from meliponet.configuracao import Configuracao
+from meliponet.modelos import Medicao, Recusa
 from mensagem import ESQUEMA, serializar
 from sqlalchemy import select
 
@@ -36,21 +36,21 @@ def postar(client, corpo: str, **kwargs):
     return client.post(ROTA, data=corpo, content_type="application/json", **kwargs)
 
 
-def test_leitura_valida_e_gravada(client, scenario) -> None:
+def test_leitura_valida_e_gravada(client, cenario) -> None:
     resposta = postar(client, leitura())
 
     assert resposta.status_code == 201
     corpo = resposta.get_json()
     assert corpo["ok"] is True
-    assert corpo["colmeia"] == scenario.hive_id
+    assert corpo["colmeia"] == cenario.colmeia_id
 
-    with session_scope() as session:
-        row = session.scalar(select(Measurement))
+    with abrir_sessao() as session:
+        row = session.scalar(select(Medicao))
         assert row.node_id == "A4C13800"
         assert row.seq == 1
 
 
-def test_reenvio_responde_sucesso_e_nao_duplica(client, scenario) -> None:
+def test_reenvio_responde_sucesso_e_nao_duplica(client, cenario) -> None:
     """O no que guardou a leitura durante uma queda vai reenvia-la.
 
     Se o reenvio respondesse erro, o firmware do aluno guardaria a copia local para
@@ -63,35 +63,35 @@ def test_reenvio_responde_sucesso_e_nao_duplica(client, scenario) -> None:
     assert resposta.status_code == 200
     assert resposta.get_json()["repetida"] is True
 
-    with session_scope() as session:
-        assert len(session.scalars(select(Measurement)).all()) == 1
+    with abrir_sessao() as session:
+        assert len(session.scalars(select(Medicao)).all()) == 1
 
 
-def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, scenario) -> None:
+def test_mensagem_invalida_responde_o_motivo_e_fica_registrada(client, cenario) -> None:
     resposta = postar(client, json.dumps({"schema": ESQUEMA, "node_id": "A4C13800"}))
 
     assert resposta.status_code == 400
     assert resposta.get_json()["erro"]
 
-    with session_scope() as session:
-        recusa = session.scalar(select(IngestReject))
+    with abrir_sessao() as session:
+        recusa = session.scalar(select(Recusa))
         assert recusa is not None
         assert recusa.reason
         assert recusa.topic == "http:/api/v1/telemetria"
 
 
-def test_json_malformado_nao_derruba_a_rota(client, scenario) -> None:
+def test_json_malformado_nao_derruba_a_rota(client, cenario) -> None:
     resposta = postar(client, '{"schema": "meliponet.telemetry.v1", "seq": 1,')
 
     assert resposta.status_code == 400
     assert "malformado" in resposta.get_json()["erro"]
 
 
-def test_token_e_exigido_quando_configurado(db, scenario) -> None:
-    from meliponet import create_app
+def test_token_e_exigido_quando_configurado(db, cenario) -> None:
+    from meliponet import criar_app
 
-    app = create_app(
-        Config(
+    app = criar_app(
+        Configuracao(
             database_url=str(db.url),
             secret_key="teste",
             mqtt_host="localhost",

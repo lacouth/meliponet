@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ colmeia.name }} — MelipoNet{% endblock %}
+{% block content %}
+
+<h1>{{ colmeia.name }}</h1>
+<p class="sub">
+  {{ colmeia.apiary.name }}{% if colmeia.species %} · <em>{{ colmeia.species }}</em>{% endif %}
+</p>
+
+<div class="janelas">
+  {% for chave, janela_spec in janelas.items() %}
+    <a href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=colmeia.id, janela=chave) }}"
+       class="{{ 'on' if chave == janela else '' }}">{{ janela_spec[0] }}</a>
+  {% endfor %}
+</div>
+
+<!-- O painel se recarrega sozinho a cada 60 s. Com amostragem de 5 minutos, polling
+     de um fragmento é mais robusto sob conectividade rural do que uma conexão
+     persistente que precisaria ser reestabelecida a cada oscilação do enlace. -->
+<div id="painel"
+     hx-get="{{ url_for('painel.fragmento_da_colmeia', colmeia_id=colmeia.id, janela=janela) }}"
+     hx-trigger="every 60s"
+     hx-swap="innerHTML">
+  {% include "painel/_fragmento_da_colmeia.html" %}
+</div>
+
+{% endblock %}

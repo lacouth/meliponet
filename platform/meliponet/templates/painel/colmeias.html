@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Colmeias monitoradas</h1>
+<p class="sub">{{ total_de_medicoes }} medições recebidas.</p>
+
+{% if visao_geral %}
+<div class="card" style="padding: 0; overflow: hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Colmeia</th><th>Meliponário</th><th>Espécie</th>
+        <th>Interna</th><th>Externa</th><th>Δ térmico</th><th>Peso</th><th>Última leitura</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in visao_geral %}
+      {% set m = linha.ultima %}
+      <tr>
+        <td><a class="hive" href="{{ url_for('painel.detalhe_da_colmeia', colmeia_id=linha.colmeia.id) }}">{{ linha.colmeia.name }}</a></td>
+        <td>{{ linha.meliponario.name }}</td>
+        <td><em>{{ linha.colmeia.species or '—' }}</em></td>
+        <td class="num">{{ m.temp_in_c | numero(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.temp_out_c | numero(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.diferencial_termico_c | numero(1, ' °C') if m else '—' }}</td>
+        <td class="num">{{ m.weight_kg | numero(2, ' kg') if m else '—' }}</td>
+        <td>{{ m.time | hora_local if m else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty">
+  Nenhuma colmeia visível ainda.<br>
+  Cadastre um meliponário e uma colmeia em <a href="{{ url_for('cadastros.index') }}">Cadastros</a>,
+  e vincule um nó a ela.
+</div>
+{% endif %}
+
+{% if recusas %}
+<h2>Mensagens recusadas</h2>
+<p class="sub">
+  Toda recusa é registrada com o motivo — é o que permite reportar a proporção de
+  leituras descartadas exigida pelo Edital 17, em vez de estimá-la.
+</p>
+<div class="card" style="padding: 0; overflow: hidden;">
+  <table>
+    <thead><tr><th>Quando</th><th>Motivo</th></tr></thead>
+    <tbody>
+      {% for recusa in recusas %}
+      <tr><td>{{ recusa.received_at | hora_local }}</td><td>{{ recusa.reason }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}
