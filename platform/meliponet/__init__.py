@@ -20,7 +20,12 @@ def create_app(config: Config | None = None) -> Flask:
     from meliponet.blueprints.dashboard import bp as dashboard_bp
     from meliponet.blueprints.manage import bp as manage_bp
     from meliponet.blueprints.public import bp as public_bp
-    from meliponet.db import create_all, init_engine, session_scope
+    from meliponet.db import (
+        create_all,
+        init_engine,
+        registrar_sessao_por_request,
+        sessao_do_request,
+    )
     from meliponet.models import User
 
     config = config or Config.from_env()
@@ -32,6 +37,7 @@ def create_app(config: Config | None = None) -> Flask:
 
     engine = init_engine(config.database_url)
     create_all(engine)
+    registrar_sessao_por_request(app)
 
     login_manager = LoginManager()
     login_manager.login_view = "auth.login"
@@ -41,15 +47,7 @@ def create_app(config: Config | None = None) -> Flask:
 
     @login_manager.user_loader
     def load_user(user_id: str) -> User | None:
-        # A sessao do request e fechada aqui; `expire_on_commit=False` mantem os
-        # atributos ja carregados acessiveis nos templates depois disso.
-        with session_scope() as session:
-            user = session.get(User, int(user_id))
-            if user is not None:
-                # A organizacao e lida em quase toda pagina; carregar aqui evita um
-                # DetachedInstanceError no template.
-                _ = user.organization.name
-            return user
+        return sessao_do_request().get(User, int(user_id))
 
     from meliponet import cli
 

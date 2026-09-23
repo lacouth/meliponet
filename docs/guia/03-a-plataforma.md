@@ -180,27 +180,63 @@ Templates são HTML com buracos preenchidos pelo Python. A linguagem é o Jinja:
 `base.html` é o esqueleto (cabeçalho, CSS, navegação) e as outras páginas o estendem com
 `{% extends "base.html" %}`.
 
-### Uma armadilha que já nos pegou
+### A sessão do banco dura a requisição inteira
 
-Este erro vai aparecer para você mais cedo ou mais tarde:
+O template renderiza **depois** que a view retorna. Isso importa porque o ORM carrega
+objetos **preguiçosamente**: `hive.apiary` só vai ao banco no momento em que alguém usa o
+atributo — e esse momento, no caso de um template, é depois da view.
 
-```
-DetachedInstanceError: Parent instance <Hive> is not bound to a Session
-```
-
-O que acontece: o ORM carrega objetos **preguiçosamente**. `hive.apiary` só vai ao banco
-no momento em que você usa. Se isso acontece no template, a sessão do banco já fechou, e
-não há como buscar.
-
-A correção é pedir a relação junto na consulta:
+Por isso a sessão está amarrada à requisição, e não à view:
 
 ```python
-hive = session.scalar(
-    select(Hive).options(joinedload(Hive.apiary)).where(Hive.id == hive_id)
+@bp.route("/colmeia/<int:hive_id>")
+@login_required
+def hive_detail(hive_id: int):
+    session = sessao_do_request()          # abre na primeira chamada da requisição
+    ...
+```
+
+Quem fecha é o Flask, no fim da requisição, seguindo uma regra só:
+**requisição que terminou bem grava; qualquer outra coisa desfaz.** Uma resposta 4xx ou
+5xx não commita, mesmo que a view já tivesse mexido em algum objeto antes de desistir. O
+mecanismo está em `db.py`, em `registrar_sessao_por_request`.
+
+Com a sessão aberta, o template escreve `{{ colmeia.apiary.name }}` sem cerimônia.
+
+**O que isso não dispensa.** Você ainda vai ver `selectinload` nas consultas de listagem:
+
+```python
+apiaries = list(
+    session.scalars(
+        scope.apiaries_for(current_user)
+        .options(selectinload(Apiary.hives))
+        .order_by(Apiary.name)
+    )
 )
 ```
 
-**Regra:** toda relação que a view entrega ao template precisa vir carregada da consulta.
+Mas agora ele está ali por **desempenho**, não por correção: sem ele, cada meliponário da
+lista dispararia uma consulta própria para buscar as colmeias — o clássico **N+1**. Uma
+tela com 20 meliponários faria 21 consultas em vez de 2.
+
+Essa distinção vale guardar, porque as duas coisas se pareciam antes e são diferentes:
+carregamento adiantado por correção você não precisa mais fazer; por desempenho, precisa
+quando estiver percorrendo uma lista.
+
+### Quem não tem requisição
+
+O ingestor MQTT, o `cli.py` e os testes não têm requisição nenhuma, e continuam abrindo a
+sessão na mão:
+
+```python
+with session_scope() as session:
+    gravar(session, decodificar(mensagem))
+```
+
+Há uma exceção que vale entender, em `blueprints/api.py`: a rota HTTP de telemetria
+**também** usa `session_scope()`, mesmo sendo uma rota. O motivo é que ela grava a recusa
+de uma mensagem inválida e **responde 400** — e a regra da sessão por requisição desfaria
+justamente o registro que serve para depurar.
 
 ## `services/scope.py` — quem vê o quê
 

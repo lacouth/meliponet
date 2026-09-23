@@ -8,9 +8,9 @@ from zoneinfo import ZoneInfo
 from flask import Blueprint, abort, current_app, render_template, request
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, selectinload
 
-from meliponet.db import session_scope
+from meliponet.db import sessao_do_request
 from meliponet.models import Apiary, Hive, IngestReject, Measurement
 from meliponet.services import scope
 from meliponet.services import series as series_service
@@ -45,44 +45,48 @@ def num(value: float | None, digits: int = 1, suffix: str = "") -> str:
 @bp.route("/colmeias")
 @login_required
 def index():
-    with session_scope() as session:
-        apiaries = list(
-            session.scalars(
-                scope.apiaries_for(current_user)
-                .options(selectinload(Apiary.hives))
-                .order_by(Apiary.name)
-            )
-        )
-        overview = [
-            {
-                "apiary": apiary,
-                "hive": hive,
-                "latest": series_service.latest(session, hive.id),
-            }
-            for apiary in apiaries
-            for hive in apiary.hives
-        ]
+    session = sessao_do_request()
 
-        hive_ids = [row["hive"].id for row in overview]
-        total_measurements = (
-            session.scalar(
-                select(func.count())
-                .select_from(Measurement)
-                .where(Measurement.hive_id.in_(hive_ids))
-            )
-            or 0
+    # Este `selectinload` e otimizacao de verdade, e nao defesa contra sessao fechada:
+    # sem ele, cada meliponario da lista dispararia uma consulta propria para buscar as
+    # colmeias -- o classico N+1.
+    apiaries = list(
+        session.scalars(
+            scope.apiaries_for(current_user)
+            .options(selectinload(Apiary.hives))
+            .order_by(Apiary.name)
         )
-        # Recusas nao pertencem a colmeia nenhuma (a mensagem sequer foi decodificada),
-        # entao so quem tem visao ampla as ve.
-        rejects = (
-            list(
-                session.scalars(
-                    select(IngestReject).order_by(IngestReject.received_at.desc()).limit(5)
-                )
-            )
-            if current_user.role.sees_everything
-            else []
+    )
+    overview = [
+        {
+            "apiary": apiary,
+            "hive": hive,
+            "latest": series_service.latest(session, hive.id),
+        }
+        for apiary in apiaries
+        for hive in apiary.hives
+    ]
+
+    hive_ids = [row["hive"].id for row in overview]
+    total_measurements = (
+        session.scalar(
+            select(func.count())
+            .select_from(Measurement)
+            .where(Measurement.hive_id.in_(hive_ids))
         )
+        or 0
+    )
+    # Recusas nao pertencem a colmeia nenhuma (a mensagem sequer foi decodificada),
+    # entao so quem tem visao ampla as ve.
+    rejects = (
+        list(
+            session.scalars(
+                select(IngestReject).order_by(IngestReject.received_at.desc()).limit(5)
+            )
+        )
+        if current_user.role.sees_everything
+        else []
+    )
 
     return render_template(
         "index.html",
@@ -93,20 +97,15 @@ def index():
 
 
 def _load_hive(session: Session, hive_id: int) -> Hive:
-    """Carrega a colmeia visivel ao usuario, com o meliponario junto.
+    """Carrega a colmeia visivel ao usuario.
 
-    Duas coisas ao mesmo tempo, de proposito. O escopo por usuario vem de
-    ``scope.hives_for``, e nao de um ``select(Hive)`` cru: sem isso, trocar o numero na
-    URL leria a colmeia de outra organizacao. E o eager load do meliponario nao e
-    otimizacao -- os templates renderizam depois que a sessao fechou, e um lazy load
-    nesse ponto levanta DetachedInstanceError.
+    O escopo por usuario vem de ``scope.hives_for``, e nao de um ``select(Hive)`` cru:
+    sem isso, trocar o numero na URL leria a colmeia de outra organizacao.
 
     Colmeia inexistente e colmeia de outra organizacao devolvem o mesmo 404: distinguir
     as duas revelaria quais ids existem na plataforma.
     """
-    hive = session.scalar(
-        scope.hives_for(current_user).options(joinedload(Hive.apiary)).where(Hive.id == hive_id)
-    )
+    hive = session.scalar(scope.hives_for(current_user).where(Hive.id == hive_id))
     if hive is None:
         abort(404)
     return hive
@@ -128,9 +127,8 @@ def _janela_pedida() -> str:
 @login_required
 def hive_detail(hive_id: int):
     window = _janela_pedida()
-
-    with session_scope() as session:
-        context = _hive_context(session, _load_hive(session, hive_id), window)
+    session = sessao_do_request()
+    context = _hive_context(session, _load_hive(session, hive_id), window)
 
     return render_template("hive.html", **context)
 
@@ -145,9 +143,8 @@ def hive_panel(hive_id: int):
     onde o sistema precisa funcionar, que e a conectividade rural.
     """
     window = _janela_pedida()
-
-    with session_scope() as session:
-        context = _hive_context(session, _load_hive(session, hive_id), window)
+    session = sessao_do_request()
+    context = _hive_context(session, _load_hive(session, hive_id), window)
 
     return render_template("_panel.html", **context)
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Editar {{ apiary.nome }} — MelipoNet{% endblock %}
+{% block title %}Editar {{ apiary.name }} — MelipoNet{% endblock %}
 {% block content %}
 
 <h1>Editar meliponário</h1>
@@ -10,26 +10,26 @@
 
 <form method="post" class="card" style="max-width:620px;">
   <label class="field"><span>Nome</span>
-    <input name="nome" required value="{{ apiary.nome }}"></label>
+    <input name="nome" required value="{{ apiary.name }}"></label>
 
   <div class="form-row">
     <label class="field"><span>Município</span>
-      <input name="municipio" value="{{ apiary.municipio }}" placeholder="João Pessoa"></label>
+      <input name="municipio" value="{{ apiary.municipality or '' }}" placeholder="João Pessoa"></label>
     <label class="field"><span>Latitude</span>
-      <input name="latitude" value="{{ apiary.latitude }}" placeholder="-7.1408"></label>
+      <input name="latitude" value="{{ apiary.latitude if apiary.latitude is not none else '' }}" placeholder="-7.1408"></label>
     <label class="field"><span>Longitude</span>
-      <input name="longitude" value="{{ apiary.longitude }}" placeholder="-34.8556"></label>
+      <input name="longitude" value="{{ apiary.longitude if apiary.longitude is not none else '' }}" placeholder="-34.8556"></label>
   </div>
 
   <label class="field">
     <span>Estação do INMET mais próxima</span>
-    <input name="estacao_inmet" value="{{ apiary.estacao_inmet }}" placeholder="A320">
+    <input name="estacao_inmet" value="{{ apiary.inmet_station or '' }}" placeholder="A320">
   </label>
 
   <label class="field">
     <span>Observações</span>
     <textarea name="observacoes"
-      placeholder="Acesso, sombreamento, vegetação do entorno, o que mais ajudar quem for a campo.">{{ apiary.observacoes }}</textarea>
+      placeholder="Acesso, sombreamento, vegetação do entorno, o que mais ajudar quem for a campo.">{{ apiary.notes or '' }}</textarea>
   </label>
 
   <p class="sub" style="font-size:13px;">

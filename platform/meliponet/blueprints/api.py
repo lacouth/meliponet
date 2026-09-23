@@ -10,6 +10,11 @@ Os dois caminhos entram no mesmo lugar: `decode()` valida e `store()` grava, os 
 que o ingestor MQTT chama. Nada aqui e uma segunda implementacao da ingestao -- se
 fosse, os dois caminhos divergiriam e o no que passa a publicar em MQTT (etapa final do
 roteiro) veria a plataforma se comportar de outro jeito.
+
+Esta e a unica rota que abre a sessao na mao, com `session_scope()`, em vez de usar a
+sessao da requisicao: ela **grava a recusa e responde 400**, e a sessao da requisicao
+desfaz o que a resposta de erro tocou. E o comportamento certo para as telas e o errado
+aqui -- sem a recusa gravada, o aluno fica sem nada para depurar.
 """
 
 from __future__ import annotations

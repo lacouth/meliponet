@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 
+from flask import g
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -64,9 +65,7 @@ def get_engine() -> Engine:
 @contextmanager
 def session_scope() -> Iterator[Session]:
     """Sessao transacional: commit no sucesso, rollback em qualquer excecao."""
-    if _Session is None:
-        raise RuntimeError("session factory nao inicializada: chame init_engine() primeiro")
-    session = _Session()
+    session = _sessionmaker()()
     try:
         yield session
         session.commit()
@@ -75,6 +74,54 @@ def session_scope() -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+def sessao_do_request() -> Session:
+    """A sessao desta requisicao, aberta na primeira vez que alguem a pede.
+
+    Existe porque o template renderiza *depois* que a view retorna. Com uma sessao
+    aberta e fechada dentro da view, tudo que o template fosse ler precisava ser
+    carregado na marra antes -- `joinedload` defensivo, dicionario copiado a mao -- ou
+    estourava `DetachedInstanceError` na hora de desenhar a pagina. Amarrando a sessao a
+    requisicao inteira, o template le `colmeia.apiary.name` sem cerimonia.
+
+    O ingestor MQTT, o CLI e os testes continuam usando ``session_scope``: nao existe
+    requisicao HTTP la.
+    """
+    if "sessao" not in g:
+        g.sessao = _sessionmaker()()
+    return g.sessao
+
+
+def _sessionmaker() -> sessionmaker[Session]:
+    if _Session is None:
+        raise RuntimeError("session factory nao inicializada: chame init_engine() primeiro")
+    return _Session
+
+
+def registrar_sessao_por_request(app) -> None:
+    """Liga a sessao ao ciclo da requisicao: grava no sucesso, desfaz no resto.
+
+    A regra e uma so e vale para toda rota: **requisicao que terminou bem grava; qualquer
+    outra coisa desfaz**. Uma resposta 4xx ou 5xx nao commita, mesmo que a view ja tenha
+    mexido em algum objeto antes de desistir.
+    """
+
+    @app.after_request
+    def _confirmar(response):
+        sessao = g.get("sessao")
+        if sessao is not None and response.status_code < 400:
+            sessao.commit()
+        return response
+
+    @app.teardown_appcontext
+    def _encerrar(_exc):
+        sessao = g.pop("sessao", None)
+        if sessao is not None:
+            # Depois de um commit bem-sucedido este rollback nao faz nada; o que ele
+            # cobre e o caminho que nao passou pelo `_confirmar`.
+            sessao.rollback()
+            sessao.close()
 
 
 def apply_timescale_features(engine: Engine) -> None:

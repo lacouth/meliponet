@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from meliponet.config import DISPLAY_TIMEZONE
-from meliponet.db import session_scope
+from meliponet.db import sessao_do_request
 from meliponet.models import Apiary, Hive, Node, NodeAssignment, utcnow
 from meliponet.services import scope
 
@@ -72,15 +72,29 @@ def _meliponario_no_escopo(session, apiary_id: int) -> Apiary:
     return apiary
 
 
-def _colmeia_no_escopo(session, hive_id: int, *, com_meliponario: bool = False) -> Hive:
+def _colmeia_no_escopo(session, hive_id: int) -> Hive:
     """Irma de ``_meliponario_no_escopo``, para as colmeias."""
-    statement = scope.hives_for(current_user).where(Hive.id == hive_id)
-    if com_meliponario:
-        statement = statement.options(selectinload(Hive.apiary))
-    hive = session.scalar(statement)
+    hive = session.scalar(scope.hives_for(current_user).where(Hive.id == hive_id))
     if hive is None:
         abort(403)
     return hive
+
+
+def _no_gerenciavel(session, node_id: int) -> Node:
+    """Carrega o no que o usuario pode vincular ou desvincular.
+
+    Um no que nao existe e 404; um que existe mas nao e seu e 403. Um no ainda sem dono
+    pode ser adotado por quem administra; um no de outra organizacao, so por quem
+    administra todas -- a regra inteira mora em ``scope.can_manage_node``.
+    """
+    node = session.scalar(
+        select(Node).options(selectinload(Node.assignments)).where(Node.id == node_id)
+    )
+    if node is None:
+        abort(404)
+    if not scope.can_manage_node(session, current_user, node.id):
+        abort(403)
+    return node
 
 
 def _parse_local(value: str | None) -> datetime | None:
@@ -110,35 +124,38 @@ def _local_input(value: datetime | None) -> str:
 @bp.route("/")
 @login_required
 def index():
-    with session_scope() as session:
-        apiaries = list(
-            session.scalars(
-                scope.apiaries_for(current_user)
-                .options(selectinload(Apiary.hives))
-                .order_by(Apiary.name)
-            )
+    session = sessao_do_request()
+
+    # Os `selectinload` daqui sao otimizacao: sem eles, cada meliponario e cada no da
+    # lista dispararia uma consulta propria -- o classico N+1.
+    apiaries = list(
+        session.scalars(
+            scope.apiaries_for(current_user)
+            .options(selectinload(Apiary.hives))
+            .order_by(Apiary.name)
         )
-        nodes = list(
+    )
+    nodes = list(
+        session.scalars(
+            scope.nodes_for(current_user)
+            .options(selectinload(Node.assignments).selectinload(NodeAssignment.hive))
+            .order_by(Node.node_id)
+        )
+    )
+    # Nos que apareceram sozinhos na ingestao e ainda nao tem dono. So quem
+    # administra os ve, porque so essa pessoa pode adota-los.
+    pending = (
+        list(
             session.scalars(
-                scope.nodes_for(current_user)
-                .options(selectinload(Node.assignments).selectinload(NodeAssignment.hive))
+                select(Node)
+                .options(selectinload(Node.assignments))
+                .where(Node.organization_id.is_(None))
                 .order_by(Node.node_id)
             )
         )
-        # Nos que apareceram sozinhos na ingestao e ainda nao tem dono. So quem
-        # administra os ve, porque so essa pessoa pode adota-los.
-        pending = (
-            list(
-                session.scalars(
-                    select(Node)
-                    .options(selectinload(Node.assignments))
-                    .where(Node.organization_id.is_(None))
-                    .order_by(Node.node_id)
-                )
-            )
-            if scope.can_manage(current_user)
-            else []
-        )
+        if scope.can_manage(current_user)
+        else []
+    )
 
     return render_template(
         "manage/index.html",
@@ -154,16 +171,15 @@ def index():
 @login_required
 def create_apiary():
     _require_manager()
-    with session_scope() as session:
-        session.add(
-            Apiary(
-                organization_id=current_user.organization_id,
-                name=request.form["nome"].strip(),
-                municipality=_texto("municipio"),
-                latitude=_decimal("latitude"),
-                longitude=_decimal("longitude"),
-            )
+    sessao_do_request().add(
+        Apiary(
+            organization_id=current_user.organization_id,
+            name=request.form["nome"].strip(),
+            municipality=_texto("municipio"),
+            latitude=_decimal("latitude"),
+            longitude=_decimal("longitude"),
         )
+    )
     flash("Meliponário cadastrado.", "ok")
     return redirect(url_for("manage.index"))
 
@@ -172,23 +188,21 @@ def create_apiary():
 @login_required
 def create_hive():
     _require_manager()
-    apiary_id = int(request.form["meliponario_id"])
+    session = sessao_do_request()
+    apiary = _meliponario_no_escopo(session, int(request.form["meliponario_id"]))
 
-    with session_scope() as session:
-        apiary = _meliponario_no_escopo(session, apiary_id)
-
-        session.add(
-            Hive(
-                apiary_id=apiary.id,
-                name=request.form["nome"].strip(),
-                species=_texto("especie"),
-                box_type=_texto("caixa"),
-                # Em branco significa "agora", que e o caso comum; mas uma colmeia
-                # cadastrada semanas depois de instalada precisa da data verdadeira, e
-                # e ela que delimita a serie da colmeia.
-                installed_at=_parse_local(request.form.get("instalado_em")) or utcnow(),
-            )
+    session.add(
+        Hive(
+            apiary_id=apiary.id,
+            name=request.form["nome"].strip(),
+            species=_texto("especie"),
+            box_type=_texto("caixa"),
+            # Em branco significa "agora", que e o caso comum; mas uma colmeia
+            # cadastrada semanas depois de instalada precisa da data verdadeira, e
+            # e ela que delimita a serie da colmeia.
+            installed_at=_parse_local(request.form.get("instalado_em")) or utcnow(),
         )
+    )
     flash("Colmeia cadastrada.", "ok")
     return redirect(url_for("manage.index"))
 
@@ -203,31 +217,19 @@ def edit_apiary(apiary_id: int):
     justifica recriar o meliponario, o que orfanaria as colmeias e a serie inteira.
     """
     _require_manager()
-    with session_scope() as session:
-        apiary = _meliponario_no_escopo(session, apiary_id)
+    apiary = _meliponario_no_escopo(sessao_do_request(), apiary_id)
 
-        if request.method == "POST":
-            apiary.name = request.form["nome"].strip()
-            apiary.municipality = _texto("municipio")
-            apiary.latitude = _decimal("latitude")
-            apiary.longitude = _decimal("longitude")
-            apiary.inmet_station = _texto("estacao_inmet")
-            apiary.notes = _texto("observacoes")
-            flash("Meliponário atualizado.", "ok")
-            return redirect(url_for("manage.index"))
+    if request.method == "POST":
+        apiary.name = request.form["nome"].strip()
+        apiary.municipality = _texto("municipio")
+        apiary.latitude = _decimal("latitude")
+        apiary.longitude = _decimal("longitude")
+        apiary.inmet_station = _texto("estacao_inmet")
+        apiary.notes = _texto("observacoes")
+        flash("Meliponário atualizado.", "ok")
+        return redirect(url_for("manage.index"))
 
-        # Os valores saem da sessao antes que ela feche: o template renderiza depois.
-        dados = {
-            "id": apiary.id,
-            "nome": apiary.name,
-            "municipio": apiary.municipality or "",
-            "latitude": apiary.latitude if apiary.latitude is not None else "",
-            "longitude": apiary.longitude if apiary.longitude is not None else "",
-            "estacao_inmet": apiary.inmet_station or "",
-            "observacoes": apiary.notes or "",
-        }
-
-    return render_template("manage/apiary_edit.html", apiary=dados)
+    return render_template("manage/apiary_edit.html", apiary=apiary)
 
 
 @bp.route("/colmeia/<int:hive_id>/editar", methods=["GET", "POST"])
@@ -240,93 +242,72 @@ def edit_hive(hive_id: int):
     daquela colmeia comeca a valer.
     """
     _require_manager()
-    with session_scope() as session:
-        hive = _colmeia_no_escopo(session, hive_id, com_meliponario=True)
+    hive = _colmeia_no_escopo(sessao_do_request(), hive_id)
 
-        if request.method == "POST":
-            hive.name = request.form["nome"].strip()
-            hive.species = _texto("especie")
-            hive.box_type = _texto("caixa")
-            hive.installed_at = _parse_local(request.form.get("instalado_em"))
-            hive.notes = _texto("observacoes")
-            flash("Colmeia atualizada.", "ok")
-            return redirect(url_for("manage.index"))
+    if request.method == "POST":
+        hive.name = request.form["nome"].strip()
+        hive.species = _texto("especie")
+        hive.box_type = _texto("caixa")
+        hive.installed_at = _parse_local(request.form.get("instalado_em"))
+        hive.notes = _texto("observacoes")
+        flash("Colmeia atualizada.", "ok")
+        return redirect(url_for("manage.index"))
 
-        dados = {
-            "id": hive.id,
-            "nome": hive.name,
-            "especie": hive.species or "",
-            "caixa": hive.box_type or "",
-            "instalado_em": _local_input(hive.installed_at),
-            "observacoes": hive.notes or "",
-            "meliponario": hive.apiary.name,
-        }
-
-    return render_template("manage/hive_edit.html", hive=dados, species=SPECIES)
+    return render_template(
+        "manage/hive_edit.html",
+        hive=hive,
+        # O campo `datetime-local` do HTML tem formato proprio, e a conversao e da view:
+        # o template escreve o que recebe, sem saber de fuso.
+        instalado_em=_local_input(hive.installed_at),
+        species=SPECIES,
+    )
 
 
 @bp.route("/no/<int:node_id>/vincular", methods=["GET", "POST"])
 @login_required
 def assign_node(node_id: int):
     _require_manager()
+    session = sessao_do_request()
+    node = _no_gerenciavel(session, node_id)
 
-    with session_scope() as session:
-        node = session.scalar(
-            select(Node).options(selectinload(Node.assignments)).where(Node.id == node_id)
-        )
-        if node is None:
-            abort(404)
-        # Um nó ainda sem dono pode ser adotado por quem administra; um nó de outra
-        # organização, só por quem administra todas.
-        if not scope.can_manage_node(session, current_user, node.id):
-            abort(403)
+    if request.method == "POST":
+        hive = _colmeia_no_escopo(session, int(request.form["colmeia_id"]))
+        installed_at = _parse_local(request.form.get("instalado_em")) or utcnow()
 
-        if request.method == "POST":
-            hive = _colmeia_no_escopo(session, int(request.form["colmeia_id"]))
+        # Fecha o vínculo anterior antes de abrir o novo: dois vínculos abertos ao
+        # mesmo tempo tornariam ambígua a colmeia de uma leitura.
+        current = node.current_assignment
+        if current is not None:
+            current.removed_at = installed_at
 
-            installed_at = _parse_local(request.form.get("instalado_em")) or utcnow()
-
-            # Fecha o vínculo anterior antes de abrir o novo: dois vínculos abertos ao
-            # mesmo tempo tornariam ambígua a colmeia de uma leitura.
-            current = node.current_assignment
-            if current is not None:
-                current.removed_at = installed_at
-
-            # O nó passa a pertencer à organização **da colmeia**, não à de quem
-            # clicou. Carimbar o usuário logado fazia um administrador levar consigo o
-            # nó que adotasse para a colmeia de outra organização: o dono legítimo
-            # deixava de enxergar o próprio nó e não conseguia mais desvinculá-lo, sem
-            # erro nenhum na tela.
-            node.organization_id = hive.apiary.organization_id
-            session.add(
-                NodeAssignment(
-                    node_id=node.id,
-                    hive_id=hive.id,
-                    installed_at=installed_at,
-                    sensor_placement=_texto("posicionamento"),
-                    protocol_notes=_texto("observacoes"),
-                )
-            )
-            flash(f"Nó {node.node_id} vinculado a {hive.name}.", "ok")
-            return redirect(url_for("manage.index"))
-
-        # Carrega o meliponário junto: o template mostra "Colmeia (Meliponário)" e
-        # renderiza depois que a sessão fechou.
-        hives = list(
-            session.scalars(
-                scope.hives_for(current_user)
-                .options(selectinload(Hive.apiary))
-                .order_by(Hive.name)
+        # O nó passa a pertencer à organização **da colmeia**, não à de quem clicou.
+        # Carimbar o usuário logado fazia um administrador levar consigo o nó que
+        # adotasse para a colmeia de outra organização: o dono legítimo deixava de
+        # enxergar o próprio nó e não conseguia mais desvinculá-lo, sem erro na tela.
+        node.organization_id = hive.apiary.organization_id
+        session.add(
+            NodeAssignment(
+                node_id=node.id,
+                hive_id=hive.id,
+                installed_at=installed_at,
+                sensor_placement=_texto("posicionamento"),
+                protocol_notes=_texto("observacoes"),
             )
         )
-        node_label = node.node_id
-        current_hive = node.current_assignment.hive.name if node.current_assignment else None
+        flash(f"Nó {node.node_id} vinculado a {hive.name}.", "ok")
+        return redirect(url_for("manage.index"))
+
+    hives = list(
+        session.scalars(
+            scope.hives_for(current_user).options(selectinload(Hive.apiary)).order_by(Hive.name)
+        )
+    )
 
     return render_template(
         "manage/assign.html",
         node_id=node_id,
-        node_label=node_label,
-        current_hive=current_hive,
+        node_label=node.node_id,
+        current_hive=node.current_assignment.hive.name if node.current_assignment else None,
         hives=hives,
         species=SPECIES,
     )
@@ -336,23 +317,16 @@ def assign_node(node_id: int):
 @login_required
 def unassign_node(node_id: int):
     _require_manager()
-    with session_scope() as session:
-        node = session.scalar(
-            select(Node).options(selectinload(Node.assignments)).where(Node.id == node_id)
-        )
-        if node is None:
-            abort(404)
-        if not scope.can_manage_node(session, current_user, node.id):
-            abort(403)
+    node = _no_gerenciavel(sessao_do_request(), node_id)
 
-        current = node.current_assignment
-        if current is None:
-            flash("Esse nó já está sem colmeia.", "erro")
-        else:
-            # Fecha o período em vez de apagar o vínculo: as leituras já gravadas
-            # continuam apontando para a colmeia certa, e o histórico de instalação é
-            # parte do protocolo documentado.
-            current.removed_at = utcnow()
-            flash(f"Nó {node.node_id} desvinculado.", "ok")
+    current = node.current_assignment
+    if current is None:
+        flash("Esse nó já está sem colmeia.", "erro")
+    else:
+        # Fecha o período em vez de apagar o vínculo: as leituras já gravadas continuam
+        # apontando para a colmeia certa, e o histórico de instalação é parte do
+        # protocolo documentado.
+        current.removed_at = utcnow()
+        flash(f"Nó {node.node_id} desvinculado.", "ok")
 
     return redirect(url_for("manage.index"))

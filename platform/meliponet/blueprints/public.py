@@ -16,7 +16,7 @@ from flask import Blueprint, redirect, render_template, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
 
-from meliponet.db import session_scope
+from meliponet.db import sessao_do_request
 from meliponet.models import Apiary, Hive, Measurement, Node
 
 bp = Blueprint("public", __name__)
@@ -40,12 +40,12 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
-    with session_scope() as session:
-        stats = {
-            "hives": _quantos(session, Hive),
-            "apiaries": _quantos(session, Apiary),
-            "measurements": _quantos(session, Measurement),
-            "nodes": _quantos(session, Node),
-        }
+    session = sessao_do_request()
+    stats = {
+        "hives": _quantos(session, Hive),
+        "apiaries": _quantos(session, Apiary),
+        "measurements": _quantos(session, Measurement),
+        "nodes": _quantos(session, Node),
+    }
 
     return render_template("public/index.html", stats=stats, species=SPECIES)
