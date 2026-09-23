@@ -12,6 +12,11 @@ plataforma, não mais o monitor serial.
 
 **Tempo:** ~4 h
 
+> **Ainda sem os SHT30?** Faça a [etapa S](S-os-sensores-simulados.md), que produz
+> temperatura, umidade e peso simulados, e siga direto para E5. Volte a E4 quando os
+> sensores chegarem: a leitura de verdade entra **ao lado** da simulada, atrás da chave
+> de S.4, e o resto do programa não muda.
+
 Leia os dois SHT30 e imprima temperatura em °C e umidade em %.
 
 > **O conceito: I²C é um barramento, e cada peça nele tem um endereço.**
@@ -124,7 +129,8 @@ Monte o JSON e imprima no serial. Ainda sem enviar nada.
 ### E5.1 — o JSON no serial
 
 Imprima a mensagem montada, com os campos que você já consegue produzir (`schema`,
-`node_id`, `seq`, `ts`, e as temperaturas e umidades de E4).
+`node_id`, `seq`, `ts`, e as temperaturas e umidades de E4). Se você veio da etapa S, a
+leitura simulada também traz o peso: ele entra como `weight_kg`.
 
 **Pronto quando:** você comparou, campo a campo, com
 `../../contracts/exemplos/02-completa.json` — mesma grafia, mesmo tipo, mesmas aspas nos
@@ -133,8 +139,9 @@ lugares certos. Os nomes dos campos são letra por letra os do contrato: `temp_i
 
 ### E5.2 — o campo ausente some
 
-Aplique a decisão de E4.4: sensor ausente significa que o campo **não aparece** no JSON, e
-a flag correspondente entra na lista `flags`.
+Aplique a decisão de E4.4 — ou, se você veio da etapa S, use o comando de S.3 para fazer
+o sensor falhar: sensor ausente significa que o campo **não aparece** no JSON, e a flag
+correspondente entra na lista `flags` (`sht_in_fault`, `sht_out_fault` ou `hx711_fault`).
 
 **Pronto quando:** com um sensor desligado, a mensagem impressa tem dois campos a menos e
 uma flag a mais — e continua sendo um JSON válido (sem vírgula sobrando onde o campo
@@ -153,6 +160,11 @@ curl -i -X POST http://127.0.0.1:5000/api/v1/telemetria \
 **Pronto quando:** a resposta é `201`. Ainda não é o seu nó enviando — mas é a prova de
 que a mensagem que ele produz está certa, e é exatamente essa separação que faz E6 ser
 fácil.
+
+Se você veio da etapa S, faça também o que S.4 deixou guardado: ponha a chave em "real",
+em que todos os sensores estão ausentes, e mande a mensagem que sair. A resposta tem de
+ser `400 mensagem sem nenhuma metrica de colmeia`. Depois volte a chave para
+"simulado".
 
 ### E5.4 — provoque as recusas
 

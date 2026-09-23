@@ -20,6 +20,7 @@ arquivos de `etapas/`.
 ```mermaid
 flowchart LR
     S[sensores<br/>SHT30 e HX711] --> M[monta a mensagem<br/>JSON]
+    F[sensores e bateria<br/>simulados, etapa S] -. sem hardware .-> M
     M --> E[envia<br/>HTTP POST]
     E --> P[plataforma<br/>valida e guarda]
     P --> G[gráfico<br/>no painel]
@@ -166,6 +167,7 @@ gastar dez vezes é sinal de que você travou em algo que uma pista resolve.
 | **E1** | a placa fala com você | ~1 h | [E1-E3](etapas/E1-E3-a-placa-na-rede.md#e1--a-placa-fala-com-você) |
 | **E2** | o nó entra na rede | ~2 h | [E1-E3](etapas/E1-E3-a-placa-na-rede.md#e2--o-nó-entra-na-rede) |
 | **E3** | o nó sabe que horas são | ~2 h | [E1-E3](etapas/E1-E3-a-placa-na-rede.md#e3--o-nó-sabe-que-horas-são) |
+| **S** | sensores e bateria simulados — sem hardware | ~4 h | [S](etapas/S-os-sensores-simulados.md) |
 | **E4** | os sensores respondem | ~4 h | [E4-E6](etapas/E4-E6-a-primeira-mensagem.md#e4--os-sensores-respondem) |
 | **E5** | a mensagem existe | ~3 h | [E4-E6](etapas/E4-E6-a-primeira-mensagem.md#e5--a-mensagem-existe) |
 | **E6** | o primeiro ponto no gráfico | ~2 h | [E4-E6](etapas/E4-E6-a-primeira-mensagem.md#e6--o-primeiro-ponto-no-gráfico) |
@@ -176,6 +178,28 @@ gastar dez vezes é sinal de que você travou em algo que uma pista resolve.
 
 **E6 é o marco que muda tudo.** Até ele você depura olhando o monitor serial; a partir
 dele você depura olhando a tela da plataforma, que é bem mais informativa.
+
+### Sem o hardware ainda?
+
+Se você tem a placa mas os SHT30, o HX711 e a bateria ainda não chegaram, **não pare em
+E3**. A etapa **S** faz o nó inventar leituras com a cara de uma colmeia — temperatura,
+umidade, peso e a tensão da bateria —, e com elas o resto do roteiro funciona. A placa
+fica ligada no USB do computador, que é de onde ela tira energia sem bateria.
+
+```
+E1 → E2 → E3 → S → E5 → E6 → E8 → (E9, E10)
+                   quando o hardware chegar: E4, E7 e E8.3
+```
+
+Em E8, o E8.3 (medir a bateria de verdade) espera a célula e os resistores; o E8.4 (a
+flag `low_batt`) já funciona com a bateria simulada.
+
+Quando o hardware chegar, você escreve a leitura de verdade **ao lado** da simulada, e
+uma chave no código escolhe qual das duas o nó usa. A mensagem, o envio e o laço não
+mudam — é essa a lição da etapa S.
+
+Dado inventado vai só para a plataforma do seu computador, nunca para o servidor de
+campo: a mensagem não tem como avisar que é simulada.
 
 ## Quando não funcionar
 
@@ -200,7 +224,7 @@ Uma mensagem recusada nunca some: a plataforma guarda o motivo na tabela
 [02](../docs/exercicios/02-uma-mensagem-ate-o-grafico.md) ensina a consulta — é a mesma
 aqui, trocando o `node_id` pelo seu.
 
-E a regra que vale para as dez etapas: **quando não souber, pergunte antes de adivinhar.**
+E a regra que vale para todas as etapas: **quando não souber, pergunte antes de adivinhar.**
 Ao perguntar, traga o que você mandou, a resposta inteira do servidor e o que já tentou.
 
 ## O que fica para depois

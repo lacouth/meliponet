@@ -54,6 +54,12 @@ enviada é a seguinte à última de antes — não zero. Confirme pela resposta:
 
 Meça a tensão da célula 18650 pelo divisor e mande em `vbat_v`.
 
+> **Ainda sem a bateria?** Deixe este passo para quando a célula e os dois resistores
+> chegarem. Até lá, `vbat_v` vem da bateria simulada da [etapa S](S-os-sensores-simulados.md),
+> e o resto de E8 funciona com ela. Quando o hardware chegar, a medida de verdade entra
+> **ao lado** da simulada, atrás da mesma chave de S.4 — e só então a conferência com
+> multímetro deste passo passa a valer.
+
 > **O conceito: o divisor resistivo, e por que a leitura é metade.**
 > A célula 18650 chega a 4,2 V cheia, e a entrada analógica da placa não tolera mais que
 > 3,3 V. Dois resistores iguais em série entre a bateria e o GND resolvem: o ponto no meio
@@ -79,6 +85,11 @@ Acenda a flag `low_batt` quando `vbat_v` ficar abaixo de **3,50 V**.
 **Pronto quando:** alimentando o divisor por uma fonte ajustável (ou com uma bateria
 realmente descarregada), a flag aparece na mensagem abaixo do limiar e some acima dele.
 
+Sem bateria, faça o mesmo com a simulada: o comando `bateria baixa` de S.3 derruba a
+tensão para baixo de 3,50 V, e `bateria normal` a traz de volta. A flag tem de aparecer e
+sumir do mesmo jeito — e é a mesma regra que vai valer com a bateria de verdade, porque
+ela olha só o número, não de onde ele veio.
+
 > **Por que uma flag e não um limiar na plataforma.** Quem sabe que a leitura foi feita com
 > a bateria fraca é o nó, no instante da medição. A plataforma recebe um número já
 > arredondado e pode nem ter recebido as leituras do período crítico. A flag viaja junto do
@@ -96,6 +107,12 @@ ao fim, você desliga e religa a placa e o ponto seguinte continua a série — 
 
 Este é o critério de pronto da etapa inteira, e o primeiro que você não consegue conferir
 olhando: precisa deixar rodando e voltar depois.
+
+> **Com o hardware simulado da etapa S, esta hora vale — pela metade.** Ela prova o
+> laço, o intervalo, a `seq` que sobrevive ao reset e o envio, que são o assunto desta
+> etapa. Não prova nada sobre os sensores nem sobre a bateria, porque eles não estão lá.
+> Quando o hardware chegar e você terminar E4, E7 e E8.3, repita E8.5 com a chave em
+> "real" — e com a placa na bateria, não no USB: é a hora que conta.
 
 ---
 
