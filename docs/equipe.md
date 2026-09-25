@@ -25,6 +25,7 @@ verifiquei — e peça a revisão do orientador. O ciclo inteiro está em
 | Geaniny Adriane| voluntário | todas | [@geaniny-lira](https://github.com/geaniny-lira) |
 | Andrews da Silva| voluntário| todas | [@SilvaAndrews](https://github.com/SilvaAndrews) |
 | João Pedro | bolsista | todas | [@PedroDev-coder](https://github.com/PedroDev-coder) |
+| Ian Albuquerque | bolsista | todas | [@IanAlbuquerque](https://github.com/IanAlbuquerque) |
 
 As frentes e o que cada uma faz estão em
 [Como trabalhamos](guia/05-como-trabalhamos.md#como-o-trabalho-é-distribuído).
